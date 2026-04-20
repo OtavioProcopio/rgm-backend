@@ -1,0 +1,13 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Debug (Launch)-BackendApplication",
+            "request": "launch",
+            "mainClass": "com.rgm.backend.BackendApplication",
+            "projectName": "backend",
+            "envFile": "${workspaceFolder}/app/.env"
+        }
+    ]
+}

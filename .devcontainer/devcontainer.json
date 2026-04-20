@@ -1,0 +1,37 @@
+{
+	"name": "RGM Backend Dev Environment",
+	"dockerComposeFile": "docker-compose.yml",
+	"service": "app",
+	"workspaceFolder": "/workspace",
+	"features": {
+		"ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
+			"version": "latest",
+			"enableNonRootDocker": "true"
+		},
+		"ghcr.io/devcontainers/features/common-utils:2": {
+			"configureZshAsDefaultShell": "true"
+		}
+	},
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"vscjava.vscode-java-pack",
+				"vmware.vscode-spring-boot-dashboard",
+				"vscjava.vscode-spring-boot-extension-pack",
+				"vscjava.vscode-maven",
+				"vscjava.vscode-java-debug",
+				"vscjava.vscode-java-test",
+				"ms-azuretools.vscode-docker",
+				"redhat.vscode-xml",
+				"humao.rest-client",
+				"bierner.markdown-mermaid"
+			],
+			"settings": {
+				"java.configuration.updateBuildConfiguration": "interactive",
+				"java.server.launchMode": "Standard"
+			}
+		}
+	},
+	"postCreateCommand": "cd app && ./mvnw install -DskipTests",
+	"remoteUser": "vscode"
+}
