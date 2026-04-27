@@ -11,4 +11,6 @@ public interface MaquinaRepository {
   Maquina save(Maquina maquina);
 
   void deleteById(UUID id);
+
+  PageResult<Maquina> findAll(int page, int size);
 }

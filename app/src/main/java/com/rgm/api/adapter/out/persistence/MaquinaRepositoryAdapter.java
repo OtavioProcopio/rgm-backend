@@ -4,8 +4,11 @@ import com.rgm.api.adapter.out.persistence.mapper.MaquinaMapper;
 import com.rgm.api.adapter.out.persistence.repository.MaquinaJpaRepository;
 import com.rgm.api.core.domain.model.aggregates.Maquina;
 import com.rgm.api.core.domain.ports.repositories.MaquinaRepository;
+import com.rgm.api.core.domain.ports.repositories.PageResult;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -30,5 +33,17 @@ public class MaquinaRepositoryAdapter implements MaquinaRepository {
   @Override
   public void deleteById(final UUID id) {
     jpa.deleteById(id);
+  }
+
+  @Override
+  public PageResult<Maquina> findAll(final int page, final int size) {
+    final var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "nome"));
+    final var result = jpa.findAll(pageable);
+    return new PageResult<>(
+        result.getContent().stream().map(MaquinaMapper::toDomain).toList(),
+        result.getNumber(),
+        result.getSize(),
+        result.getTotalElements(),
+        result.getTotalPages());
   }
 }

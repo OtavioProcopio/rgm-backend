@@ -18,4 +18,6 @@ public interface UsuarioRepository {
   void deleteById(UUID id);
 
   boolean existsByEmail(String email);
+
+  PageResult<Usuario> findAll(int page, int size);
 }

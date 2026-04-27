@@ -4,15 +4,21 @@ import com.rgm.api.adapter.in.web.dto.request.CriarModeloRequest;
 import com.rgm.api.adapter.in.web.dto.request.EditarModeloRequest;
 import com.rgm.api.adapter.in.web.dto.request.FotoCapaUploadRequest;
 import com.rgm.api.adapter.in.web.dto.response.ModeloResponse;
+import com.rgm.api.adapter.in.web.dto.response.PageResponse;
 import com.rgm.api.core.application.usecases.modelo.AtualizarFotoCapaUseCase;
 import com.rgm.api.core.application.usecases.modelo.GerenciarModelosUseCase;
+import com.rgm.api.core.application.usecases.modelo.ListarModelosUseCase;
 import com.rgm.api.core.domain.model.aggregates.Modelo;
 import jakarta.validation.Valid;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -26,20 +32,34 @@ import org.springframework.web.multipart.MultipartFile;
 @RestController
 @RequestMapping("/api/modelos")
 public class ModeloController {
+  private static final Logger log = LoggerFactory.getLogger(ModeloController.class);
 
   private final GerenciarModelosUseCase gerenciarUseCase;
   private final AtualizarFotoCapaUseCase fotoCapaUseCase;
+  private final ListarModelosUseCase listarUseCase;
 
   public ModeloController(
       final GerenciarModelosUseCase gerenciarUseCase,
-      final AtualizarFotoCapaUseCase fotoCapaUseCase) {
+      final AtualizarFotoCapaUseCase fotoCapaUseCase,
+      final ListarModelosUseCase listarUseCase) {
     this.gerenciarUseCase = gerenciarUseCase;
     this.fotoCapaUseCase = fotoCapaUseCase;
+    this.listarUseCase = listarUseCase;
   }
 
+  @GetMapping
+  public ResponseEntity<PageResponse<ModeloResponse>> listar(
+      @RequestParam(defaultValue = "0") final int page,
+      @RequestParam(defaultValue = "20") final int size) {
+    final var result = listarUseCase.execute(page, size);
+    return ResponseEntity.ok(PageResponse.from(result, ModeloResponse::from));
+  }
+
+  @Transactional
   @PostMapping
   public ResponseEntity<ModeloResponse> criar(
       @Valid @RequestBody final CriarModeloRequest request, final Authentication authentication) {
+    log.info("ModeloController.criar iniciado");
     final UUID gestorId = UUID.fromString(authentication.getName());
     final Modelo modelo =
         gerenciarUseCase.criar(
@@ -52,11 +72,13 @@ public class ModeloController {
     return ResponseEntity.status(HttpStatus.CREATED).body(ModeloResponse.from(modelo));
   }
 
+  @Transactional
   @PutMapping("/{id}")
   public ResponseEntity<ModeloResponse> editar(
       @PathVariable final UUID id,
       @Valid @RequestBody final EditarModeloRequest request,
       final Authentication authentication) {
+    log.info("ModeloController.editar iniciado");
     final UUID gestorId = UUID.fromString(authentication.getName());
     final Modelo modelo =
         gerenciarUseCase.editar(
@@ -65,15 +87,18 @@ public class ModeloController {
     return ResponseEntity.ok(ModeloResponse.from(modelo));
   }
 
+  @Transactional
   @PatchMapping("/{id}/desativar")
   public ResponseEntity<ModeloResponse> desativar(
       @PathVariable final UUID id, final Authentication authentication) {
+    log.info("ModeloController.desativar iniciado");
     final UUID gestorId = UUID.fromString(authentication.getName());
     final Modelo modelo =
         gerenciarUseCase.desativar(new GerenciarModelosUseCase.DesativarInput(id, gestorId));
     return ResponseEntity.ok(ModeloResponse.from(modelo));
   }
 
+  @Transactional
   @PostMapping(value = "/{id}/foto-capa", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   public ResponseEntity<ModeloResponse> uploadFotoCapa(
       @PathVariable final UUID id,
@@ -98,11 +123,13 @@ public class ModeloController {
     }
   }
 
+  @Transactional
   @PatchMapping("/{id}/foto-capa")
   public ResponseEntity<ModeloResponse> usarEvidenciaComoFotoCapa(
       @PathVariable final UUID id,
       @RequestBody final FotoCapaUploadRequest request,
       final Authentication authentication) {
+    log.info("ModeloController.usarEvidenciaComoFotoCapa iniciado");
     final UUID gestorId = UUID.fromString(authentication.getName());
     final Modelo modelo =
         fotoCapaUseCase.executeEvidenciaExistente(

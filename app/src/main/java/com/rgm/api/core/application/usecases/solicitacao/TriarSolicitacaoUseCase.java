@@ -16,9 +16,12 @@ import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** UC-03: Triar e atribuir (A_FAZER -> EM_ANDAMENTO). */
 public final class TriarSolicitacaoUseCase {
+  private static final Logger log = LoggerFactory.getLogger(TriarSolicitacaoUseCase.class);
 
   private final SolicitacaoRepository solicitacaoRepository;
   private final UsuarioRepository usuarioRepository;
@@ -43,6 +46,7 @@ public final class TriarSolicitacaoUseCase {
       UUID gestorId) {}
 
   public Solicitacao execute(final Input input) {
+    log.info("TriarSolicitacaoUseCase.execute iniciado");
     final Instant agora = Instant.now();
 
     final Usuario gestor =

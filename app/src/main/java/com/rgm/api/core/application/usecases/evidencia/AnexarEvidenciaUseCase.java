@@ -12,10 +12,18 @@ import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import com.rgm.api.core.domain.ports.services.StorageService;
 import java.io.InputStream;
 import java.time.Instant;
+import java.util.Set;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** UC-08: Anexar evidencia (upload ao MinIO/S3 com publicUrl persistente). */
 public final class AnexarEvidenciaUseCase {
+  private static final Logger log = LoggerFactory.getLogger(AnexarEvidenciaUseCase.class);
+
+  private static final long MAX_FILE_SIZE_BYTES = 10L * 1024 * 1024; // 10 MB
+  private static final Set<String> ALLOWED_MIME_TYPES =
+      Set.of("image/jpeg", "image/png", "image/gif", "image/webp", "application/pdf", "video/mp4");
 
   private final SolicitacaoRepository solicitacaoRepository;
   private final EvidenciaRepository evidenciaRepository;
@@ -45,7 +53,23 @@ public final class AnexarEvidenciaUseCase {
       UUID enviadaPorUsuarioId) {}
 
   public Evidencia execute(final Input input) {
+    log.info("AnexarEvidenciaUseCase.execute iniciado");
     final Instant agora = Instant.now();
+
+    if (input.tamanhoBytes() > MAX_FILE_SIZE_BYTES) {
+      throw new ValidationException(
+          "Arquivo excede tamanho maximo permitido de "
+              + (MAX_FILE_SIZE_BYTES / (1024 * 1024))
+              + " MB");
+    }
+
+    if (input.mimeType() != null && !ALLOWED_MIME_TYPES.contains(input.mimeType().toLowerCase())) {
+      throw new ValidationException(
+          "Tipo de arquivo nao permitido: "
+              + input.mimeType()
+              + ". Tipos aceitos: "
+              + ALLOWED_MIME_TYPES);
+    }
 
     final Solicitacao solicitacao =
         solicitacaoRepository

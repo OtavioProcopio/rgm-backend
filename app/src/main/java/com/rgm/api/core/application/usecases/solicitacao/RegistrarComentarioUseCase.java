@@ -6,9 +6,12 @@ import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import java.time.Instant;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** UC-12 (parcial): Registrar comentario em solicitacao (Gestor como procurador do externo). */
 public final class RegistrarComentarioUseCase {
+  private static final Logger log = LoggerFactory.getLogger(RegistrarComentarioUseCase.class);
 
   private final SolicitacaoRepository solicitacaoRepository;
   private final AtividadeSolicitacaoRepository atividadeRepository;
@@ -23,6 +26,7 @@ public final class RegistrarComentarioUseCase {
   public record Input(UUID solicitacaoId, String comentario, UUID autorId) {}
 
   public AtividadeSolicitacao execute(final Input input) {
+    log.info("RegistrarComentarioUseCase.execute iniciado");
     final Instant agora = Instant.now();
 
     solicitacaoRepository

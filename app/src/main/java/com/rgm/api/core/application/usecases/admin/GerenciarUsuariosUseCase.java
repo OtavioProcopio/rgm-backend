@@ -9,9 +9,12 @@ import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import com.rgm.api.core.domain.ports.services.PasswordHasher;
 import java.time.Instant;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** UC-13 (Usuarios): Cadastrar e gerenciar usuarios. Ator: Administrador. */
 public final class GerenciarUsuariosUseCase {
+  private static final Logger log = LoggerFactory.getLogger(GerenciarUsuariosUseCase.class);
 
   private final UsuarioRepository usuarioRepository;
   private final PasswordHasher passwordHasher;
@@ -28,6 +31,7 @@ public final class GerenciarUsuariosUseCase {
   public record DesativarInput(UUID usuarioId, UUID adminId) {}
 
   public Usuario criar(final CriarInput input) {
+    log.info("GerenciarUsuariosUseCase.criar iniciado");
     final Instant agora = Instant.now();
     validarPermissao(input.adminId());
 
@@ -47,6 +51,7 @@ public final class GerenciarUsuariosUseCase {
   }
 
   public Usuario desativar(final DesativarInput input) {
+    log.info("GerenciarUsuariosUseCase.desativar iniciado");
     final Instant agora = Instant.now();
     validarPermissao(input.adminId());
 

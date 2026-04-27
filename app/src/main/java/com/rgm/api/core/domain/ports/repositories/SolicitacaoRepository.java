@@ -17,4 +17,8 @@ public interface SolicitacaoRepository {
   boolean existsByModeloIdAndStatusIn(UUID modeloId, List<StatusSolicitacao> statuses);
 
   List<Solicitacao> findByModeloId(UUID modeloId);
+
+  PageResult<Solicitacao> findAll(int page, int size);
+
+  PageResult<Solicitacao> findByStatus(StatusSolicitacao status, int page, int size);
 }

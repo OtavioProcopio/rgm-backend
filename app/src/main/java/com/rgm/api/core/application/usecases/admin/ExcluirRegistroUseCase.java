@@ -11,9 +11,12 @@ import com.rgm.api.core.domain.ports.repositories.SolicitacaoEvidenciaRepository
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** UC-15: Exclusao permanente (hard delete) de registros. Ator: Administrador. */
 public final class ExcluirRegistroUseCase {
+  private static final Logger log = LoggerFactory.getLogger(ExcluirRegistroUseCase.class);
 
   private final UsuarioRepository usuarioRepository;
   private final SolicitacaoRepository solicitacaoRepository;
@@ -50,6 +53,7 @@ public final class ExcluirRegistroUseCase {
   public record Input(TipoRecurso tipo, UUID recursoId, UUID adminId) {}
 
   public void execute(final Input input) {
+    log.info("ExcluirRegistroUseCase.execute iniciado");
     validarPermissao(input.adminId());
 
     switch (input.tipo()) {
