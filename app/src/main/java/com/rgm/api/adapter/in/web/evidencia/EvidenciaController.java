@@ -43,8 +43,10 @@ public class EvidenciaController {
           anexarUseCase.execute(
               new AnexarEvidenciaUseCase.Input(
                   solicitacaoId,
-                  file.getOriginalFilename(),
-                  file.getContentType(),
+                  file.getOriginalFilename() != null ? file.getOriginalFilename() : "unknown",
+                  file.getContentType() != null
+                      ? file.getContentType()
+                      : "application/octet-stream",
                   file.getSize(),
                   file.getInputStream(),
                   usuarioId));

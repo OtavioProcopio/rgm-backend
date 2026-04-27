@@ -85,8 +85,10 @@ public class ModeloController {
           fotoCapaUseCase.executeUpload(
               new AtualizarFotoCapaUseCase.UploadInput(
                   id,
-                  file.getOriginalFilename(),
-                  file.getContentType(),
+                  file.getOriginalFilename() != null ? file.getOriginalFilename() : "unknown",
+                  file.getContentType() != null
+                      ? file.getContentType()
+                      : "application/octet-stream",
                   file.getSize(),
                   file.getInputStream(),
                   gestorId));
