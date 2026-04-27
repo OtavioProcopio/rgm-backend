@@ -78,7 +78,9 @@ public final class AtualizarFotoCapaUseCase {
             publicUrl,
             input.mimeType(),
             input.nomeArquivo(),
-            input.tamanhoBytes() > 0 ? (int) input.tamanhoBytes() : null,
+            input.tamanhoBytes() > 0 && input.tamanhoBytes() <= Integer.MAX_VALUE
+                ? (int) input.tamanhoBytes()
+                : null,
             input.gestorId(),
             agora);
 
