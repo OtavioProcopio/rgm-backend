@@ -29,6 +29,10 @@ public class SecurityConfig {
             auth ->
                 auth.requestMatchers("/api/auth/**")
                     .permitAll()
+                    .requestMatchers("/actuator/**")
+                    .permitAll()
+                    .requestMatchers("/swagger-ui/**", "/api-docs/**", "/swagger-ui.html")
+                    .permitAll()
                     .requestMatchers("/api/admin/**")
                     .hasAnyRole("ADMINISTRADOR")
                     .anyRequest()
