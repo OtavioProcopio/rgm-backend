@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.exceptions.ValidationException;
 import com.rgm.api.core.domain.model.aggregates.Evidencia;
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
@@ -105,7 +106,7 @@ class AnexarEvidenciaUseCaseTest {
     when(solicitacaoRepository.findById(any())).thenReturn(Optional.empty());
 
     assertThrows(
-        ValidationException.class,
+        RecursoNaoEncontradoException.class,
         () ->
             useCase.upload(
                 new AnexarEvidenciaUseCase.Input(

@@ -2,7 +2,7 @@ package com.rgm.api.core.application.usecases.solicitacao;
 
 import com.rgm.api.core.domain.exceptions.BusinessRuleException;
 import com.rgm.api.core.domain.exceptions.NaoAutorizadoException;
-import com.rgm.api.core.domain.exceptions.ValidationException;
+import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
 import com.rgm.api.core.domain.model.aggregates.Usuario;
 import com.rgm.api.core.domain.model.entities.AtividadeSolicitacao;
@@ -16,12 +16,9 @@ import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /** UC-03: Triar e atribuir (A_FAZER -> EM_ANDAMENTO). */
 public final class TriarSolicitacaoUseCase {
-  private static final Logger log = LoggerFactory.getLogger(TriarSolicitacaoUseCase.class);
 
   private final SolicitacaoRepository solicitacaoRepository;
   private final UsuarioRepository usuarioRepository;
@@ -46,13 +43,12 @@ public final class TriarSolicitacaoUseCase {
       UUID gestorId) {}
 
   public Solicitacao execute(final Input input) {
-    log.info("TriarSolicitacaoUseCase.execute iniciado");
     final Instant agora = Instant.now();
 
     final Usuario gestor =
         usuarioRepository
             .findById(input.gestorId())
-            .orElseThrow(() -> new ValidationException("Gestor nao encontrado"));
+            .orElseThrow(() -> new RecursoNaoEncontradoException("Gestor nao encontrado"));
 
     if (!gestor.getPerfil().podeTriar()) {
       throw new NaoAutorizadoException("Perfil sem permissao para triar solicitacoes");
@@ -61,7 +57,7 @@ public final class TriarSolicitacaoUseCase {
     final Solicitacao solicitacao =
         solicitacaoRepository
             .findById(input.solicitacaoId())
-            .orElseThrow(() -> new ValidationException("Solicitacao nao encontrada"));
+            .orElseThrow(() -> new RecursoNaoEncontradoException("Solicitacao nao encontrada"));
 
     if (input.responsavelIds() == null || input.responsavelIds().isEmpty()) {
       throw new BusinessRuleException("Deve ter pelo menos 1 responsavel");
@@ -70,7 +66,7 @@ public final class TriarSolicitacaoUseCase {
     final List<Usuario> responsaveis = usuarioRepository.findAllByIdIn(input.responsavelIds());
 
     if (responsaveis.size() != input.responsavelIds().size()) {
-      throw new ValidationException("Um ou mais responsaveis nao encontrados");
+      throw new RecursoNaoEncontradoException("Um ou mais responsaveis nao encontrados");
     }
 
     for (final Usuario resp : responsaveis) {

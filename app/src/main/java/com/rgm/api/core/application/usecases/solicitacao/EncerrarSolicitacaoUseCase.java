@@ -2,7 +2,7 @@ package com.rgm.api.core.application.usecases.solicitacao;
 
 import com.rgm.api.core.domain.events.SolicitacaoFinalizadaEvent;
 import com.rgm.api.core.domain.exceptions.NaoAutorizadoException;
-import com.rgm.api.core.domain.exceptions.ValidationException;
+import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
 import com.rgm.api.core.domain.model.aggregates.Usuario;
 import com.rgm.api.core.domain.model.entities.AtividadeSolicitacao;
@@ -13,12 +13,9 @@ import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import com.rgm.api.core.domain.ports.services.DomainEventPublisher;
 import java.time.Instant;
 import java.util.UUID;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /** UC-07: Encerrar solicitacao (EM_VALIDACAO -> CONCLUIDA ou CANCELADA). */
 public final class EncerrarSolicitacaoUseCase {
-  private static final Logger log = LoggerFactory.getLogger(EncerrarSolicitacaoUseCase.class);
 
   private final SolicitacaoRepository solicitacaoRepository;
   private final UsuarioRepository usuarioRepository;
@@ -40,13 +37,12 @@ public final class EncerrarSolicitacaoUseCase {
       UUID solicitacaoId, boolean concluir, String comentarioFinal, UUID gestorId) {}
 
   public Solicitacao execute(final Input input) {
-    log.info("EncerrarSolicitacaoUseCase.execute iniciado");
     final Instant agora = Instant.now();
 
     final Usuario gestor =
         usuarioRepository
             .findById(input.gestorId())
-            .orElseThrow(() -> new ValidationException("Gestor nao encontrado"));
+            .orElseThrow(() -> new RecursoNaoEncontradoException("Gestor nao encontrado"));
 
     if (!gestor.getPerfil().podeEncerrar()) {
       throw new NaoAutorizadoException("Perfil sem permissao para encerrar solicitacoes");
@@ -55,7 +51,7 @@ public final class EncerrarSolicitacaoUseCase {
     final Solicitacao solicitacao =
         solicitacaoRepository
             .findById(input.solicitacaoId())
-            .orElseThrow(() -> new ValidationException("Solicitacao nao encontrada"));
+            .orElseThrow(() -> new RecursoNaoEncontradoException("Solicitacao nao encontrada"));
 
     final Solicitacao encerrada;
     final StatusSolicitacao novoStatus;

@@ -1,5 +1,6 @@
 package com.rgm.api.core.application.usecases.evidencia;
 
+import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.exceptions.ValidationException;
 import com.rgm.api.core.domain.model.aggregates.Evidencia;
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
@@ -14,12 +15,9 @@ import java.io.InputStream;
 import java.time.Instant;
 import java.util.Set;
 import java.util.UUID;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /** UC-08: Anexar evidencia (upload ao MinIO/S3 com publicUrl persistente). */
 public final class AnexarEvidenciaUseCase {
-  private static final Logger log = LoggerFactory.getLogger(AnexarEvidenciaUseCase.class);
 
   private static final long MAX_FILE_SIZE_BYTES = 10L * 1024 * 1024; // 10 MB
   private static final Set<String> ALLOWED_MIME_TYPES =
@@ -53,7 +51,6 @@ public final class AnexarEvidenciaUseCase {
       UUID enviadaPorUsuarioId) {}
 
   public String upload(final Input input) {
-    log.info("AnexarEvidenciaUseCase.upload iniciado");
 
     if (input.tamanhoBytes() > MAX_FILE_SIZE_BYTES) {
       throw new ValidationException(
@@ -73,7 +70,7 @@ public final class AnexarEvidenciaUseCase {
     final Solicitacao solicitacao =
         solicitacaoRepository
             .findById(input.solicitacaoId())
-            .orElseThrow(() -> new ValidationException("Solicitacao nao encontrada"));
+            .orElseThrow(() -> new RecursoNaoEncontradoException("Solicitacao nao encontrada"));
 
     if (solicitacao.getStatus().isTerminal()) {
       throw new ValidationException("Nao e possivel anexar evidencia a solicitacao encerrada");
@@ -84,7 +81,6 @@ public final class AnexarEvidenciaUseCase {
   }
 
   public Evidencia persist(final Input input, final String publicUrl) {
-    log.info("AnexarEvidenciaUseCase.persist iniciado");
     final Instant agora = Instant.now();
 
     final Evidencia evidencia =

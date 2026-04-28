@@ -2,7 +2,7 @@ package com.rgm.api.core.application.usecases.modelo;
 
 import com.rgm.api.core.domain.exceptions.BusinessRuleException;
 import com.rgm.api.core.domain.exceptions.NaoAutorizadoException;
-import com.rgm.api.core.domain.exceptions.ValidationException;
+import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.model.aggregates.EventoModelo;
 import com.rgm.api.core.domain.model.aggregates.Evidencia;
 import com.rgm.api.core.domain.model.aggregates.Modelo;
@@ -19,12 +19,9 @@ import com.rgm.api.core.domain.ports.services.StorageService;
 import java.io.InputStream;
 import java.time.Instant;
 import java.util.UUID;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /** UC-14: Atualizar foto capa do Modelo (upload novo ou evidencia existente). */
 public final class AtualizarFotoCapaUseCase {
-  private static final Logger log = LoggerFactory.getLogger(AtualizarFotoCapaUseCase.class);
 
   private final ModeloRepository modeloRepository;
   private final UsuarioRepository usuarioRepository;
@@ -64,25 +61,23 @@ public final class AtualizarFotoCapaUseCase {
   public record EvidenciaExistenteInput(UUID modeloId, UUID evidenciaId, UUID gestorId) {}
 
   public String uploadFile(final UploadInput input) {
-    log.info("AtualizarFotoCapaUseCase.uploadFile iniciado");
     validarPermissao(input.gestorId());
 
     modeloRepository
         .findById(input.modeloId())
-        .orElseThrow(() -> new ValidationException("Modelo nao encontrado"));
+        .orElseThrow(() -> new RecursoNaoEncontradoException("Modelo nao encontrado"));
 
     return storageService.upload(
         input.nomeArquivo(), input.mimeType(), input.conteudo(), input.tamanhoBytes());
   }
 
   public Modelo persistUpload(final UploadInput input, final String publicUrl) {
-    log.info("AtualizarFotoCapaUseCase.persistUpload iniciado");
     final Instant agora = Instant.now();
 
     final Modelo modelo =
         modeloRepository
             .findById(input.modeloId())
-            .orElseThrow(() -> new ValidationException("Modelo nao encontrado"));
+            .orElseThrow(() -> new RecursoNaoEncontradoException("Modelo nao encontrado"));
 
     final Evidencia evidencia =
         Evidencia.criar(
@@ -112,12 +107,12 @@ public final class AtualizarFotoCapaUseCase {
     final Modelo modelo =
         modeloRepository
             .findById(input.modeloId())
-            .orElseThrow(() -> new ValidationException("Modelo nao encontrado"));
+            .orElseThrow(() -> new RecursoNaoEncontradoException("Modelo nao encontrado"));
 
     final Evidencia evidencia =
         evidenciaRepository
             .findById(input.evidenciaId())
-            .orElseThrow(() -> new ValidationException("Evidencia nao encontrada"));
+            .orElseThrow(() -> new RecursoNaoEncontradoException("Evidencia nao encontrada"));
 
     final boolean pertenceAoModelo =
         verificarEvidenciaPertenceAoModelo(input.evidenciaId(), input.modeloId());
@@ -138,7 +133,7 @@ public final class AtualizarFotoCapaUseCase {
     final Usuario gestor =
         usuarioRepository
             .findById(gestorId)
-            .orElseThrow(() -> new ValidationException("Gestor nao encontrado"));
+            .orElseThrow(() -> new RecursoNaoEncontradoException("Gestor nao encontrado"));
 
     if (!gestor.getPerfil().podeAtualizarFotoCapa()) {
       throw new NaoAutorizadoException("Perfil sem permissao para atualizar foto capa do Modelo");
