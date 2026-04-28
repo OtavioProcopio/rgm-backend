@@ -7,7 +7,7 @@ VALUES (
     '00000000-0000-0000-0000-000000000001',
     'Administrador',
     'admin@rgm.com',
-    '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
+    '$2a$10$Xtllt6PxCuWihw3r3NZnaOi5KD/xalU4luP0/Gc8vAkLEFih8LeHW',
     'ADMINISTRADOR',
     true,
     now(),
