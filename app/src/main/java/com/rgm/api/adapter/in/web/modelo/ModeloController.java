@@ -98,7 +98,6 @@ public class ModeloController {
     return ResponseEntity.ok(ModeloResponse.from(modelo));
   }
 
-  @Transactional
   @PostMapping(value = "/{id}/foto-capa", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   public ResponseEntity<ModeloResponse> uploadFotoCapa(
       @PathVariable final UUID id,
@@ -106,17 +105,17 @@ public class ModeloController {
       final Authentication authentication) {
     try {
       final UUID gestorId = UUID.fromString(authentication.getName());
-      final Modelo modelo =
-          fotoCapaUseCase.executeUpload(
-              new AtualizarFotoCapaUseCase.UploadInput(
-                  id,
-                  file.getOriginalFilename() != null ? file.getOriginalFilename() : "unknown",
-                  file.getContentType() != null
-                      ? file.getContentType()
-                      : "application/octet-stream",
-                  file.getSize(),
-                  file.getInputStream(),
-                  gestorId));
+      final var input =
+          new AtualizarFotoCapaUseCase.UploadInput(
+              id,
+              file.getOriginalFilename() != null ? file.getOriginalFilename() : "unknown",
+              file.getContentType() != null ? file.getContentType() : "application/octet-stream",
+              file.getSize(),
+              file.getInputStream(),
+              gestorId);
+
+      final String publicUrl = fotoCapaUseCase.uploadFile(input);
+      final Modelo modelo = fotoCapaUseCase.persistUpload(input, publicUrl);
       return ResponseEntity.ok(ModeloResponse.from(modelo));
     } catch (final java.io.IOException e) {
       throw new RuntimeException("Erro ao ler arquivo: " + e.getMessage(), e);

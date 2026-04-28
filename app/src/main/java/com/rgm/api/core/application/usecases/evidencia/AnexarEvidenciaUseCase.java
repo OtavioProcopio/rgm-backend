@@ -52,9 +52,8 @@ public final class AnexarEvidenciaUseCase {
       InputStream conteudo,
       UUID enviadaPorUsuarioId) {}
 
-  public Evidencia execute(final Input input) {
-    log.info("AnexarEvidenciaUseCase.execute iniciado");
-    final Instant agora = Instant.now();
+  public String upload(final Input input) {
+    log.info("AnexarEvidenciaUseCase.upload iniciado");
 
     if (input.tamanhoBytes() > MAX_FILE_SIZE_BYTES) {
       throw new ValidationException(
@@ -80,9 +79,13 @@ public final class AnexarEvidenciaUseCase {
       throw new ValidationException("Nao e possivel anexar evidencia a solicitacao encerrada");
     }
 
-    final String publicUrl =
-        storageService.upload(
-            input.nomeArquivo(), input.mimeType(), input.conteudo(), input.tamanhoBytes());
+    return storageService.upload(
+        input.nomeArquivo(), input.mimeType(), input.conteudo(), input.tamanhoBytes());
+  }
+
+  public Evidencia persist(final Input input, final String publicUrl) {
+    log.info("AnexarEvidenciaUseCase.persist iniciado");
+    final Instant agora = Instant.now();
 
     final Evidencia evidencia =
         Evidencia.criar(
