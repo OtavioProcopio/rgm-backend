@@ -8,9 +8,12 @@ import com.rgm.api.core.domain.ports.repositories.MaquinaRepository;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import java.time.Instant;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** UC-13 (Maquinas): Cadastrar e gerenciar maquinas. Ator: Administrador. */
 public final class GerenciarMaquinasUseCase {
+  private static final Logger log = LoggerFactory.getLogger(GerenciarMaquinasUseCase.class);
 
   private final MaquinaRepository maquinaRepository;
   private final UsuarioRepository usuarioRepository;
@@ -27,6 +30,7 @@ public final class GerenciarMaquinasUseCase {
       UUID maquinaId, String nome, String codigo, String descricao, UUID adminId) {}
 
   public Maquina criar(final CriarInput input) {
+    log.info("GerenciarMaquinasUseCase.criar iniciado");
     final Instant agora = Instant.now();
     validarPermissao(input.adminId());
 
@@ -35,6 +39,7 @@ public final class GerenciarMaquinasUseCase {
   }
 
   public Maquina editar(final EditarInput input) {
+    log.info("GerenciarMaquinasUseCase.editar iniciado");
     final Instant agora = Instant.now();
     validarPermissao(input.adminId());
 

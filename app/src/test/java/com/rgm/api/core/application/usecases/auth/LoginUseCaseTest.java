@@ -48,11 +48,13 @@ class LoginUseCaseTest {
     when(usuarioRepository.findByEmail("joao@test.com")).thenReturn(Optional.of(usuario));
     when(passwordHasher.matches("senha123", "hashed")).thenReturn(true);
     when(tokenIssuer.issue(usuario)).thenReturn("jwt-token");
+    when(tokenIssuer.issueRefreshToken(usuario)).thenReturn("refresh-token");
 
     final LoginUseCase.Output output =
         useCase.execute(new LoginUseCase.Input("joao@test.com", "senha123"));
 
     assertEquals("jwt-token", output.token());
+    assertEquals("refresh-token", output.refreshToken());
     assertEquals("Joao", output.nome());
     assertEquals("OPERADOR", output.perfil());
   }

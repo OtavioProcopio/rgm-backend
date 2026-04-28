@@ -4,10 +4,13 @@ import com.rgm.api.adapter.out.persistence.mapper.SolicitacaoMapper;
 import com.rgm.api.adapter.out.persistence.repository.SolicitacaoJpaRepository;
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
+import com.rgm.api.core.domain.ports.repositories.PageResult;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -43,5 +46,30 @@ public class SolicitacaoRepositoryAdapter implements SolicitacaoRepository {
   @Override
   public List<Solicitacao> findByModeloId(final UUID modeloId) {
     return jpa.findByModeloId(modeloId).stream().map(SolicitacaoMapper::toDomain).toList();
+  }
+
+  @Override
+  public PageResult<Solicitacao> findAll(final int page, final int size) {
+    final var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "criadaEm"));
+    final var result = jpa.findAll(pageable);
+    return new PageResult<>(
+        result.getContent().stream().map(SolicitacaoMapper::toDomain).toList(),
+        result.getNumber(),
+        result.getSize(),
+        result.getTotalElements(),
+        result.getTotalPages());
+  }
+
+  @Override
+  public PageResult<Solicitacao> findByStatus(
+      final StatusSolicitacao status, final int page, final int size) {
+    final var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "criadaEm"));
+    final var result = jpa.findByStatus(status, pageable);
+    return new PageResult<>(
+        result.getContent().stream().map(SolicitacaoMapper::toDomain).toList(),
+        result.getNumber(),
+        result.getSize(),
+        result.getTotalElements(),
+        result.getTotalPages());
   }
 }

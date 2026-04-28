@@ -10,9 +10,12 @@ import com.rgm.api.core.domain.ports.repositories.ModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import java.time.Instant;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** UC-02: Abrir solicitacao (A_FAZER). */
 public final class AbrirSolicitacaoUseCase {
+  private static final Logger log = LoggerFactory.getLogger(AbrirSolicitacaoUseCase.class);
 
   private final SolicitacaoRepository solicitacaoRepository;
   private final ModeloRepository modeloRepository;
@@ -35,6 +38,7 @@ public final class AbrirSolicitacaoUseCase {
       UUID abertaPorUsuarioId) {}
 
   public Solicitacao execute(final Input input) {
+    log.info("AbrirSolicitacaoUseCase.execute iniciado");
     final Instant agora = Instant.now();
 
     final Modelo modelo =

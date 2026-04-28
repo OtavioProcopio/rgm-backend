@@ -41,6 +41,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         final Claims claims =
             Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload();
 
+        final String type = claims.get("type", String.class);
+        if (!"access".equals(type)) {
+          filterChain.doFilter(request, response);
+          return;
+        }
+
         final String userId = claims.getSubject();
         final String perfil = claims.get("perfil", String.class);
 

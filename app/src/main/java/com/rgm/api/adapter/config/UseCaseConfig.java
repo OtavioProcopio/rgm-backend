@@ -4,17 +4,22 @@ import com.rgm.api.core.application.usecases.admin.CadastrarPrestadorExternoUseC
 import com.rgm.api.core.application.usecases.admin.ExcluirRegistroUseCase;
 import com.rgm.api.core.application.usecases.admin.GerenciarMaquinasUseCase;
 import com.rgm.api.core.application.usecases.admin.GerenciarUsuariosUseCase;
+import com.rgm.api.core.application.usecases.admin.ListarMaquinasUseCase;
+import com.rgm.api.core.application.usecases.admin.ListarUsuariosUseCase;
 import com.rgm.api.core.application.usecases.auth.LoginUseCase;
+import com.rgm.api.core.application.usecases.auth.RefreshTokenUseCase;
 import com.rgm.api.core.application.usecases.evidencia.AnexarEvidenciaUseCase;
 import com.rgm.api.core.application.usecases.evidencia.VisualizarEvidenciaUseCase;
 import com.rgm.api.core.application.usecases.modelo.AtualizarFotoCapaUseCase;
 import com.rgm.api.core.application.usecases.modelo.GerenciarModelosUseCase;
+import com.rgm.api.core.application.usecases.modelo.ListarModelosUseCase;
 import com.rgm.api.core.application.usecases.modelo.RecalcularPendenciaUseCase;
 import com.rgm.api.core.application.usecases.modelo.SolicitacaoFinalizadaListener;
 import com.rgm.api.core.application.usecases.solicitacao.AbrirSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.DevolverSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.EncerrarSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.EnviarParaValidacaoUseCase;
+import com.rgm.api.core.application.usecases.solicitacao.ListarSolicitacoesUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.RegistrarComentarioUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.TriarSolicitacaoUseCase;
 import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository;
@@ -43,6 +48,12 @@ public class UseCaseConfig {
       final PasswordHasher passwordHasher,
       final AccessTokenIssuer tokenIssuer) {
     return new LoginUseCase(usuarioRepository, passwordHasher, tokenIssuer);
+  }
+
+  @Bean
+  public RefreshTokenUseCase refreshTokenUseCase(
+      final UsuarioRepository usuarioRepository, final AccessTokenIssuer tokenIssuer) {
+    return new RefreshTokenUseCase(usuarioRepository, tokenIssuer);
   }
 
   @Bean
@@ -198,5 +209,26 @@ public class UseCaseConfig {
         atribuicaoRepository,
         atividadeRepository,
         solicitacaoEvidenciaRepository);
+  }
+
+  @Bean
+  public ListarSolicitacoesUseCase listarSolicitacoesUseCase(
+      final SolicitacaoRepository solicitacaoRepository) {
+    return new ListarSolicitacoesUseCase(solicitacaoRepository);
+  }
+
+  @Bean
+  public ListarModelosUseCase listarModelosUseCase(final ModeloRepository modeloRepository) {
+    return new ListarModelosUseCase(modeloRepository);
+  }
+
+  @Bean
+  public ListarUsuariosUseCase listarUsuariosUseCase(final UsuarioRepository usuarioRepository) {
+    return new ListarUsuariosUseCase(usuarioRepository);
+  }
+
+  @Bean
+  public ListarMaquinasUseCase listarMaquinasUseCase(final MaquinaRepository maquinaRepository) {
+    return new ListarMaquinasUseCase(maquinaRepository);
   }
 }

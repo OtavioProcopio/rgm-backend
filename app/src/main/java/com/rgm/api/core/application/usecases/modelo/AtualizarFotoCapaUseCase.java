@@ -19,9 +19,12 @@ import com.rgm.api.core.domain.ports.services.StorageService;
 import java.io.InputStream;
 import java.time.Instant;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** UC-14: Atualizar foto capa do Modelo (upload novo ou evidencia existente). */
 public final class AtualizarFotoCapaUseCase {
+  private static final Logger log = LoggerFactory.getLogger(AtualizarFotoCapaUseCase.class);
 
   private final ModeloRepository modeloRepository;
   private final UsuarioRepository usuarioRepository;
@@ -61,6 +64,7 @@ public final class AtualizarFotoCapaUseCase {
   public record EvidenciaExistenteInput(UUID modeloId, UUID evidenciaId, UUID gestorId) {}
 
   public Modelo executeUpload(final UploadInput input) {
+    log.info("AtualizarFotoCapaUseCase.executeUpload iniciado");
     final Instant agora = Instant.now();
     validarPermissao(input.gestorId());
 

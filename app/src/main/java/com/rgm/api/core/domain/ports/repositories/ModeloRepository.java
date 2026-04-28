@@ -13,4 +13,6 @@ public interface ModeloRepository {
   void deleteById(UUID id);
 
   int countByMaquinaIdAndCodigo(UUID maquinaId, String codigo);
+
+  PageResult<Modelo> findAll(int page, int size);
 }

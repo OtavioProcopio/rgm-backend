@@ -12,9 +12,12 @@ import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import java.time.Instant;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** UC-06: Devolver para correcao (EM_VALIDACAO -> EM_ANDAMENTO). */
 public final class DevolverSolicitacaoUseCase {
+  private static final Logger log = LoggerFactory.getLogger(DevolverSolicitacaoUseCase.class);
 
   private final SolicitacaoRepository solicitacaoRepository;
   private final UsuarioRepository usuarioRepository;
@@ -33,6 +36,7 @@ public final class DevolverSolicitacaoUseCase {
       UUID solicitacaoId, String motivo, PrioridadeSolicitacao novaPrioridade, UUID gestorId) {}
 
   public Solicitacao execute(final Input input) {
+    log.info("DevolverSolicitacaoUseCase.execute iniciado");
     final Instant agora = Instant.now();
 
     if (input.motivo() == null || input.motivo().isBlank()) {

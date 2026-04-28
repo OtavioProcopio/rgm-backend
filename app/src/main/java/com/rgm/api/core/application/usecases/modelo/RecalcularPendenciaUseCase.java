@@ -8,9 +8,12 @@ import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** UC-10: Recalcular Modelo.temPendenciaAberta (consistencia). */
 public final class RecalcularPendenciaUseCase {
+  private static final Logger log = LoggerFactory.getLogger(RecalcularPendenciaUseCase.class);
 
   private static final List<StatusSolicitacao> STATUSES_NAO_TERMINAIS =
       List.of(
@@ -28,6 +31,7 @@ public final class RecalcularPendenciaUseCase {
   }
 
   public void execute(final UUID modeloId) {
+    log.info("RecalcularPendenciaUseCase.execute iniciado");
     final Instant agora = Instant.now();
 
     final Modelo modelo =

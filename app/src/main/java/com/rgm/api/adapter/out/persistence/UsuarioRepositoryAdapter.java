@@ -3,10 +3,13 @@ package com.rgm.api.adapter.out.persistence;
 import com.rgm.api.adapter.out.persistence.mapper.UsuarioMapper;
 import com.rgm.api.adapter.out.persistence.repository.UsuarioJpaRepository;
 import com.rgm.api.core.domain.model.aggregates.Usuario;
+import com.rgm.api.core.domain.ports.repositories.PageResult;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -46,5 +49,17 @@ public class UsuarioRepositoryAdapter implements UsuarioRepository {
   @Override
   public boolean existsByEmail(final String email) {
     return jpa.existsByEmail(email);
+  }
+
+  @Override
+  public PageResult<Usuario> findAll(final int page, final int size) {
+    final var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "nome"));
+    final var result = jpa.findAll(pageable);
+    return new PageResult<>(
+        result.getContent().stream().map(UsuarioMapper::toDomain).toList(),
+        result.getNumber(),
+        result.getSize(),
+        result.getTotalElements(),
+        result.getTotalPages());
   }
 }
