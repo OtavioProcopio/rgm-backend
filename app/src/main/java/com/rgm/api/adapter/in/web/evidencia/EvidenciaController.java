@@ -12,7 +12,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -36,7 +35,6 @@ public class EvidenciaController {
     this.visualizarUseCase = visualizarUseCase;
   }
 
-  @Transactional
   @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   public ResponseEntity<EvidenciaResponse> anexar(
       @PathVariable final UUID solicitacaoId,
@@ -44,17 +42,17 @@ public class EvidenciaController {
       final Authentication authentication) {
     try {
       final UUID usuarioId = UUID.fromString(authentication.getName());
-      final Evidencia evidencia =
-          anexarUseCase.execute(
-              new AnexarEvidenciaUseCase.Input(
-                  solicitacaoId,
-                  file.getOriginalFilename() != null ? file.getOriginalFilename() : "unknown",
-                  file.getContentType() != null
-                      ? file.getContentType()
-                      : "application/octet-stream",
-                  file.getSize(),
-                  file.getInputStream(),
-                  usuarioId));
+      final var input =
+          new AnexarEvidenciaUseCase.Input(
+              solicitacaoId,
+              file.getOriginalFilename() != null ? file.getOriginalFilename() : "unknown",
+              file.getContentType() != null ? file.getContentType() : "application/octet-stream",
+              file.getSize(),
+              file.getInputStream(),
+              usuarioId);
+
+      final String publicUrl = anexarUseCase.upload(input);
+      final Evidencia evidencia = anexarUseCase.persist(input, publicUrl);
       return ResponseEntity.status(HttpStatus.CREATED).body(EvidenciaResponse.from(evidencia));
     } catch (final java.io.IOException e) {
       throw new RuntimeException("Erro ao ler arquivo: " + e.getMessage(), e);

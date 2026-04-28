@@ -81,18 +81,20 @@ class AnexarEvidenciaUseCaseTest {
     when(solicitacaoEvidenciaRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
     when(atividadeRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-    final Evidencia resultado =
-        useCase.execute(
-            new AnexarEvidenciaUseCase.Input(
-                sol.getId(),
-                "foto.jpg",
-                "image/jpeg",
-                1024L,
-                new ByteArrayInputStream(new byte[1024]),
-                usuarioId));
+    final var input =
+        new AnexarEvidenciaUseCase.Input(
+            sol.getId(),
+            "foto.jpg",
+            "image/jpeg",
+            1024L,
+            new ByteArrayInputStream(new byte[1024]),
+            usuarioId);
+
+    final String publicUrl = useCase.upload(input);
+    final Evidencia resultado = useCase.persist(input, publicUrl);
 
     assertNotNull(resultado);
-    assertEquals(url, resultado.getPublicUrl());
+    assertEquals(url, publicUrl);
     assertEquals("image/jpeg", resultado.getMimeType());
     verify(solicitacaoEvidenciaRepository).save(any());
     verify(atividadeRepository).save(any());
@@ -105,7 +107,7 @@ class AnexarEvidenciaUseCaseTest {
     assertThrows(
         ValidationException.class,
         () ->
-            useCase.execute(
+            useCase.upload(
                 new AnexarEvidenciaUseCase.Input(
                     UUID.randomUUID(),
                     "foto.jpg",
@@ -124,7 +126,7 @@ class AnexarEvidenciaUseCaseTest {
     assertThrows(
         ValidationException.class,
         () ->
-            useCase.execute(
+            useCase.upload(
                 new AnexarEvidenciaUseCase.Input(
                     sol.getId(),
                     "foto.jpg",
@@ -146,15 +148,17 @@ class AnexarEvidenciaUseCaseTest {
     when(solicitacaoEvidenciaRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
     when(atividadeRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-    final Evidencia resultado =
-        useCase.execute(
-            new AnexarEvidenciaUseCase.Input(
-                sol.getId(),
-                "doc.pdf",
-                "application/pdf",
-                2048L,
-                new ByteArrayInputStream(new byte[2048]),
-                usuarioId));
+    final var input =
+        new AnexarEvidenciaUseCase.Input(
+            sol.getId(),
+            "doc.pdf",
+            "application/pdf",
+            2048L,
+            new ByteArrayInputStream(new byte[2048]),
+            usuarioId);
+
+    final String publicUrl = useCase.upload(input);
+    final Evidencia resultado = useCase.persist(input, publicUrl);
 
     assertNotNull(resultado);
     assertEquals("application/pdf", resultado.getMimeType());

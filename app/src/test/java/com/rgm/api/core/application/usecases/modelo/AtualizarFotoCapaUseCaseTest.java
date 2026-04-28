@@ -87,15 +87,17 @@ class AtualizarFotoCapaUseCaseTest {
     when(eventoModeloRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
     when(eventoModeloEvidenciaRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-    final Modelo resultado =
-        useCase.executeUpload(
-            new AtualizarFotoCapaUseCase.UploadInput(
-                modelo.getId(),
-                "nova.jpg",
-                "image/jpeg",
-                512L,
-                new ByteArrayInputStream(new byte[512]),
-                gestor.getId()));
+    final var input =
+        new AtualizarFotoCapaUseCase.UploadInput(
+            modelo.getId(),
+            "nova.jpg",
+            "image/jpeg",
+            512L,
+            new ByteArrayInputStream(new byte[512]),
+            gestor.getId());
+
+    final String publicUrl = useCase.uploadFile(input);
+    final Modelo resultado = useCase.persistUpload(input, publicUrl);
 
     assertEquals(url, resultado.getFotoUrl());
     verify(eventoModeloRepository).save(any());
@@ -177,7 +179,7 @@ class AtualizarFotoCapaUseCaseTest {
     assertThrows(
         NaoAutorizadoException.class,
         () ->
-            useCase.executeUpload(
+            useCase.uploadFile(
                 new AtualizarFotoCapaUseCase.UploadInput(
                     UUID.randomUUID(),
                     "f.jpg",

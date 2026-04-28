@@ -63,19 +63,26 @@ public final class AtualizarFotoCapaUseCase {
   /** Input para reaproveitar evidencia existente. */
   public record EvidenciaExistenteInput(UUID modeloId, UUID evidenciaId, UUID gestorId) {}
 
-  public Modelo executeUpload(final UploadInput input) {
-    log.info("AtualizarFotoCapaUseCase.executeUpload iniciado");
-    final Instant agora = Instant.now();
+  public String uploadFile(final UploadInput input) {
+    log.info("AtualizarFotoCapaUseCase.uploadFile iniciado");
     validarPermissao(input.gestorId());
+
+    modeloRepository
+        .findById(input.modeloId())
+        .orElseThrow(() -> new ValidationException("Modelo nao encontrado"));
+
+    return storageService.upload(
+        input.nomeArquivo(), input.mimeType(), input.conteudo(), input.tamanhoBytes());
+  }
+
+  public Modelo persistUpload(final UploadInput input, final String publicUrl) {
+    log.info("AtualizarFotoCapaUseCase.persistUpload iniciado");
+    final Instant agora = Instant.now();
 
     final Modelo modelo =
         modeloRepository
             .findById(input.modeloId())
             .orElseThrow(() -> new ValidationException("Modelo nao encontrado"));
-
-    final String publicUrl =
-        storageService.upload(
-            input.nomeArquivo(), input.mimeType(), input.conteudo(), input.tamanhoBytes());
 
     final Evidencia evidencia =
         Evidencia.criar(
