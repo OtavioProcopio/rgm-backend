@@ -1,25 +1,27 @@
 package com.rgm.api.core.application.usecases.evidencia;
 
+import com.rgm.api.core.domain.exceptions.NaoAutorizadoException;
+import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.exceptions.ValidationException;
 import com.rgm.api.core.domain.model.aggregates.Evidencia;
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
+import com.rgm.api.core.domain.model.aggregates.Usuario;
 import com.rgm.api.core.domain.model.entities.AtividadeSolicitacao;
 import com.rgm.api.core.domain.model.entities.SolicitacaoEvidencia;
 import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.EvidenciaRepository;
+import com.rgm.api.core.domain.ports.repositories.SolicitacaoAtribuicaoRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoEvidenciaRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
+import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import com.rgm.api.core.domain.ports.services.StorageService;
 import java.io.InputStream;
 import java.time.Instant;
 import java.util.Set;
 import java.util.UUID;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /** UC-08: Anexar evidencia (upload ao MinIO/S3 com publicUrl persistente). */
 public final class AnexarEvidenciaUseCase {
-  private static final Logger log = LoggerFactory.getLogger(AnexarEvidenciaUseCase.class);
 
   private static final long MAX_FILE_SIZE_BYTES = 10L * 1024 * 1024; // 10 MB
   private static final Set<String> ALLOWED_MIME_TYPES =
@@ -30,18 +32,24 @@ public final class AnexarEvidenciaUseCase {
   private final SolicitacaoEvidenciaRepository solicitacaoEvidenciaRepository;
   private final AtividadeSolicitacaoRepository atividadeRepository;
   private final StorageService storageService;
+  private final UsuarioRepository usuarioRepository;
+  private final SolicitacaoAtribuicaoRepository atribuicaoRepository;
 
   public AnexarEvidenciaUseCase(
       final SolicitacaoRepository solicitacaoRepository,
       final EvidenciaRepository evidenciaRepository,
       final SolicitacaoEvidenciaRepository solicitacaoEvidenciaRepository,
       final AtividadeSolicitacaoRepository atividadeRepository,
-      final StorageService storageService) {
+      final StorageService storageService,
+      final UsuarioRepository usuarioRepository,
+      final SolicitacaoAtribuicaoRepository atribuicaoRepository) {
     this.solicitacaoRepository = solicitacaoRepository;
     this.evidenciaRepository = evidenciaRepository;
     this.solicitacaoEvidenciaRepository = solicitacaoEvidenciaRepository;
     this.atividadeRepository = atividadeRepository;
     this.storageService = storageService;
+    this.usuarioRepository = usuarioRepository;
+    this.atribuicaoRepository = atribuicaoRepository;
   }
 
   public record Input(
@@ -53,7 +61,6 @@ public final class AnexarEvidenciaUseCase {
       UUID enviadaPorUsuarioId) {}
 
   public String upload(final Input input) {
-    log.info("AnexarEvidenciaUseCase.upload iniciado");
 
     if (input.tamanhoBytes() > MAX_FILE_SIZE_BYTES) {
       throw new ValidationException(
@@ -73,18 +80,19 @@ public final class AnexarEvidenciaUseCase {
     final Solicitacao solicitacao =
         solicitacaoRepository
             .findById(input.solicitacaoId())
-            .orElseThrow(() -> new ValidationException("Solicitacao nao encontrada"));
+            .orElseThrow(() -> new RecursoNaoEncontradoException("Solicitacao nao encontrada"));
 
     if (solicitacao.getStatus().isTerminal()) {
       throw new ValidationException("Nao e possivel anexar evidencia a solicitacao encerrada");
     }
+
+    validarAcesso(input.solicitacaoId(), input.enviadaPorUsuarioId());
 
     return storageService.upload(
         input.nomeArquivo(), input.mimeType(), input.conteudo(), input.tamanhoBytes());
   }
 
   public Evidencia persist(final Input input, final String publicUrl) {
-    log.info("AnexarEvidenciaUseCase.persist iniciado");
     final Instant agora = Instant.now();
 
     final Evidencia evidencia =
@@ -108,5 +116,24 @@ public final class AnexarEvidenciaUseCase {
             input.solicitacaoId(), input.enviadaPorUsuarioId(), agora));
 
     return salva;
+  }
+
+  private void validarAcesso(final UUID solicitacaoId, final UUID usuarioId) {
+    final Usuario usuario =
+        usuarioRepository
+            .findById(usuarioId)
+            .orElseThrow(() -> new RecursoNaoEncontradoException("Usuario nao encontrado"));
+
+    if (usuario.getPerfil().podeGerenciarModelos()
+        || usuario.getPerfil().podeGerenciarUsuariosEMaquinas()) {
+      return;
+    }
+
+    final boolean atribuido =
+        atribuicaoRepository.existsBySolicitacaoIdAndUsuarioIdAndRemovidoEmIsNull(
+            solicitacaoId, usuarioId);
+    if (!atribuido) {
+      throw new NaoAutorizadoException("Usuario nao tem acesso a esta solicitacao");
+    }
   }
 }

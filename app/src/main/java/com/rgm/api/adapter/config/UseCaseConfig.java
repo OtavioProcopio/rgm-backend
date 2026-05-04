@@ -60,9 +60,10 @@ public class UseCaseConfig {
   public AbrirSolicitacaoUseCase abrirSolicitacaoUseCase(
       final SolicitacaoRepository solicitacaoRepository,
       final ModeloRepository modeloRepository,
-      final AtividadeSolicitacaoRepository atividadeRepository) {
+      final AtividadeSolicitacaoRepository atividadeRepository,
+      final UsuarioRepository usuarioRepository) {
     return new AbrirSolicitacaoUseCase(
-        solicitacaoRepository, modeloRepository, atividadeRepository);
+        solicitacaoRepository, modeloRepository, atividadeRepository, usuarioRepository);
   }
 
   @Bean
@@ -117,22 +118,32 @@ public class UseCaseConfig {
       final EvidenciaRepository evidenciaRepository,
       final SolicitacaoEvidenciaRepository solicitacaoEvidenciaRepository,
       final AtividadeSolicitacaoRepository atividadeRepository,
-      final StorageService storageService) {
+      final StorageService storageService,
+      final UsuarioRepository usuarioRepository,
+      final SolicitacaoAtribuicaoRepository atribuicaoRepository) {
     return new AnexarEvidenciaUseCase(
         solicitacaoRepository,
         evidenciaRepository,
         solicitacaoEvidenciaRepository,
         atividadeRepository,
-        storageService);
+        storageService,
+        usuarioRepository,
+        atribuicaoRepository);
   }
 
   @Bean
   public VisualizarEvidenciaUseCase visualizarEvidenciaUseCase(
       final SolicitacaoRepository solicitacaoRepository,
       final SolicitacaoEvidenciaRepository solicitacaoEvidenciaRepository,
-      final EvidenciaRepository evidenciaRepository) {
+      final EvidenciaRepository evidenciaRepository,
+      final UsuarioRepository usuarioRepository,
+      final SolicitacaoAtribuicaoRepository atribuicaoRepository) {
     return new VisualizarEvidenciaUseCase(
-        solicitacaoRepository, solicitacaoEvidenciaRepository, evidenciaRepository);
+        solicitacaoRepository,
+        solicitacaoEvidenciaRepository,
+        evidenciaRepository,
+        usuarioRepository,
+        atribuicaoRepository);
   }
 
   @Bean

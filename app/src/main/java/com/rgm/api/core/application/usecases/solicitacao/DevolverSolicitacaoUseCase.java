@@ -2,6 +2,7 @@ package com.rgm.api.core.application.usecases.solicitacao;
 
 import com.rgm.api.core.domain.exceptions.NaoAutorizadoException;
 import com.rgm.api.core.domain.exceptions.ValidationException;
+import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
 import com.rgm.api.core.domain.model.aggregates.Usuario;
 import com.rgm.api.core.domain.model.entities.AtividadeSolicitacao;
@@ -12,12 +13,9 @@ import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import java.time.Instant;
 import java.util.UUID;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /** UC-06: Devolver para correcao (EM_VALIDACAO -> EM_ANDAMENTO). */
 public final class DevolverSolicitacaoUseCase {
-  private static final Logger log = LoggerFactory.getLogger(DevolverSolicitacaoUseCase.class);
 
   private final SolicitacaoRepository solicitacaoRepository;
   private final UsuarioRepository usuarioRepository;
@@ -36,7 +34,6 @@ public final class DevolverSolicitacaoUseCase {
       UUID solicitacaoId, String motivo, PrioridadeSolicitacao novaPrioridade, UUID gestorId) {}
 
   public Solicitacao execute(final Input input) {
-    log.info("DevolverSolicitacaoUseCase.execute iniciado");
     final Instant agora = Instant.now();
 
     if (input.motivo() == null || input.motivo().isBlank()) {
@@ -46,7 +43,7 @@ public final class DevolverSolicitacaoUseCase {
     final Usuario gestor =
         usuarioRepository
             .findById(input.gestorId())
-            .orElseThrow(() -> new ValidationException("Gestor nao encontrado"));
+            .orElseThrow(() -> new RecursoNaoEncontradoException("Gestor nao encontrado"));
 
     if (!gestor.getPerfil().podeDevolver()) {
       throw new NaoAutorizadoException("Perfil sem permissao para devolver solicitacoes");
@@ -55,7 +52,7 @@ public final class DevolverSolicitacaoUseCase {
     final Solicitacao solicitacao =
         solicitacaoRepository
             .findById(input.solicitacaoId())
-            .orElseThrow(() -> new ValidationException("Solicitacao nao encontrada"));
+            .orElseThrow(() -> new RecursoNaoEncontradoException("Solicitacao nao encontrada"));
 
     final Solicitacao devolvida = solicitacao.devolver(input.novaPrioridade(), agora);
     final Solicitacao salva = solicitacaoRepository.save(devolvida);

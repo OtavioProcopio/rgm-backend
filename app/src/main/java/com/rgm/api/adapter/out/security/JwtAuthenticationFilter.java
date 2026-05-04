@@ -11,6 +11,8 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import javax.crypto.SecretKey;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -20,6 +22,8 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
+
+  private static final Logger log = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
 
   private final SecretKey key;
 
@@ -43,6 +47,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         final String type = claims.get("type", String.class);
         if (!"access".equals(type)) {
+          log.debug("Token rejeitado: type='{}' (esperado 'access')", type);
           filterChain.doFilter(request, response);
           return;
         }
@@ -55,8 +60,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 userId, null, List.of(new SimpleGrantedAuthority("ROLE_" + perfil)));
 
         SecurityContextHolder.getContext().setAuthentication(auth);
-      } catch (final Exception ignored) {
-        // Token invalido, continua sem autenticacao
+      } catch (final Exception ex) {
+        log.warn("Token JWT invalido: {}", ex.getMessage());
       }
     }
     filterChain.doFilter(request, response);

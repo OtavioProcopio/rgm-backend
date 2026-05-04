@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 import com.rgm.api.core.domain.exceptions.NaoAutorizadoException;
+import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.exceptions.ValidationException;
 import com.rgm.api.core.domain.model.aggregates.Maquina;
 import com.rgm.api.core.domain.model.aggregates.Usuario;
@@ -132,7 +133,7 @@ class GerenciarMaquinasUseCaseTest {
     when(maquinaRepository.findById(any())).thenReturn(Optional.empty());
 
     assertThrows(
-        ValidationException.class,
+        RecursoNaoEncontradoException.class,
         () ->
             useCase.editar(
                 new GerenciarMaquinasUseCase.EditarInput(

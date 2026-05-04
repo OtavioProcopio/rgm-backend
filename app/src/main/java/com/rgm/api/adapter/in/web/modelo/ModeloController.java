@@ -3,13 +3,18 @@ package com.rgm.api.adapter.in.web.modelo;
 import com.rgm.api.adapter.in.web.dto.request.CriarModeloRequest;
 import com.rgm.api.adapter.in.web.dto.request.EditarModeloRequest;
 import com.rgm.api.adapter.in.web.dto.request.FotoCapaUploadRequest;
+import com.rgm.api.adapter.in.web.dto.response.EventoModeloResponse;
 import com.rgm.api.adapter.in.web.dto.response.ModeloResponse;
 import com.rgm.api.adapter.in.web.dto.response.PageResponse;
 import com.rgm.api.core.application.usecases.modelo.AtualizarFotoCapaUseCase;
 import com.rgm.api.core.application.usecases.modelo.GerenciarModelosUseCase;
 import com.rgm.api.core.application.usecases.modelo.ListarModelosUseCase;
+import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.model.aggregates.Modelo;
+import com.rgm.api.core.domain.ports.repositories.EventoModeloRepository;
+import com.rgm.api.core.domain.ports.repositories.ModeloRepository;
 import jakarta.validation.Valid;
+import java.util.List;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,14 +42,20 @@ public class ModeloController {
   private final GerenciarModelosUseCase gerenciarUseCase;
   private final AtualizarFotoCapaUseCase fotoCapaUseCase;
   private final ListarModelosUseCase listarUseCase;
+  private final ModeloRepository modeloRepository;
+  private final EventoModeloRepository eventoModeloRepository;
 
   public ModeloController(
       final GerenciarModelosUseCase gerenciarUseCase,
       final AtualizarFotoCapaUseCase fotoCapaUseCase,
-      final ListarModelosUseCase listarUseCase) {
+      final ListarModelosUseCase listarUseCase,
+      final ModeloRepository modeloRepository,
+      final EventoModeloRepository eventoModeloRepository) {
     this.gerenciarUseCase = gerenciarUseCase;
     this.fotoCapaUseCase = fotoCapaUseCase;
     this.listarUseCase = listarUseCase;
+    this.modeloRepository = modeloRepository;
+    this.eventoModeloRepository = eventoModeloRepository;
   }
 
   @GetMapping
@@ -53,6 +64,29 @@ public class ModeloController {
       @RequestParam(defaultValue = "20") final int size) {
     final var result = listarUseCase.execute(page, size);
     return ResponseEntity.ok(PageResponse.from(result, ModeloResponse::from));
+  }
+
+  @GetMapping("/{id}")
+  public ResponseEntity<ModeloResponse> buscarPorId(@PathVariable final UUID id) {
+    log.info("ModeloController.buscarPorId id={}", id);
+    final var modelo =
+        modeloRepository
+            .findById(id)
+            .orElseThrow(() -> new RecursoNaoEncontradoException("Modelo nao encontrado"));
+    return ResponseEntity.ok(ModeloResponse.from(modelo));
+  }
+
+  @GetMapping("/{id}/eventos")
+  public ResponseEntity<List<EventoModeloResponse>> listarEventos(@PathVariable final UUID id) {
+    log.info("ModeloController.listarEventos id={}", id);
+    modeloRepository
+        .findById(id)
+        .orElseThrow(() -> new RecursoNaoEncontradoException("Modelo nao encontrado"));
+    final var eventos =
+        eventoModeloRepository.findByModeloId(id).stream()
+            .map(EventoModeloResponse::from)
+            .toList();
+    return ResponseEntity.ok(eventos);
   }
 
   @Transactional

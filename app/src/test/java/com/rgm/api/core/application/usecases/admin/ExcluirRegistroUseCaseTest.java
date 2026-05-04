@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import com.rgm.api.core.domain.exceptions.NaoAutorizadoException;
+import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.exceptions.ValidationException;
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
 import com.rgm.api.core.domain.model.aggregates.Usuario;
@@ -178,7 +179,7 @@ class ExcluirRegistroUseCaseTest {
     when(solicitacaoRepository.findById(solId)).thenReturn(Optional.empty());
 
     assertThrows(
-        ValidationException.class,
+        RecursoNaoEncontradoException.class,
         () ->
             useCase.execute(
                 new ExcluirRegistroUseCase.Input(

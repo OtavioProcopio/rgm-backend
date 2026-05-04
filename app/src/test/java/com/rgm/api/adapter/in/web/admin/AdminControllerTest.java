@@ -24,7 +24,9 @@ import com.rgm.api.core.application.usecases.admin.ListarUsuariosUseCase;
 import com.rgm.api.core.domain.model.aggregates.Maquina;
 import com.rgm.api.core.domain.model.aggregates.Usuario;
 import com.rgm.api.core.domain.model.enums.PerfilUsuario;
+import com.rgm.api.core.domain.ports.repositories.MaquinaRepository;
 import com.rgm.api.core.domain.ports.repositories.PageResult;
+import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -55,6 +57,8 @@ class AdminControllerTest {
   @MockitoBean private ExcluirRegistroUseCase excluirRegistroUseCase;
   @MockitoBean private ListarUsuariosUseCase listarUsuariosUseCase;
   @MockitoBean private ListarMaquinasUseCase listarMaquinasUseCase;
+  @MockitoBean private UsuarioRepository usuarioRepository;
+  @MockitoBean private MaquinaRepository maquinaRepository;
 
   @Test
   void listarUsuarios() throws Exception {

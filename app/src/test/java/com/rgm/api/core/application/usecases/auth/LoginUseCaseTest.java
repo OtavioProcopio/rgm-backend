@@ -121,6 +121,6 @@ class LoginUseCaseTest {
     when(usuarioRepository.findByEmail(null)).thenReturn(Optional.of(externo));
 
     assertThrows(
-        BusinessRuleException.class, () -> useCase.execute(new LoginUseCase.Input(null, "senha")));
+        NaoAutorizadoException.class, () -> useCase.execute(new LoginUseCase.Input(null, "senha")));
   }
 }

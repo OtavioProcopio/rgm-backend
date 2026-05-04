@@ -60,10 +60,13 @@ public class EvidenciaController {
   }
 
   @GetMapping
-  public ResponseEntity<List<EvidenciaResponse>> listar(@PathVariable final UUID solicitacaoId) {
+  public ResponseEntity<List<EvidenciaResponse>> listar(
+      @PathVariable final UUID solicitacaoId, final Authentication authentication) {
     log.info("EvidenciaController.listar iniciado");
+    final UUID usuarioId = UUID.fromString(authentication.getName());
     final List<Evidencia> evidencias =
-        visualizarUseCase.execute(new VisualizarEvidenciaUseCase.Input(solicitacaoId));
+        visualizarUseCase.execute(
+            new VisualizarEvidenciaUseCase.Input(solicitacaoId, usuarioId));
     return ResponseEntity.ok(evidencias.stream().map(EvidenciaResponse::from).toList());
   }
 }

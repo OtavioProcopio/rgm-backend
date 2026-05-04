@@ -18,6 +18,8 @@ import com.rgm.api.core.application.usecases.modelo.AtualizarFotoCapaUseCase;
 import com.rgm.api.core.application.usecases.modelo.GerenciarModelosUseCase;
 import com.rgm.api.core.application.usecases.modelo.ListarModelosUseCase;
 import com.rgm.api.core.domain.model.aggregates.Modelo;
+import com.rgm.api.core.domain.ports.repositories.EventoModeloRepository;
+import com.rgm.api.core.domain.ports.repositories.ModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.PageResult;
 import java.time.Instant;
 import java.util.List;
@@ -46,6 +48,8 @@ class ModeloControllerTest {
   @MockitoBean private GerenciarModelosUseCase gerenciarUseCase;
   @MockitoBean private AtualizarFotoCapaUseCase fotoCapaUseCase;
   @MockitoBean private ListarModelosUseCase listarUseCase;
+  @MockitoBean private ModeloRepository modeloRepository;
+  @MockitoBean private EventoModeloRepository eventoModeloRepository;
 
   private Modelo criarModelo() {
     final Instant agora = Instant.now();

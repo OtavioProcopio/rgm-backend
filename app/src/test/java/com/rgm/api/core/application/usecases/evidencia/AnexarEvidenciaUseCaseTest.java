@@ -4,16 +4,21 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.exceptions.ValidationException;
 import com.rgm.api.core.domain.model.aggregates.Evidencia;
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
+import com.rgm.api.core.domain.model.aggregates.Usuario;
+import com.rgm.api.core.domain.model.enums.PerfilUsuario;
 import com.rgm.api.core.domain.model.enums.PrioridadeSolicitacao;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
 import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
 import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.EvidenciaRepository;
+import com.rgm.api.core.domain.ports.repositories.SolicitacaoAtribuicaoRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoEvidenciaRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
+import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import com.rgm.api.core.domain.ports.services.StorageService;
 import java.io.ByteArrayInputStream;
 import java.time.Instant;
@@ -29,6 +34,8 @@ class AnexarEvidenciaUseCaseTest {
   private SolicitacaoEvidenciaRepository solicitacaoEvidenciaRepository;
   private AtividadeSolicitacaoRepository atividadeRepository;
   private StorageService storageService;
+  private UsuarioRepository usuarioRepository;
+  private SolicitacaoAtribuicaoRepository atribuicaoRepository;
   private AnexarEvidenciaUseCase useCase;
 
   @BeforeEach
@@ -38,13 +45,17 @@ class AnexarEvidenciaUseCaseTest {
     solicitacaoEvidenciaRepository = mock(SolicitacaoEvidenciaRepository.class);
     atividadeRepository = mock(AtividadeSolicitacaoRepository.class);
     storageService = mock(StorageService.class);
+    usuarioRepository = mock(UsuarioRepository.class);
+    atribuicaoRepository = mock(SolicitacaoAtribuicaoRepository.class);
     useCase =
         new AnexarEvidenciaUseCase(
             solicitacaoRepository,
             evidenciaRepository,
             solicitacaoEvidenciaRepository,
             atividadeRepository,
-            storageService);
+            storageService,
+            usuarioRepository,
+            atribuicaoRepository);
   }
 
   private Solicitacao criarSolicitacao(final StatusSolicitacao status) {
@@ -69,6 +80,10 @@ class AnexarEvidenciaUseCaseTest {
         status == StatusSolicitacao.CANCELADA ? agora : null);
   }
 
+  private Usuario criarUsuario(final UUID id, final PerfilUsuario perfil) {
+    return Usuario.criarInterno("Test", "test@test.com", "hash", perfil, Instant.now());
+  }
+
   @Test
   void deveAnexarEvidenciaComSucesso() {
     final Solicitacao sol = criarSolicitacao(StatusSolicitacao.EM_ANDAMENTO);
@@ -76,6 +91,8 @@ class AnexarEvidenciaUseCaseTest {
     final String url = "http://minio:9000/images/foto.jpg";
 
     when(solicitacaoRepository.findById(sol.getId())).thenReturn(Optional.of(sol));
+    when(usuarioRepository.findById(usuarioId))
+        .thenReturn(Optional.of(criarUsuario(usuarioId, PerfilUsuario.GESTOR)));
     when(storageService.upload(any(), any(), any(), anyLong())).thenReturn(url);
     when(evidenciaRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
     when(solicitacaoEvidenciaRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -105,7 +122,7 @@ class AnexarEvidenciaUseCaseTest {
     when(solicitacaoRepository.findById(any())).thenReturn(Optional.empty());
 
     assertThrows(
-        ValidationException.class,
+        RecursoNaoEncontradoException.class,
         () ->
             useCase.upload(
                 new AnexarEvidenciaUseCase.Input(
@@ -143,6 +160,8 @@ class AnexarEvidenciaUseCaseTest {
     final String url = "http://minio:9000/images/doc.pdf";
 
     when(solicitacaoRepository.findById(sol.getId())).thenReturn(Optional.of(sol));
+    when(usuarioRepository.findById(usuarioId))
+        .thenReturn(Optional.of(criarUsuario(usuarioId, PerfilUsuario.ADMINISTRADOR)));
     when(storageService.upload(any(), any(), any(), anyLong())).thenReturn(url);
     when(evidenciaRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
     when(solicitacaoEvidenciaRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
