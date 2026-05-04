@@ -21,6 +21,7 @@ public class SolicitacaoEvidenciaRepositoryAdapter implements SolicitacaoEvidenc
   @Override
   public SolicitacaoEvidencia save(final SolicitacaoEvidencia se) {
     final SolicitacaoEvidenciaJpaEntity entity = new SolicitacaoEvidenciaJpaEntity();
+    entity.setId(UUID.randomUUID());
     entity.setSolicitacaoId(se.getSolicitacaoId());
     entity.setEvidenciaId(se.getEvidenciaId());
     final SolicitacaoEvidenciaJpaEntity saved = jpa.save(entity);

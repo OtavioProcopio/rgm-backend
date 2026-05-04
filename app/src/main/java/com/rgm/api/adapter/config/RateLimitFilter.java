@@ -87,7 +87,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
   private static final class RateLimitEntry {
     private final Instant windowStart;
-    private int count;
+    private volatile int count;
 
     RateLimitEntry(final Instant windowStart, final int count) {
       this.windowStart = windowStart;
