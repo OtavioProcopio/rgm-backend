@@ -3,13 +3,16 @@ package com.rgm.api.adapter.config;
 import com.rgm.api.adapter.in.web.dto.response.ErrorResponse;
 import com.rgm.api.core.domain.exceptions.BusinessRuleException;
 import com.rgm.api.core.domain.exceptions.NaoAutorizadoException;
+import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.exceptions.TransicaoStatusInvalidaException;
 import com.rgm.api.core.domain.exceptions.ValidationException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -48,6 +51,28 @@ public class GlobalExceptionHandler {
             .reduce((a, b) -> a + "; " + b)
             .orElse("Erro de validacao");
     return ResponseEntity.badRequest().body(ErrorResponse.of(400, "Validation Error", message));
+  }
+
+  @ExceptionHandler(RecursoNaoEncontradoException.class)
+  public ResponseEntity<ErrorResponse> handleRecursoNaoEncontrado(
+      final RecursoNaoEncontradoException ex) {
+    return ResponseEntity.status(HttpStatus.NOT_FOUND)
+        .body(ErrorResponse.of(404, "Not Found", ex.getMessage()));
+  }
+
+  @ExceptionHandler(DataIntegrityViolationException.class)
+  public ResponseEntity<ErrorResponse> handleDataIntegrity(
+      final DataIntegrityViolationException ex) {
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+        .body(ErrorResponse.of(409, "Conflict", "Registro duplicado ou violacao de integridade"));
+  }
+
+  @ExceptionHandler(MaxUploadSizeExceededException.class)
+  public ResponseEntity<ErrorResponse> handleMaxUploadSize(
+      final MaxUploadSizeExceededException ex) {
+    return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
+        .body(
+            ErrorResponse.of(413, "Payload Too Large", "Arquivo excede o tamanho maximo de 10MB"));
   }
 
   @ExceptionHandler(IllegalArgumentException.class)

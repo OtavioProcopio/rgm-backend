@@ -6,12 +6,9 @@ import com.rgm.api.core.domain.model.aggregates.Usuario;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import com.rgm.api.core.domain.ports.services.AccessTokenIssuer;
 import com.rgm.api.core.domain.ports.services.PasswordHasher;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /** UC-01: Logar no sistema. */
 public final class LoginUseCase {
-  private static final Logger log = LoggerFactory.getLogger(LoginUseCase.class);
 
   private final UsuarioRepository usuarioRepository;
   private final PasswordHasher passwordHasher;
@@ -31,7 +28,6 @@ public final class LoginUseCase {
   public record Output(String token, String refreshToken, String nome, String perfil) {}
 
   public Output execute(final Input input) {
-    log.info("LoginUseCase.execute iniciado");
     final Usuario usuario =
         usuarioRepository
             .findByEmail(input.email())

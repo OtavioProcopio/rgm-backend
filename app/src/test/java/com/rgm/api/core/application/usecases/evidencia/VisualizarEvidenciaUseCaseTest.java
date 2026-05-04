@@ -3,7 +3,7 @@ package com.rgm.api.core.application.usecases.evidencia;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-import com.rgm.api.core.domain.exceptions.ValidationException;
+import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.model.aggregates.Evidencia;
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
 import com.rgm.api.core.domain.model.entities.SolicitacaoEvidencia;
@@ -112,7 +112,7 @@ class VisualizarEvidenciaUseCaseTest {
     when(solicitacaoRepository.findById(any())).thenReturn(Optional.empty());
 
     assertThrows(
-        ValidationException.class,
+        RecursoNaoEncontradoException.class,
         () -> useCase.execute(new VisualizarEvidenciaUseCase.Input(UUID.randomUUID())));
   }
 }
