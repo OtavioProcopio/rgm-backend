@@ -22,7 +22,9 @@ import com.rgm.api.core.application.usecases.solicitacao.RegistrarComentarioUseC
 import com.rgm.api.core.application.usecases.solicitacao.TriarSolicitacaoUseCase;
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
 import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
+import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.PageResult;
+import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -54,6 +56,8 @@ class SolicitacaoControllerTest {
   @MockitoBean private EncerrarSolicitacaoUseCase encerrarUseCase;
   @MockitoBean private RegistrarComentarioUseCase comentarioUseCase;
   @MockitoBean private ListarSolicitacoesUseCase listarUseCase;
+  @MockitoBean private SolicitacaoRepository solicitacaoRepository;
+  @MockitoBean private AtividadeSolicitacaoRepository atividadeRepository;
 
   private Solicitacao criarSolicitacao() {
     return Solicitacao.abrir(

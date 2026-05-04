@@ -9,7 +9,7 @@ import org.springframework.mock.web.MockHttpServletResponse;
 
 class RateLimitFilterTest {
 
-  private final RateLimitFilter filter = new RateLimitFilter();
+  private final RateLimitFilter filter = new RateLimitFilter(10, 60, "*");
 
   @Test
   void devePermitirRequestsAbaixoDoLimite() throws Exception {

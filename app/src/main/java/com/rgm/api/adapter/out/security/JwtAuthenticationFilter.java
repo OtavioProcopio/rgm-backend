@@ -47,6 +47,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         final String type = claims.get("type", String.class);
         if (!"access".equals(type)) {
+          log.debug("Token rejeitado: type='{}' (esperado 'access')", type);
           filterChain.doFilter(request, response);
           return;
         }

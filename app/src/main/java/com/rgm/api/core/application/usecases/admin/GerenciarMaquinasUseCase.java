@@ -26,6 +26,8 @@ public final class GerenciarMaquinasUseCase {
   public record EditarInput(
       UUID maquinaId, String nome, String codigo, String descricao, UUID adminId) {}
 
+  public record DesativarInput(UUID maquinaId, UUID adminId) {}
+
   public Maquina criar(final CriarInput input) {
     final Instant agora = Instant.now();
     validarPermissao(input.adminId());
@@ -46,6 +48,18 @@ public final class GerenciarMaquinasUseCase {
     final Maquina editada = maquina.editar(input.nome(), input.codigo(), input.descricao(), agora);
 
     return maquinaRepository.save(editada);
+  }
+
+  public Maquina desativar(final DesativarInput input) {
+    final Instant agora = Instant.now();
+    validarPermissao(input.adminId());
+
+    final Maquina maquina =
+        maquinaRepository
+            .findById(input.maquinaId())
+            .orElseThrow(() -> new RecursoNaoEncontradoException("Maquina nao encontrada"));
+
+    return maquinaRepository.save(maquina.withAtiva(false, agora));
   }
 
   private void validarPermissao(final UUID adminId) {

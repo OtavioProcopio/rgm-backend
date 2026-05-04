@@ -2,8 +2,6 @@ package com.rgm.api.adapter.out.persistence.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
@@ -21,9 +19,7 @@ import lombok.Setter;
 @AllArgsConstructor
 public class EvidenciaJpaEntity {
 
-  @Id
-  @GeneratedValue(strategy = GenerationType.UUID)
-  private UUID id;
+  @Id private UUID id;
 
   @Column(nullable = false)
   private String publicUrl;

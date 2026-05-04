@@ -27,6 +27,8 @@ public final class GerenciarUsuariosUseCase {
 
   public record DesativarInput(UUID usuarioId, UUID adminId) {}
 
+  public record AtivarInput(UUID usuarioId, UUID adminId) {}
+
   public Usuario criar(final CriarInput input) {
     final Instant agora = Instant.now();
     validarPermissao(input.adminId());
@@ -56,6 +58,18 @@ public final class GerenciarUsuariosUseCase {
             .orElseThrow(() -> new RecursoNaoEncontradoException("Usuario nao encontrado"));
 
     return usuarioRepository.save(usuario.withAtivo(false, agora));
+  }
+
+  public Usuario ativar(final AtivarInput input) {
+    final Instant agora = Instant.now();
+    validarPermissao(input.adminId());
+
+    final Usuario usuario =
+        usuarioRepository
+            .findById(input.usuarioId())
+            .orElseThrow(() -> new RecursoNaoEncontradoException("Usuario nao encontrado"));
+
+    return usuarioRepository.save(usuario.withAtivo(true, agora));
   }
 
   private void validarPermissao(final UUID adminId) {

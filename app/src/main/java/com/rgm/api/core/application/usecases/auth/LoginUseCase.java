@@ -1,6 +1,5 @@
 package com.rgm.api.core.application.usecases.auth;
 
-import com.rgm.api.core.domain.exceptions.BusinessRuleException;
 import com.rgm.api.core.domain.exceptions.NaoAutorizadoException;
 import com.rgm.api.core.domain.model.aggregates.Usuario;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
@@ -34,7 +33,7 @@ public final class LoginUseCase {
             .orElseThrow(() -> new NaoAutorizadoException("Credenciais invalidas"));
 
     if (!usuario.getPerfil().fazLogin()) {
-      throw new BusinessRuleException("Perfil EXTERNO nao faz login");
+      throw new NaoAutorizadoException("Credenciais invalidas");
     }
 
     if (!usuario.isAtivo()) {

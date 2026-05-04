@@ -20,6 +20,7 @@ public class EventoModeloEvidenciaRepositoryAdapter implements EventoModeloEvide
   @Override
   public EventoModeloEvidencia save(final EventoModeloEvidencia eme) {
     final EventoModeloEvidenciaJpaEntity entity = new EventoModeloEvidenciaJpaEntity();
+    entity.setId(UUID.randomUUID());
     entity.setEventoModeloId(eme.getEventoModeloId());
     entity.setEvidenciaId(eme.getEvidenciaId());
     final EventoModeloEvidenciaJpaEntity saved = jpa.save(entity);

@@ -6,9 +6,13 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.time.Instant;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -16,13 +20,23 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Component
 public class RateLimitFilter extends OncePerRequestFilter {
 
-  private static final int MAX_REQUESTS = 10;
-  private static final long WINDOW_SECONDS = 60;
-  private static final int MAX_ENTRIES = 10_000;
-  private static final int CLEANUP_INTERVAL = 100;
+  private static final Logger log = LoggerFactory.getLogger(RateLimitFilter.class);
+  private static final int MAX_CACHE_SIZE = 10_000;
 
-  private final ConcurrentMap<String, RateWindow> clients = new ConcurrentHashMap<>();
+  private final int maxRequests;
+  private final int windowSeconds;
+  private final String allowedOrigins;
+  private final Map<String, RateLimitEntry> cache = new ConcurrentHashMap<>();
   private final AtomicInteger requestCounter = new AtomicInteger(0);
+
+  public RateLimitFilter(
+      @Value("${rate-limit.max-requests:10}") final int maxRequests,
+      @Value("${rate-limit.window-seconds:60}") final int windowSeconds,
+      @Value("${cors.allowed-origins:*}") final String allowedOrigins) {
+    this.maxRequests = maxRequests;
+    this.windowSeconds = windowSeconds;
+    this.allowedOrigins = allowedOrigins;
+  }
 
   @Override
   protected void doFilterInternal(
@@ -36,45 +50,81 @@ public class RateLimitFilter extends OncePerRequestFilter {
       return;
     }
 
-    evictIfNeeded();
+    evictExpiredEntries();
 
     final String clientIp = request.getRemoteAddr();
-    final RateWindow window =
-        clients.compute(
-            clientIp,
-            (key, existing) -> {
-              final Instant now = Instant.now();
-              if (existing == null || existing.isExpired(now)) {
-                return new RateWindow(now, 1);
-              }
-              return new RateWindow(existing.windowStart, existing.count + 1);
-            });
+    final Instant now = Instant.now();
+    final int currentCount;
+    {
+      final int[] holder = {0};
+      cache.compute(
+          clientIp,
+          (key, existing) -> {
+            if (existing == null || existing.isExpired(now, windowSeconds)) {
+              holder[0] = 1;
+              return new RateLimitEntry(now, 1);
+            }
+            existing.increment();
+            holder[0] = existing.getCount();
+            return existing;
+          });
+      currentCount = holder[0];
+    }
 
-    if (window.count > MAX_REQUESTS) {
+    if (currentCount > maxRequests) {
+      log.warn("Rate limit exceeded for IP: {}", clientIp);
+      addCorsHeaders(request, response);
       response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
       response.setContentType("application/json");
       response
           .getWriter()
           .write(
               "{\"status\":429,\"error\":\"Too Many Requests\","
-                  + "\"message\":\"Limite de tentativas excedido. Tente novamente em 1 minuto.\"}");
+                  + "\"message\":\"Limite de requisicoes excedido. Tente novamente em "
+                  + windowSeconds
+                  + " segundos.\"}");
       return;
     }
 
     filterChain.doFilter(request, response);
   }
 
-  private void evictIfNeeded() {
-    final int count = requestCounter.incrementAndGet();
-    if (count % CLEANUP_INTERVAL == 0 || clients.size() > MAX_ENTRIES) {
-      final Instant now = Instant.now();
-      clients.entrySet().removeIf(entry -> entry.getValue().isExpired(now));
+  private void addCorsHeaders(
+      final HttpServletRequest request, final HttpServletResponse response) {
+    final String origin = request.getHeader("Origin");
+    if (origin != null
+        && ("*".equals(allowedOrigins) || Set.of(allowedOrigins.split(",")).contains(origin))) {
+      response.setHeader("Access-Control-Allow-Origin", origin);
+      response.setHeader("Access-Control-Allow-Credentials", "true");
     }
   }
 
-  private record RateWindow(Instant windowStart, int count) {
-    boolean isExpired(final Instant now) {
-      return now.isAfter(windowStart.plusSeconds(WINDOW_SECONDS));
+  private void evictExpiredEntries() {
+    if (requestCounter.incrementAndGet() % 100 == 0 || cache.size() > MAX_CACHE_SIZE) {
+      final Instant now = Instant.now();
+      cache.entrySet().removeIf(e -> e.getValue().isExpired(now, windowSeconds));
+    }
+  }
+
+  private static final class RateLimitEntry {
+    private final Instant windowStart;
+    private volatile int count;
+
+    RateLimitEntry(final Instant windowStart, final int count) {
+      this.windowStart = windowStart;
+      this.count = count;
+    }
+
+    boolean isExpired(final Instant now, final int windowSeconds) {
+      return now.isAfter(windowStart.plusSeconds(windowSeconds));
+    }
+
+    void increment() {
+      count++;
+    }
+
+    int getCount() {
+      return count;
     }
   }
 }

@@ -2,6 +2,7 @@ package com.rgm.api.adapter.in.web.evidencia;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -54,7 +55,9 @@ class EvidenciaControllerTest {
     when(visualizarUseCase.execute(any())).thenReturn(List.of(ev));
 
     mockMvc
-        .perform(get("/api/solicitacoes/" + solId + "/evidencias"))
+        .perform(
+            get("/api/solicitacoes/" + solId + "/evidencias")
+                .with(user(UUID.randomUUID().toString())))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$[0].nomeArquivo").value("foto.jpg"))
         .andExpect(jsonPath("$[0].publicUrl").value("http://minio/foto.jpg"));

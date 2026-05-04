@@ -18,7 +18,7 @@ class GlobalExceptionHandlerTest {
     final RecursoNaoEncontradoException ex =
         new RecursoNaoEncontradoException("Solicitacao nao encontrada");
 
-    final ResponseEntity<ErrorResponse> response = handler.handleRecursoNaoEncontrado(ex);
+    final ResponseEntity<ErrorResponse> response = handler.handleNotFound(ex);
 
     assertEquals(404, response.getStatusCode().value());
     assertEquals("Not Found", response.getBody().error());

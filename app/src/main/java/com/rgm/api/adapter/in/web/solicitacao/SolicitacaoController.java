@@ -5,6 +5,7 @@ import com.rgm.api.adapter.in.web.dto.request.ComentarioRequest;
 import com.rgm.api.adapter.in.web.dto.request.DevolverSolicitacaoRequest;
 import com.rgm.api.adapter.in.web.dto.request.EncerrarSolicitacaoRequest;
 import com.rgm.api.adapter.in.web.dto.request.TriarSolicitacaoRequest;
+import com.rgm.api.adapter.in.web.dto.response.AtividadeResponse;
 import com.rgm.api.adapter.in.web.dto.response.PageResponse;
 import com.rgm.api.adapter.in.web.dto.response.SolicitacaoResponse;
 import com.rgm.api.core.application.usecases.solicitacao.AbrirSolicitacaoUseCase;
@@ -14,10 +15,14 @@ import com.rgm.api.core.application.usecases.solicitacao.EnviarParaValidacaoUseC
 import com.rgm.api.core.application.usecases.solicitacao.ListarSolicitacoesUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.RegistrarComentarioUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.TriarSolicitacaoUseCase;
+import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.model.enums.PrioridadeSolicitacao;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
 import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
+import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository;
+import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import jakarta.validation.Valid;
+import java.util.List;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,6 +51,8 @@ public class SolicitacaoController {
   private final EncerrarSolicitacaoUseCase encerrarUseCase;
   private final RegistrarComentarioUseCase comentarioUseCase;
   private final ListarSolicitacoesUseCase listarUseCase;
+  private final SolicitacaoRepository solicitacaoRepository;
+  private final AtividadeSolicitacaoRepository atividadeRepository;
 
   public SolicitacaoController(
       final AbrirSolicitacaoUseCase abrirUseCase,
@@ -54,7 +61,9 @@ public class SolicitacaoController {
       final DevolverSolicitacaoUseCase devolverUseCase,
       final EncerrarSolicitacaoUseCase encerrarUseCase,
       final RegistrarComentarioUseCase comentarioUseCase,
-      final ListarSolicitacoesUseCase listarUseCase) {
+      final ListarSolicitacoesUseCase listarUseCase,
+      final SolicitacaoRepository solicitacaoRepository,
+      final AtividadeSolicitacaoRepository atividadeRepository) {
     this.abrirUseCase = abrirUseCase;
     this.triarUseCase = triarUseCase;
     this.enviarUseCase = enviarUseCase;
@@ -62,6 +71,8 @@ public class SolicitacaoController {
     this.encerrarUseCase = encerrarUseCase;
     this.comentarioUseCase = comentarioUseCase;
     this.listarUseCase = listarUseCase;
+    this.solicitacaoRepository = solicitacaoRepository;
+    this.atividadeRepository = atividadeRepository;
   }
 
   @GetMapping
@@ -74,6 +85,27 @@ public class SolicitacaoController {
     final var result =
         listarUseCase.execute(new ListarSolicitacoesUseCase.Input(statusFilter, page, size));
     return ResponseEntity.ok(PageResponse.from(result, SolicitacaoResponse::from));
+  }
+
+  @GetMapping("/{id}")
+  public ResponseEntity<SolicitacaoResponse> buscarPorId(@PathVariable final UUID id) {
+    log.info("SolicitacaoController.buscarPorId id={}", id);
+    final var solicitacao =
+        solicitacaoRepository
+            .findById(id)
+            .orElseThrow(() -> new RecursoNaoEncontradoException("Solicitacao nao encontrada"));
+    return ResponseEntity.ok(SolicitacaoResponse.from(solicitacao));
+  }
+
+  @GetMapping("/{id}/atividades")
+  public ResponseEntity<List<AtividadeResponse>> listarAtividades(@PathVariable final UUID id) {
+    log.info("SolicitacaoController.listarAtividades id={}", id);
+    solicitacaoRepository
+        .findById(id)
+        .orElseThrow(() -> new RecursoNaoEncontradoException("Solicitacao nao encontrada"));
+    final var atividades =
+        atividadeRepository.findBySolicitacaoId(id).stream().map(AtividadeResponse::from).toList();
+    return ResponseEntity.ok(atividades);
   }
 
   @Transactional

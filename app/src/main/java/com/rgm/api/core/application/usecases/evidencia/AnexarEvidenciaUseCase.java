@@ -1,15 +1,19 @@
 package com.rgm.api.core.application.usecases.evidencia;
 
+import com.rgm.api.core.domain.exceptions.NaoAutorizadoException;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.exceptions.ValidationException;
 import com.rgm.api.core.domain.model.aggregates.Evidencia;
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
+import com.rgm.api.core.domain.model.aggregates.Usuario;
 import com.rgm.api.core.domain.model.entities.AtividadeSolicitacao;
 import com.rgm.api.core.domain.model.entities.SolicitacaoEvidencia;
 import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.EvidenciaRepository;
+import com.rgm.api.core.domain.ports.repositories.SolicitacaoAtribuicaoRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoEvidenciaRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
+import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import com.rgm.api.core.domain.ports.services.StorageService;
 import java.io.InputStream;
 import java.time.Instant;
@@ -28,18 +32,24 @@ public final class AnexarEvidenciaUseCase {
   private final SolicitacaoEvidenciaRepository solicitacaoEvidenciaRepository;
   private final AtividadeSolicitacaoRepository atividadeRepository;
   private final StorageService storageService;
+  private final UsuarioRepository usuarioRepository;
+  private final SolicitacaoAtribuicaoRepository atribuicaoRepository;
 
   public AnexarEvidenciaUseCase(
       final SolicitacaoRepository solicitacaoRepository,
       final EvidenciaRepository evidenciaRepository,
       final SolicitacaoEvidenciaRepository solicitacaoEvidenciaRepository,
       final AtividadeSolicitacaoRepository atividadeRepository,
-      final StorageService storageService) {
+      final StorageService storageService,
+      final UsuarioRepository usuarioRepository,
+      final SolicitacaoAtribuicaoRepository atribuicaoRepository) {
     this.solicitacaoRepository = solicitacaoRepository;
     this.evidenciaRepository = evidenciaRepository;
     this.solicitacaoEvidenciaRepository = solicitacaoEvidenciaRepository;
     this.atividadeRepository = atividadeRepository;
     this.storageService = storageService;
+    this.usuarioRepository = usuarioRepository;
+    this.atribuicaoRepository = atribuicaoRepository;
   }
 
   public record Input(
@@ -76,6 +86,8 @@ public final class AnexarEvidenciaUseCase {
       throw new ValidationException("Nao e possivel anexar evidencia a solicitacao encerrada");
     }
 
+    validarAcesso(input.solicitacaoId(), input.enviadaPorUsuarioId());
+
     return storageService.upload(
         input.nomeArquivo(), input.mimeType(), input.conteudo(), input.tamanhoBytes());
   }
@@ -104,5 +116,24 @@ public final class AnexarEvidenciaUseCase {
             input.solicitacaoId(), input.enviadaPorUsuarioId(), agora));
 
     return salva;
+  }
+
+  private void validarAcesso(final UUID solicitacaoId, final UUID usuarioId) {
+    final Usuario usuario =
+        usuarioRepository
+            .findById(usuarioId)
+            .orElseThrow(() -> new RecursoNaoEncontradoException("Usuario nao encontrado"));
+
+    if (usuario.getPerfil().podeGerenciarModelos()
+        || usuario.getPerfil().podeGerenciarUsuariosEMaquinas()) {
+      return;
+    }
+
+    final boolean atribuido =
+        atribuicaoRepository.existsBySolicitacaoIdAndUsuarioIdAndRemovidoEmIsNull(
+            solicitacaoId, usuarioId);
+    if (!atribuido) {
+      throw new NaoAutorizadoException("Usuario nao tem acesso a esta solicitacao");
+    }
   }
 }
