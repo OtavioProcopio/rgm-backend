@@ -50,18 +50,24 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     final String clientIp = request.getRemoteAddr();
     final Instant now = Instant.now();
-    final RateLimitEntry entry =
-        cache.compute(
-            clientIp,
-            (key, existing) -> {
-              if (existing == null || existing.isExpired(now, windowSeconds)) {
-                return new RateLimitEntry(now, 1);
-              }
-              existing.increment();
-              return existing;
-            });
+    final int currentCount;
+    {
+      final int[] holder = {0};
+      cache.compute(
+          clientIp,
+          (key, existing) -> {
+            if (existing == null || existing.isExpired(now, windowSeconds)) {
+              holder[0] = 1;
+              return new RateLimitEntry(now, 1);
+            }
+            existing.increment();
+            holder[0] = existing.getCount();
+            return existing;
+          });
+      currentCount = holder[0];
+    }
 
-    if (entry.getCount() > maxRequests) {
+    if (currentCount > maxRequests) {
       log.warn("Rate limit exceeded for IP: {}", clientIp);
       response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
       response.setContentType("application/json");
