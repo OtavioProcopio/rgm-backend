@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.Logger;
@@ -91,7 +92,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
   private void addCorsHeaders(
       final HttpServletRequest request, final HttpServletResponse response) {
     final String origin = request.getHeader("Origin");
-    if (origin != null && ("*".equals(allowedOrigins) || allowedOrigins.contains(origin))) {
+    if (origin != null
+        && ("*".equals(allowedOrigins) || Set.of(allowedOrigins.split(",")).contains(origin))) {
       response.setHeader("Access-Control-Allow-Origin", origin);
       response.setHeader("Access-Control-Allow-Credentials", "true");
     }
