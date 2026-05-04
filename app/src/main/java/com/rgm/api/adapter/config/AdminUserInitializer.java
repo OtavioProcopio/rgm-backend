@@ -39,7 +39,8 @@ public class AdminUserInitializer implements ApplicationRunner {
     final Instant agora = Instant.now();
     final String senhaHash = passwordHasher.hash(ADMIN_PASSWORD);
     final Usuario admin =
-        Usuario.criarInterno(ADMIN_NAME, ADMIN_EMAIL, senhaHash, PerfilUsuario.ADMINISTRADOR, agora);
+        Usuario.criarInterno(
+            ADMIN_NAME, ADMIN_EMAIL, senhaHash, PerfilUsuario.ADMINISTRADOR, agora);
 
     usuarioRepository.save(admin);
     log.info("Admin user '{}' created successfully", ADMIN_EMAIL);

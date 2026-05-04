@@ -1,8 +1,8 @@
 package com.rgm.api.core.application.usecases.solicitacao;
 
 import com.rgm.api.core.domain.exceptions.NaoAutorizadoException;
-import com.rgm.api.core.domain.exceptions.ValidationException;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
+import com.rgm.api.core.domain.exceptions.ValidationException;
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
 import com.rgm.api.core.domain.model.aggregates.Usuario;
 import com.rgm.api.core.domain.model.entities.AtividadeSolicitacao;

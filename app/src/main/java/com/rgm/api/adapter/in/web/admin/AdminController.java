@@ -130,8 +130,7 @@ public class AdminController {
     log.info("AdminController.ativarUsuario iniciado");
     final UUID adminId = UUID.fromString(authentication.getName());
     final Usuario usuario =
-        gerenciarUsuariosUseCase.ativar(
-            new GerenciarUsuariosUseCase.AtivarInput(id, adminId));
+        gerenciarUsuariosUseCase.ativar(new GerenciarUsuariosUseCase.AtivarInput(id, adminId));
     return ResponseEntity.ok(UsuarioResponse.from(usuario));
   }
 

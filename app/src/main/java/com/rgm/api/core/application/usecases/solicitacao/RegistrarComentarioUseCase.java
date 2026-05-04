@@ -1,7 +1,7 @@
 package com.rgm.api.core.application.usecases.solicitacao;
 
-import com.rgm.api.core.domain.exceptions.ValidationException;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
+import com.rgm.api.core.domain.exceptions.ValidationException;
 import com.rgm.api.core.domain.model.entities.AtividadeSolicitacao;
 import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;

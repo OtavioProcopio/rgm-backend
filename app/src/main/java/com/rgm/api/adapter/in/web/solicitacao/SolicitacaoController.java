@@ -16,11 +16,11 @@ import com.rgm.api.core.application.usecases.solicitacao.ListarSolicitacoesUseCa
 import com.rgm.api.core.application.usecases.solicitacao.RegistrarComentarioUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.TriarSolicitacaoUseCase;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
-import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository;
-import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import com.rgm.api.core.domain.model.enums.PrioridadeSolicitacao;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
 import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
+import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository;
+import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
@@ -104,9 +104,7 @@ public class SolicitacaoController {
         .findById(id)
         .orElseThrow(() -> new RecursoNaoEncontradoException("Solicitacao nao encontrada"));
     final var atividades =
-        atividadeRepository.findBySolicitacaoId(id).stream()
-            .map(AtividadeResponse::from)
-            .toList();
+        atividadeRepository.findBySolicitacaoId(id).stream().map(AtividadeResponse::from).toList();
     return ResponseEntity.ok(atividades);
   }
 

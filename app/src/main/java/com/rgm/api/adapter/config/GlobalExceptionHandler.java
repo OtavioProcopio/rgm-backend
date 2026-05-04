@@ -66,7 +66,9 @@ public class GlobalExceptionHandler {
   public ResponseEntity<ErrorResponse> handleMaxUploadSize(
       final MaxUploadSizeExceededException ex) {
     return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
-        .body(ErrorResponse.of(413, "Payload Too Large", "Arquivo excede o tamanho maximo permitido"));
+        .body(
+            ErrorResponse.of(
+                413, "Payload Too Large", "Arquivo excede o tamanho maximo permitido"));
   }
 
   @ExceptionHandler(IllegalArgumentException.class)

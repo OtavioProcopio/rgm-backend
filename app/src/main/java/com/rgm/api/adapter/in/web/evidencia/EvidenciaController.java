@@ -65,8 +65,7 @@ public class EvidenciaController {
     log.info("EvidenciaController.listar iniciado");
     final UUID usuarioId = UUID.fromString(authentication.getName());
     final List<Evidencia> evidencias =
-        visualizarUseCase.execute(
-            new VisualizarEvidenciaUseCase.Input(solicitacaoId, usuarioId));
+        visualizarUseCase.execute(new VisualizarEvidenciaUseCase.Input(solicitacaoId, usuarioId));
     return ResponseEntity.ok(evidencias.stream().map(EvidenciaResponse::from).toList());
   }
 }

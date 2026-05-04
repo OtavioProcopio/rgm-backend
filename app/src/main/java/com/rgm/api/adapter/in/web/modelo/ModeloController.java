@@ -83,9 +83,7 @@ public class ModeloController {
         .findById(id)
         .orElseThrow(() -> new RecursoNaoEncontradoException("Modelo nao encontrado"));
     final var eventos =
-        eventoModeloRepository.findByModeloId(id).stream()
-            .map(EventoModeloResponse::from)
-            .toList();
+        eventoModeloRepository.findByModeloId(id).stream().map(EventoModeloResponse::from).toList();
     return ResponseEntity.ok(eventos);
   }
 
