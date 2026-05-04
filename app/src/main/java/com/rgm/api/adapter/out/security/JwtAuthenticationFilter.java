@@ -60,8 +60,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 userId, null, List.of(new SimpleGrantedAuthority("ROLE_" + perfil)));
 
         SecurityContextHolder.getContext().setAuthentication(auth);
-      } catch (final Exception ex) {
-        log.warn("Token JWT invalido: {}", ex.getMessage());
+      } catch (final io.jsonwebtoken.ExpiredJwtException e) {
+        log.debug("Token JWT expirado: {}", e.getMessage());
+      } catch (final Exception e) {
+        log.warn("Falha ao validar token JWT: {}", e.getMessage());
       }
     }
     filterChain.doFilter(request, response);

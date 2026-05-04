@@ -24,14 +24,17 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
   private final int maxRequests;
   private final int windowSeconds;
+  private final String allowedOrigins;
   private final Map<String, RateLimitEntry> cache = new ConcurrentHashMap<>();
   private final AtomicInteger requestCounter = new AtomicInteger(0);
 
   public RateLimitFilter(
       @Value("${rate-limit.max-requests:10}") final int maxRequests,
-      @Value("${rate-limit.window-seconds:60}") final int windowSeconds) {
+      @Value("${rate-limit.window-seconds:60}") final int windowSeconds,
+      @Value("${cors.allowed-origins:*}") final String allowedOrigins) {
     this.maxRequests = maxRequests;
     this.windowSeconds = windowSeconds;
+    this.allowedOrigins = allowedOrigins;
   }
 
   @Override
@@ -69,6 +72,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     if (currentCount > maxRequests) {
       log.warn("Rate limit exceeded for IP: {}", clientIp);
+      addCorsHeaders(request, response);
       response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
       response.setContentType("application/json");
       response
@@ -82,6 +86,15 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     filterChain.doFilter(request, response);
+  }
+
+  private void addCorsHeaders(
+      final HttpServletRequest request, final HttpServletResponse response) {
+    final String origin = request.getHeader("Origin");
+    if (origin != null && ("*".equals(allowedOrigins) || allowedOrigins.contains(origin))) {
+      response.setHeader("Access-Control-Allow-Origin", origin);
+      response.setHeader("Access-Control-Allow-Credentials", "true");
+    }
   }
 
   private void evictExpiredEntries() {

@@ -1,5 +1,9 @@
 .git
-.env
-*.md
 .github
+.devcontainer
+.env
+.env.example
+*.md
+Makefile
+docker-compose.yml
 target
