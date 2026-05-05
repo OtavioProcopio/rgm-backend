@@ -83,6 +83,10 @@ public final class GerenciarUsuariosUseCase {
             .findById(input.usuarioId())
             .orElseThrow(() -> new RecursoNaoEncontradoException("Usuario nao encontrado"));
 
+    if (usuarioRepository.existsByEmailAndIdNot(input.email(), input.usuarioId())) {
+      throw new BusinessRuleException("Email ja cadastrado");
+    }
+
     return usuarioRepository.save(usuario.editar(input.nome(), input.email(), agora));
   }
 

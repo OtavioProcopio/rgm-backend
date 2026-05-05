@@ -18,6 +18,8 @@ public interface UsuarioJpaRepository extends JpaRepository<UsuarioJpaEntity, UU
 
   boolean existsByEmail(String email);
 
+  boolean existsByEmailAndIdNot(String email, UUID excludeId);
+
   @Query(
       "SELECT u FROM UsuarioJpaEntity u WHERE "
           + "(:perfil IS NULL OR u.perfil = :perfil) AND "

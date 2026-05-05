@@ -53,6 +53,11 @@ public class UsuarioRepositoryAdapter implements UsuarioRepository {
   }
 
   @Override
+  public boolean existsByEmailAndIdNot(final String email, final UUID excludeId) {
+    return jpa.existsByEmailAndIdNot(email, excludeId);
+  }
+
+  @Override
   public PageResult<Usuario> findAll(final int page, final int size) {
     final var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "nome"));
     final var result = jpa.findAll(pageable);
