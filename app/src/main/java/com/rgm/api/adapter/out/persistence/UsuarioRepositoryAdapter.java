@@ -68,8 +68,7 @@ public class UsuarioRepositoryAdapter implements UsuarioRepository {
   public PageResult<Usuario> findByFilters(
       final PerfilUsuario perfil, final Boolean ativo, final int page, final int size) {
     final var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "nome"));
-    final String perfilStr = perfil != null ? perfil.name() : null;
-    final var result = jpa.findByFilters(perfilStr, ativo, pageable);
+    final var result = jpa.findByFilters(perfil, ativo, pageable);
     return new PageResult<>(
         result.getContent().stream().map(UsuarioMapper::toDomain).toList(),
         result.getNumber(),

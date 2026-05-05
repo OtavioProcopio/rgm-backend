@@ -21,5 +21,6 @@ public interface SolicitacaoJpaRepository extends JpaRepository<SolicitacaoJpaEn
       "SELECT s FROM SolicitacaoJpaEntity s WHERE "
           + "(:status IS NULL OR s.status = :status) AND "
           + "(:modeloId IS NULL OR s.modeloId = :modeloId)")
-  Page<SolicitacaoJpaEntity> findByFilters(String status, UUID modeloId, Pageable pageable);
+  Page<SolicitacaoJpaEntity> findByFilters(
+      StatusSolicitacao status, UUID modeloId, Pageable pageable);
 }

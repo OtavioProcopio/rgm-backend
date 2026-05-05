@@ -1,6 +1,7 @@
 package com.rgm.api.adapter.out.persistence.repository;
 
 import com.rgm.api.adapter.out.persistence.entity.UsuarioJpaEntity;
+import com.rgm.api.core.domain.model.enums.PerfilUsuario;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -21,5 +22,5 @@ public interface UsuarioJpaRepository extends JpaRepository<UsuarioJpaEntity, UU
       "SELECT u FROM UsuarioJpaEntity u WHERE "
           + "(:perfil IS NULL OR u.perfil = :perfil) AND "
           + "(:ativo IS NULL OR u.ativo = :ativo)")
-  Page<UsuarioJpaEntity> findByFilters(String perfil, Boolean ativo, Pageable pageable);
+  Page<UsuarioJpaEntity> findByFilters(PerfilUsuario perfil, Boolean ativo, Pageable pageable);
 }

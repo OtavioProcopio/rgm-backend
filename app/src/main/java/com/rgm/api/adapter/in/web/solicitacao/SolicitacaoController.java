@@ -11,6 +11,7 @@ import com.rgm.api.adapter.in.web.dto.response.PageResponse;
 import com.rgm.api.adapter.in.web.dto.response.SolicitacaoResponse;
 import com.rgm.api.core.application.usecases.solicitacao.AbrirSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.DevolverSolicitacaoUseCase;
+import com.rgm.api.core.application.usecases.solicitacao.EditarSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.EncerrarSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.EnviarParaValidacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ListarSolicitacoesUseCase;
@@ -52,6 +53,7 @@ public class SolicitacaoController {
   private final DevolverSolicitacaoUseCase devolverUseCase;
   private final EncerrarSolicitacaoUseCase encerrarUseCase;
   private final RegistrarComentarioUseCase comentarioUseCase;
+  private final EditarSolicitacaoUseCase editarUseCase;
   private final ListarSolicitacoesUseCase listarUseCase;
   private final SolicitacaoRepository solicitacaoRepository;
   private final AtividadeSolicitacaoRepository atividadeRepository;
@@ -63,6 +65,7 @@ public class SolicitacaoController {
       final DevolverSolicitacaoUseCase devolverUseCase,
       final EncerrarSolicitacaoUseCase encerrarUseCase,
       final RegistrarComentarioUseCase comentarioUseCase,
+      final EditarSolicitacaoUseCase editarUseCase,
       final ListarSolicitacoesUseCase listarUseCase,
       final SolicitacaoRepository solicitacaoRepository,
       final AtividadeSolicitacaoRepository atividadeRepository) {
@@ -72,6 +75,7 @@ public class SolicitacaoController {
     this.devolverUseCase = devolverUseCase;
     this.encerrarUseCase = encerrarUseCase;
     this.comentarioUseCase = comentarioUseCase;
+    this.editarUseCase = editarUseCase;
     this.listarUseCase = listarUseCase;
     this.solicitacaoRepository = solicitacaoRepository;
     this.atividadeRepository = atividadeRepository;
@@ -98,13 +102,11 @@ public class SolicitacaoController {
       @Valid @RequestBody final EditarSolicitacaoRequest request,
       final Authentication authentication) {
     log.info("SolicitacaoController.editar iniciado");
-    final var solicitacao =
-        solicitacaoRepository
-            .findById(id)
-            .orElseThrow(() -> new RecursoNaoEncontradoException("Solicitacao nao encontrada"));
-    final var editada =
-        solicitacao.editar(request.titulo(), request.descricao(), java.time.Instant.now());
-    final var salva = solicitacaoRepository.save(editada);
+    final UUID usuarioId = UUID.fromString(authentication.getName());
+    final var salva =
+        editarUseCase.execute(
+            new EditarSolicitacaoUseCase.Input(
+                id, request.titulo(), request.descricao(), usuarioId));
     return ResponseEntity.ok(SolicitacaoResponse.from(salva));
   }
 

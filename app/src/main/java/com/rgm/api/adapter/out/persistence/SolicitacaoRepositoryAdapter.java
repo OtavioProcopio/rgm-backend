@@ -77,8 +77,7 @@ public class SolicitacaoRepositoryAdapter implements SolicitacaoRepository {
   public PageResult<Solicitacao> findByFilters(
       final StatusSolicitacao status, final UUID modeloId, final int page, final int size) {
     final var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "criadaEm"));
-    final String statusStr = status != null ? status.name() : null;
-    final var result = jpa.findByFilters(statusStr, modeloId, pageable);
+    final var result = jpa.findByFilters(status, modeloId, pageable);
     return new PageResult<>(
         result.getContent().stream().map(SolicitacaoMapper::toDomain).toList(),
         result.getNumber(),
