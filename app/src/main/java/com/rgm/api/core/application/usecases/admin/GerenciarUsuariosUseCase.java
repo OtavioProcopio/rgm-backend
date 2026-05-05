@@ -83,6 +83,10 @@ public final class GerenciarUsuariosUseCase {
             .findById(input.usuarioId())
             .orElseThrow(() -> new RecursoNaoEncontradoException("Usuario nao encontrado"));
 
+    if (usuario.getPerfil() == PerfilUsuario.EXTERNO) {
+      throw new BusinessRuleException("Nao e possivel editar usuario EXTERNO por este caso de uso");
+    }
+
     if (usuarioRepository.existsByEmailAndIdNot(input.email(), input.usuarioId())) {
       throw new BusinessRuleException("Email ja cadastrado");
     }
