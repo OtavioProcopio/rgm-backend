@@ -51,4 +51,17 @@ public class ModeloRepositoryAdapter implements ModeloRepository {
         result.getTotalElements(),
         result.getTotalPages());
   }
+
+  @Override
+  public PageResult<Modelo> findByFilters(
+      final Boolean ativo, final String codigo, final int page, final int size) {
+    final var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "codigo"));
+    final var result = jpa.findByFilters(ativo, codigo, pageable);
+    return new PageResult<>(
+        result.getContent().stream().map(ModeloMapper::toDomain).toList(),
+        result.getNumber(),
+        result.getSize(),
+        result.getTotalElements(),
+        result.getTotalPages());
+  }
 }

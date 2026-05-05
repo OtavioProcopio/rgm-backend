@@ -3,6 +3,7 @@ package com.rgm.api.adapter.in.web.solicitacao;
 import com.rgm.api.adapter.in.web.dto.request.AbrirSolicitacaoRequest;
 import com.rgm.api.adapter.in.web.dto.request.ComentarioRequest;
 import com.rgm.api.adapter.in.web.dto.request.DevolverSolicitacaoRequest;
+import com.rgm.api.adapter.in.web.dto.request.EditarSolicitacaoRequest;
 import com.rgm.api.adapter.in.web.dto.request.EncerrarSolicitacaoRequest;
 import com.rgm.api.adapter.in.web.dto.request.TriarSolicitacaoRequest;
 import com.rgm.api.adapter.in.web.dto.response.AtividadeResponse;
@@ -34,6 +35,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -79,12 +81,31 @@ public class SolicitacaoController {
   public ResponseEntity<PageResponse<SolicitacaoResponse>> listar(
       @RequestParam(defaultValue = "0") final int page,
       @RequestParam(defaultValue = "20") final int size,
-      @RequestParam(required = false) final String status) {
+      @RequestParam(required = false) final String status,
+      @RequestParam(required = false) final UUID modeloId) {
     final StatusSolicitacao statusFilter =
         status != null ? StatusSolicitacao.valueOf(status) : null;
     final var result =
-        listarUseCase.execute(new ListarSolicitacoesUseCase.Input(statusFilter, page, size));
+        listarUseCase.execute(
+            new ListarSolicitacoesUseCase.Input(statusFilter, modeloId, page, size));
     return ResponseEntity.ok(PageResponse.from(result, SolicitacaoResponse::from));
+  }
+
+  @Transactional
+  @PutMapping("/{id}")
+  public ResponseEntity<SolicitacaoResponse> editar(
+      @PathVariable final UUID id,
+      @Valid @RequestBody final EditarSolicitacaoRequest request,
+      final Authentication authentication) {
+    log.info("SolicitacaoController.editar iniciado");
+    final var solicitacao =
+        solicitacaoRepository
+            .findById(id)
+            .orElseThrow(() -> new RecursoNaoEncontradoException("Solicitacao nao encontrada"));
+    final var editada =
+        solicitacao.editar(request.titulo(), request.descricao(), java.time.Instant.now());
+    final var salva = solicitacaoRepository.save(editada);
+    return ResponseEntity.ok(SolicitacaoResponse.from(salva));
   }
 
   @GetMapping("/{id}")

@@ -15,4 +15,6 @@ public interface ModeloRepository {
   int countByMaquinaIdAndCodigo(UUID maquinaId, String codigo);
 
   PageResult<Modelo> findAll(int page, int size);
+
+  PageResult<Modelo> findByFilters(Boolean ativo, String codigo, int page, int size);
 }

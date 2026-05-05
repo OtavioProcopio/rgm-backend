@@ -3,6 +3,7 @@ package com.rgm.api.adapter.out.persistence;
 import com.rgm.api.adapter.out.persistence.mapper.UsuarioMapper;
 import com.rgm.api.adapter.out.persistence.repository.UsuarioJpaRepository;
 import com.rgm.api.core.domain.model.aggregates.Usuario;
+import com.rgm.api.core.domain.model.enums.PerfilUsuario;
 import com.rgm.api.core.domain.ports.repositories.PageResult;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import java.util.List;
@@ -55,6 +56,20 @@ public class UsuarioRepositoryAdapter implements UsuarioRepository {
   public PageResult<Usuario> findAll(final int page, final int size) {
     final var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "nome"));
     final var result = jpa.findAll(pageable);
+    return new PageResult<>(
+        result.getContent().stream().map(UsuarioMapper::toDomain).toList(),
+        result.getNumber(),
+        result.getSize(),
+        result.getTotalElements(),
+        result.getTotalPages());
+  }
+
+  @Override
+  public PageResult<Usuario> findByFilters(
+      final PerfilUsuario perfil, final Boolean ativo, final int page, final int size) {
+    final var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "nome"));
+    final String perfilStr = perfil != null ? perfil.name() : null;
+    final var result = jpa.findByFilters(perfilStr, ativo, pageable);
     return new PageResult<>(
         result.getContent().stream().map(UsuarioMapper::toDomain).toList(),
         result.getNumber(),

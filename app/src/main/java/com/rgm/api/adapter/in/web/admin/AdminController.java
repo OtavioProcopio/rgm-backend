@@ -3,6 +3,7 @@ package com.rgm.api.adapter.in.web.admin;
 import com.rgm.api.adapter.in.web.dto.request.CriarMaquinaRequest;
 import com.rgm.api.adapter.in.web.dto.request.CriarUsuarioRequest;
 import com.rgm.api.adapter.in.web.dto.request.EditarMaquinaRequest;
+import com.rgm.api.adapter.in.web.dto.request.EditarUsuarioRequest;
 import com.rgm.api.adapter.in.web.dto.request.ExcluirRegistroRequest;
 import com.rgm.api.adapter.in.web.dto.response.MaquinaResponse;
 import com.rgm.api.adapter.in.web.dto.response.PageResponse;
@@ -74,8 +75,13 @@ public class AdminController {
   @GetMapping("/usuarios")
   public ResponseEntity<PageResponse<UsuarioResponse>> listarUsuarios(
       @RequestParam(defaultValue = "0") final int page,
-      @RequestParam(defaultValue = "20") final int size) {
-    final var result = listarUsuariosUseCase.execute(page, size);
+      @RequestParam(defaultValue = "20") final int size,
+      @RequestParam(required = false) final String perfil,
+      @RequestParam(required = false) final Boolean ativo) {
+    final PerfilUsuario perfilFilter = perfil != null ? PerfilUsuario.valueOf(perfil) : null;
+    final var result =
+        listarUsuariosUseCase.execute(
+            new ListarUsuariosUseCase.Input(perfilFilter, ativo, page, size));
     return ResponseEntity.ok(PageResponse.from(result, UsuarioResponse::from));
   }
 
@@ -112,6 +118,20 @@ public class AdminController {
   }
 
   @Transactional
+  @PutMapping("/usuarios/{id}")
+  public ResponseEntity<UsuarioResponse> editarUsuario(
+      @PathVariable final UUID id,
+      @Valid @RequestBody final EditarUsuarioRequest request,
+      final Authentication authentication) {
+    log.info("AdminController.editarUsuario iniciado");
+    final UUID adminId = UUID.fromString(authentication.getName());
+    final Usuario usuario =
+        gerenciarUsuariosUseCase.editar(
+            new GerenciarUsuariosUseCase.EditarInput(id, request.nome(), request.email(), adminId));
+    return ResponseEntity.ok(UsuarioResponse.from(usuario));
+  }
+
+  @Transactional
   @PatchMapping("/usuarios/{id}/desativar")
   public ResponseEntity<UsuarioResponse> desativarUsuario(
       @PathVariable final UUID id, final Authentication authentication) {
@@ -140,6 +160,17 @@ public class AdminController {
       @RequestParam(defaultValue = "20") final int size) {
     final var result = listarMaquinasUseCase.execute(page, size);
     return ResponseEntity.ok(PageResponse.from(result, MaquinaResponse::from));
+  }
+
+  @Transactional
+  @DeleteMapping("/maquinas/{id}")
+  public ResponseEntity<Void> excluirMaquina(
+      @PathVariable final UUID id, final Authentication authentication) {
+    log.info("AdminController.excluirMaquina iniciado");
+    final UUID adminId = UUID.fromString(authentication.getName());
+    excluirRegistroUseCase.execute(
+        new ExcluirRegistroUseCase.Input(ExcluirRegistroUseCase.TipoRecurso.MAQUINA, id, adminId));
+    return ResponseEntity.noContent().build();
   }
 
   @GetMapping("/maquinas/{id}")

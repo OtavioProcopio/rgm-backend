@@ -21,4 +21,7 @@ public interface SolicitacaoRepository {
   PageResult<Solicitacao> findAll(int page, int size);
 
   PageResult<Solicitacao> findByStatus(StatusSolicitacao status, int page, int size);
+
+  PageResult<Solicitacao> findByFilters(
+      StatusSolicitacao status, UUID modeloId, int page, int size);
 }

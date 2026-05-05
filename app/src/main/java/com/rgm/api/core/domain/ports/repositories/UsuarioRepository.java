@@ -1,6 +1,7 @@
 package com.rgm.api.core.domain.ports.repositories;
 
 import com.rgm.api.core.domain.model.aggregates.Usuario;
+import com.rgm.api.core.domain.model.enums.PerfilUsuario;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -20,4 +21,6 @@ public interface UsuarioRepository {
   boolean existsByEmail(String email);
 
   PageResult<Usuario> findAll(int page, int size);
+
+  PageResult<Usuario> findByFilters(PerfilUsuario perfil, Boolean ativo, int page, int size);
 }
