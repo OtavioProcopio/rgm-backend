@@ -15,6 +15,7 @@ import com.rgm.api.adapter.in.web.dto.request.AbrirSolicitacaoRequest;
 import com.rgm.api.adapter.out.security.JwtAuthenticationFilter;
 import com.rgm.api.core.application.usecases.solicitacao.AbrirSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.DevolverSolicitacaoUseCase;
+import com.rgm.api.core.application.usecases.solicitacao.EditarSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.EncerrarSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.EnviarParaValidacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ListarSolicitacoesUseCase;
@@ -55,6 +56,7 @@ class SolicitacaoControllerTest {
   @MockitoBean private DevolverSolicitacaoUseCase devolverUseCase;
   @MockitoBean private EncerrarSolicitacaoUseCase encerrarUseCase;
   @MockitoBean private RegistrarComentarioUseCase comentarioUseCase;
+  @MockitoBean private EditarSolicitacaoUseCase editarUseCase;
   @MockitoBean private ListarSolicitacoesUseCase listarUseCase;
   @MockitoBean private SolicitacaoRepository solicitacaoRepository;
   @MockitoBean private AtividadeSolicitacaoRepository atividadeRepository;

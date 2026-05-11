@@ -3,6 +3,7 @@ package com.rgm.api.core.application.usecases.solicitacao;
 import com.rgm.api.core.domain.events.SolicitacaoFinalizadaEvent;
 import com.rgm.api.core.domain.exceptions.NaoAutorizadoException;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
+import com.rgm.api.core.domain.exceptions.ValidationException;
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
 import com.rgm.api.core.domain.model.aggregates.Usuario;
 import com.rgm.api.core.domain.model.entities.AtividadeSolicitacao;
@@ -38,6 +39,10 @@ public final class EncerrarSolicitacaoUseCase {
 
   public Solicitacao execute(final Input input) {
     final Instant agora = Instant.now();
+
+    if (input.comentarioFinal() == null || input.comentarioFinal().isBlank()) {
+      throw new ValidationException("Comentario final e obrigatorio para encerrar solicitacao");
+    }
 
     final Usuario gestor =
         usuarioRepository

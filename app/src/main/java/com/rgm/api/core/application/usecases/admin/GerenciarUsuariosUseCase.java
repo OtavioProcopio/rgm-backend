@@ -29,6 +29,8 @@ public final class GerenciarUsuariosUseCase {
 
   public record AtivarInput(UUID usuarioId, UUID adminId) {}
 
+  public record EditarInput(UUID usuarioId, String nome, String email, UUID adminId) {}
+
   public Usuario criar(final CriarInput input) {
     final Instant agora = Instant.now();
     validarPermissao(input.adminId());
@@ -70,6 +72,26 @@ public final class GerenciarUsuariosUseCase {
             .orElseThrow(() -> new RecursoNaoEncontradoException("Usuario nao encontrado"));
 
     return usuarioRepository.save(usuario.withAtivo(true, agora));
+  }
+
+  public Usuario editar(final EditarInput input) {
+    final Instant agora = Instant.now();
+    validarPermissao(input.adminId());
+
+    final Usuario usuario =
+        usuarioRepository
+            .findById(input.usuarioId())
+            .orElseThrow(() -> new RecursoNaoEncontradoException("Usuario nao encontrado"));
+
+    if (usuario.getPerfil() == PerfilUsuario.EXTERNO) {
+      throw new BusinessRuleException("Nao e possivel editar usuario EXTERNO por este caso de uso");
+    }
+
+    if (usuarioRepository.existsByEmailAndIdNot(input.email(), input.usuarioId())) {
+      throw new BusinessRuleException("Email ja cadastrado");
+    }
+
+    return usuarioRepository.save(usuario.editar(input.nome(), input.email(), agora));
   }
 
   private void validarPermissao(final UUID adminId) {

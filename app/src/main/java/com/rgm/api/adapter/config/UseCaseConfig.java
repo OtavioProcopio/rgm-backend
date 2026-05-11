@@ -17,6 +17,7 @@ import com.rgm.api.core.application.usecases.modelo.RecalcularPendenciaUseCase;
 import com.rgm.api.core.application.usecases.modelo.SolicitacaoFinalizadaListener;
 import com.rgm.api.core.application.usecases.solicitacao.AbrirSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.DevolverSolicitacaoUseCase;
+import com.rgm.api.core.application.usecases.solicitacao.EditarSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.EncerrarSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.EnviarParaValidacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ListarSolicitacoesUseCase;
@@ -110,6 +111,15 @@ public class UseCaseConfig {
       final SolicitacaoRepository solicitacaoRepository,
       final AtividadeSolicitacaoRepository atividadeRepository) {
     return new RegistrarComentarioUseCase(solicitacaoRepository, atividadeRepository);
+  }
+
+  @Bean
+  public EditarSolicitacaoUseCase editarSolicitacaoUseCase(
+      final SolicitacaoRepository solicitacaoRepository,
+      final UsuarioRepository usuarioRepository,
+      final SolicitacaoAtribuicaoRepository atribuicaoRepository) {
+    return new EditarSolicitacaoUseCase(
+        solicitacaoRepository, usuarioRepository, atribuicaoRepository);
   }
 
   @Bean

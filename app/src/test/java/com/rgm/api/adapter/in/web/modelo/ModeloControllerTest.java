@@ -1,7 +1,6 @@
 package com.rgm.api.adapter.in.web.modelo;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -73,8 +72,7 @@ class ModeloControllerTest {
   @Test
   void listarModelos() throws Exception {
     final Modelo modelo = criarModelo();
-    when(listarUseCase.execute(anyInt(), anyInt()))
-        .thenReturn(new PageResult<>(List.of(modelo), 0, 20, 1, 1));
+    when(listarUseCase.execute(any())).thenReturn(new PageResult<>(List.of(modelo), 0, 20, 1, 1));
 
     mockMvc
         .perform(get("/api/modelos"))

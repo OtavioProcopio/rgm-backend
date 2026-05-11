@@ -150,6 +150,28 @@ public final class Solicitacao {
         null);
   }
 
+  /** Editar titulo e descricao (somente em status nao-terminal). */
+  public Solicitacao editar(
+      final String novoTitulo, final String novaDescricao, final Instant agora) {
+    if (!status.isNaoTerminal()) {
+      throw new BusinessRuleException("Nao e possivel editar solicitacao em status terminal");
+    }
+    return new Solicitacao(
+        id,
+        requireNonBlank(novoTitulo, "titulo"),
+        requireNonBlank(novaDescricao, "descricao"),
+        tipo,
+        status,
+        prioridade,
+        modeloId,
+        abertaPorUsuarioId,
+        comentarioFinal,
+        criadaEm,
+        agora,
+        concluidaEm,
+        canceladaEm);
+  }
+
   /** UC-07: Concluir solicitacao (EM_VALIDACAO -> CONCLUIDA). */
   public Solicitacao concluir(final String novoComentarioFinal, final Instant agora) {
     requireNonBlank(novoComentarioFinal, "comentarioFinal");

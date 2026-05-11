@@ -61,8 +61,11 @@ public class ModeloController {
   @GetMapping
   public ResponseEntity<PageResponse<ModeloResponse>> listar(
       @RequestParam(defaultValue = "0") final int page,
-      @RequestParam(defaultValue = "20") final int size) {
-    final var result = listarUseCase.execute(page, size);
+      @RequestParam(defaultValue = "20") final int size,
+      @RequestParam(required = false) final Boolean ativo,
+      @RequestParam(required = false) final String codigo) {
+    final var result =
+        listarUseCase.execute(new ListarModelosUseCase.Input(ativo, codigo, page, size));
     return ResponseEntity.ok(PageResponse.from(result, ModeloResponse::from));
   }
 

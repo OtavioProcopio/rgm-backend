@@ -77,6 +77,10 @@ public final class Usuario {
     }
   }
 
+  public Usuario editar(final String novoNome, final String novoEmail, final Instant agora) {
+    return new Usuario(id, novoNome, novoEmail, senhaHash, perfil, ativo, criadoEm, agora);
+  }
+
   public Usuario withAtivo(final boolean novoAtivo, final Instant novoAtualizadoEm) {
     return new Usuario(id, nome, email, senhaHash, perfil, novoAtivo, criadoEm, novoAtualizadoEm);
   }

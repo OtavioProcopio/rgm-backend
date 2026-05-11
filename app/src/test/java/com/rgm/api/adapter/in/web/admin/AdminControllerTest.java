@@ -73,7 +73,7 @@ class AdminControllerTest {
             true,
             agora,
             agora);
-    when(listarUsuariosUseCase.execute(anyInt(), anyInt()))
+    when(listarUsuariosUseCase.execute(any()))
         .thenReturn(new PageResult<>(List.of(u), 0, 20, 1, 1));
 
     mockMvc

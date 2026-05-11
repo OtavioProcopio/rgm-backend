@@ -72,4 +72,17 @@ public class SolicitacaoRepositoryAdapter implements SolicitacaoRepository {
         result.getTotalElements(),
         result.getTotalPages());
   }
+
+  @Override
+  public PageResult<Solicitacao> findByFilters(
+      final StatusSolicitacao status, final UUID modeloId, final int page, final int size) {
+    final var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "criadaEm"));
+    final var result = jpa.findByFilters(status, modeloId, pageable);
+    return new PageResult<>(
+        result.getContent().stream().map(SolicitacaoMapper::toDomain).toList(),
+        result.getNumber(),
+        result.getSize(),
+        result.getTotalElements(),
+        result.getTotalPages());
+  }
 }

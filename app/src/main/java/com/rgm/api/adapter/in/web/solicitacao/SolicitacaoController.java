@@ -3,6 +3,7 @@ package com.rgm.api.adapter.in.web.solicitacao;
 import com.rgm.api.adapter.in.web.dto.request.AbrirSolicitacaoRequest;
 import com.rgm.api.adapter.in.web.dto.request.ComentarioRequest;
 import com.rgm.api.adapter.in.web.dto.request.DevolverSolicitacaoRequest;
+import com.rgm.api.adapter.in.web.dto.request.EditarSolicitacaoRequest;
 import com.rgm.api.adapter.in.web.dto.request.EncerrarSolicitacaoRequest;
 import com.rgm.api.adapter.in.web.dto.request.TriarSolicitacaoRequest;
 import com.rgm.api.adapter.in.web.dto.response.AtividadeResponse;
@@ -10,6 +11,7 @@ import com.rgm.api.adapter.in.web.dto.response.PageResponse;
 import com.rgm.api.adapter.in.web.dto.response.SolicitacaoResponse;
 import com.rgm.api.core.application.usecases.solicitacao.AbrirSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.DevolverSolicitacaoUseCase;
+import com.rgm.api.core.application.usecases.solicitacao.EditarSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.EncerrarSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.EnviarParaValidacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ListarSolicitacoesUseCase;
@@ -34,6 +36,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -50,6 +53,7 @@ public class SolicitacaoController {
   private final DevolverSolicitacaoUseCase devolverUseCase;
   private final EncerrarSolicitacaoUseCase encerrarUseCase;
   private final RegistrarComentarioUseCase comentarioUseCase;
+  private final EditarSolicitacaoUseCase editarUseCase;
   private final ListarSolicitacoesUseCase listarUseCase;
   private final SolicitacaoRepository solicitacaoRepository;
   private final AtividadeSolicitacaoRepository atividadeRepository;
@@ -61,6 +65,7 @@ public class SolicitacaoController {
       final DevolverSolicitacaoUseCase devolverUseCase,
       final EncerrarSolicitacaoUseCase encerrarUseCase,
       final RegistrarComentarioUseCase comentarioUseCase,
+      final EditarSolicitacaoUseCase editarUseCase,
       final ListarSolicitacoesUseCase listarUseCase,
       final SolicitacaoRepository solicitacaoRepository,
       final AtividadeSolicitacaoRepository atividadeRepository) {
@@ -70,6 +75,7 @@ public class SolicitacaoController {
     this.devolverUseCase = devolverUseCase;
     this.encerrarUseCase = encerrarUseCase;
     this.comentarioUseCase = comentarioUseCase;
+    this.editarUseCase = editarUseCase;
     this.listarUseCase = listarUseCase;
     this.solicitacaoRepository = solicitacaoRepository;
     this.atividadeRepository = atividadeRepository;
@@ -79,12 +85,29 @@ public class SolicitacaoController {
   public ResponseEntity<PageResponse<SolicitacaoResponse>> listar(
       @RequestParam(defaultValue = "0") final int page,
       @RequestParam(defaultValue = "20") final int size,
-      @RequestParam(required = false) final String status) {
+      @RequestParam(required = false) final String status,
+      @RequestParam(required = false) final UUID modeloId) {
     final StatusSolicitacao statusFilter =
         status != null ? StatusSolicitacao.valueOf(status) : null;
     final var result =
-        listarUseCase.execute(new ListarSolicitacoesUseCase.Input(statusFilter, page, size));
+        listarUseCase.execute(
+            new ListarSolicitacoesUseCase.Input(statusFilter, modeloId, page, size));
     return ResponseEntity.ok(PageResponse.from(result, SolicitacaoResponse::from));
+  }
+
+  @Transactional
+  @PutMapping("/{id}")
+  public ResponseEntity<SolicitacaoResponse> editar(
+      @PathVariable final UUID id,
+      @Valid @RequestBody final EditarSolicitacaoRequest request,
+      final Authentication authentication) {
+    log.info("SolicitacaoController.editar iniciado");
+    final UUID usuarioId = UUID.fromString(authentication.getName());
+    final var salva =
+        editarUseCase.execute(
+            new EditarSolicitacaoUseCase.Input(
+                id, request.titulo(), request.descricao(), usuarioId));
+    return ResponseEntity.ok(SolicitacaoResponse.from(salva));
   }
 
   @GetMapping("/{id}")

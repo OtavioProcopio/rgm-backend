@@ -4,8 +4,9 @@ import com.rgm.api.core.domain.model.aggregates.Solicitacao;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
 import com.rgm.api.core.domain.ports.repositories.PageResult;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
+import java.util.UUID;
 
-/** Listar solicitacoes com paginacao e filtro opcional por status. */
+/** Listar solicitacoes com paginacao e filtros opcionais. */
 public final class ListarSolicitacoesUseCase {
 
   private final SolicitacaoRepository solicitacaoRepository;
@@ -14,11 +15,12 @@ public final class ListarSolicitacoesUseCase {
     this.solicitacaoRepository = solicitacaoRepository;
   }
 
-  public record Input(StatusSolicitacao status, int page, int size) {}
+  public record Input(StatusSolicitacao status, UUID modeloId, int page, int size) {}
 
   public PageResult<Solicitacao> execute(final Input input) {
-    if (input.status() != null) {
-      return solicitacaoRepository.findByStatus(input.status(), input.page(), input.size());
+    if (input.status() != null || input.modeloId() != null) {
+      return solicitacaoRepository.findByFilters(
+          input.status(), input.modeloId(), input.page(), input.size());
     }
     return solicitacaoRepository.findAll(input.page(), input.size());
   }
