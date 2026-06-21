@@ -1,4 +1,9 @@
-name: Auto-merge develop → main
+name: Sync develop → main (PR automático)
+
+# Quando develop recebe um push, cria automaticamente um PR para main
+# se ainda não existir. O merge em main exige CI passando + aprovação manual
+# (configure branch protection em Settings → Branches → main).
+# Se quiser auto-merge sem aprovação: habilite "Auto-merge" na PR criada.
 
 on:
   push:
@@ -9,23 +14,33 @@ permissions:
   pull-requests: write
 
 jobs:
-  merge:
-    name: Merge develop into main
+  open-pr:
+    name: Abrir PR develop → main
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: main
 
-      - name: Configure Git
+      - name: Criar PR develop → main (se não existir)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          EXISTING=$(gh pr list --base main --head develop --state open --json number --jq '.[0].number')
+          if [ -n "$EXISTING" ]; then
+            echo "PR #$EXISTING já existe — nenhuma ação necessária."
+          else
+            gh pr create \
+              --base main \
+              --head develop \
+              --title "chore: merge develop → main" \
+              --body "PR gerado automaticamente após push em \`develop\`.
 
-      - name: Merge develop into main
-        run: |
-          git fetch origin develop
-          git merge origin/develop --no-edit
-          git push origin main
+          **Antes de mergear:**
+          - [ ] CI passou ✅
+          - [ ] Changelog revisado
+          - [ ] Versão no \`pom.xml\` atualizada (se necessário)
+
+          Após o merge em \`main\`, o workflow de Release cria a tag, publica a imagem Docker e abre o GitHub Release automaticamente."
+          fi

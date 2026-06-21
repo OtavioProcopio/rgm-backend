@@ -1,0 +1,66 @@
+name: PR Automation
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  label:
+    name: Auto-label por branch
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Aplicar label por prefixo do branch
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const branch = context.payload.pull_request.head.ref;
+            const labelMap = {
+              'feature/': 'feature',
+              'feat/':    'feature',
+              'fix/':     'fix',
+              'bugfix/':  'fix',
+              'hotfix/':  'hotfix',
+              'chore/':   'chore',
+              'docs/':    'docs',
+              'refactor/':'refactor',
+              'perf/':    'performance',
+              'test/':    'test',
+            };
+
+            let label = 'other';
+            for (const [prefix, l] of Object.entries(labelMap)) {
+              if (branch.startsWith(prefix)) { label = l; break; }
+            }
+
+            // Garante que o label existe antes de aplicar
+            try {
+              await github.rest.issues.getLabel({
+                owner: context.repo.owner,
+                repo:  context.repo.repo,
+                name:  label,
+              });
+            } catch {
+              const colors = {
+                feature: '0075ca', fix: 'd73a4a', hotfix: 'e11d48',
+                chore: 'e4e669', docs: '0052cc', refactor: 'cfd3d7',
+                performance: 'f9d0c4', test: 'bfd4f2', other: 'eeeeee',
+              };
+              await github.rest.issues.createLabel({
+                owner: context.repo.owner,
+                repo:  context.repo.repo,
+                name:  label,
+                color: colors[label] ?? 'eeeeee',
+              });
+            }
+
+            await github.rest.issues.addLabels({
+              owner:        context.repo.owner,
+              repo:         context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              labels:       [label],
+            });
