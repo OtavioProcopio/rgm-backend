@@ -9,6 +9,10 @@ on:
   push:
     branches: [develop]
 
+concurrency:
+  group: auto-merge-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: write
   pull-requests: write
