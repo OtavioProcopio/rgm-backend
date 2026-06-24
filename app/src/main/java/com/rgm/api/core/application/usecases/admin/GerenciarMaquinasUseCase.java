@@ -2,6 +2,7 @@ package com.rgm.api.core.application.usecases.admin;
 
 import com.rgm.api.core.domain.exceptions.NaoAutorizadoException;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
+import com.rgm.api.core.domain.exceptions.ValidationException;
 import com.rgm.api.core.domain.model.aggregates.Maquina;
 import com.rgm.api.core.domain.model.aggregates.Usuario;
 import com.rgm.api.core.domain.ports.repositories.MaquinaRepository;
@@ -32,6 +33,10 @@ public final class GerenciarMaquinasUseCase {
     final Instant agora = Instant.now();
     validarPermissao(input.adminId());
 
+    if (maquinaRepository.existsByCodigo(input.codigo())) {
+      throw new ValidationException("Código de máquina já cadastrado");
+    }
+
     final Maquina maquina = Maquina.criar(input.nome(), input.codigo(), input.descricao(), agora);
     return maquinaRepository.save(maquina);
   }
@@ -44,6 +49,10 @@ public final class GerenciarMaquinasUseCase {
         maquinaRepository
             .findById(input.maquinaId())
             .orElseThrow(() -> new RecursoNaoEncontradoException("Maquina nao encontrada"));
+
+    if (!maquina.getCodigo().equals(input.codigo()) && maquinaRepository.existsByCodigo(input.codigo())) {
+      throw new ValidationException("Código de máquina já cadastrado");
+    }
 
     final Maquina editada = maquina.editar(input.nome(), input.codigo(), input.descricao(), agora);
 

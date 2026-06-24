@@ -13,4 +13,6 @@ public interface MaquinaRepository {
   void deleteById(UUID id);
 
   PageResult<Maquina> findAll(int page, int size);
+
+  boolean existsByCodigo(String codigo);
 }

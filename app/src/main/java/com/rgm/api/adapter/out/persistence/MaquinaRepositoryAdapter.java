@@ -46,4 +46,9 @@ public class MaquinaRepositoryAdapter implements MaquinaRepository {
         result.getTotalElements(),
         result.getTotalPages());
   }
+
+  @Override
+  public boolean existsByCodigo(final String codigo) {
+    return jpa.existsByCodigo(codigo);
+  }
 }
