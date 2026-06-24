@@ -42,3 +42,7 @@ build/
 *.log
 .DS_Store
 Thumbs.db
+
+# Tool and session logs
+.claude-flow/
+
