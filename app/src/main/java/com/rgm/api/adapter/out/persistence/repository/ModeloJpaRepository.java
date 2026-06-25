@@ -14,6 +14,6 @@ public interface ModeloJpaRepository extends JpaRepository<ModeloJpaEntity, UUID
   @Query(
       "SELECT m FROM ModeloJpaEntity m WHERE "
           + "(:ativo IS NULL OR m.ativo = :ativo) AND "
-          + "(:codigo IS NULL OR LOWER(m.codigo) LIKE LOWER(CONCAT('%', :codigo, '%')))")
+          + "(CAST(:codigo AS string) IS NULL OR LOWER(m.codigo) LIKE LOWER(CONCAT('%', CAST(:codigo AS string), '%')))")
   Page<ModeloJpaEntity> findByFilters(Boolean ativo, String codigo, Pageable pageable);
 }

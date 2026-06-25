@@ -50,7 +50,8 @@ public final class GerenciarMaquinasUseCase {
             .findById(input.maquinaId())
             .orElseThrow(() -> new RecursoNaoEncontradoException("Maquina nao encontrada"));
 
-    if (!maquina.getCodigo().equals(input.codigo()) && maquinaRepository.existsByCodigo(input.codigo())) {
+    if (!maquina.getCodigo().equals(input.codigo())
+        && maquinaRepository.existsByCodigo(input.codigo())) {
       throw new ValidationException("Código de máquina já cadastrado");
     }
 

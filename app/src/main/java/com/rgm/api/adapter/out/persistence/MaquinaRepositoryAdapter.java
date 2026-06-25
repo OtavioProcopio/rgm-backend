@@ -37,7 +37,7 @@ public class MaquinaRepositoryAdapter implements MaquinaRepository {
 
   @Override
   public PageResult<Maquina> findAll(final int page, final int size) {
-    final var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "nome"));
+    final var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "criadaEm"));
     final var result = jpa.findAll(pageable);
     return new PageResult<>(
         result.getContent().stream().map(MaquinaMapper::toDomain).toList(),
