@@ -38,6 +38,11 @@ public class SolicitacaoAtribuicaoRepositoryAdapter implements SolicitacaoAtribu
   }
 
   @Override
+  public boolean existsByUsuarioIdAndRemovidoEmIsNull(final UUID usuarioId) {
+    return jpa.existsByUsuarioIdAndRemovidoEmIsNull(usuarioId);
+  }
+
+  @Override
   @Transactional
   public void deleteBySolicitacaoId(final UUID solicitacaoId) {
     jpa.deleteBySolicitacaoId(solicitacaoId);

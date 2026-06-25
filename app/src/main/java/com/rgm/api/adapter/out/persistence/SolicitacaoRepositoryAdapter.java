@@ -44,6 +44,16 @@ public class SolicitacaoRepositoryAdapter implements SolicitacaoRepository {
   }
 
   @Override
+  public boolean existsByModeloId(final UUID modeloId) {
+    return jpa.existsByModeloId(modeloId);
+  }
+
+  @Override
+  public boolean existsByAbertaPorUsuarioId(final UUID abertaPorUsuarioId) {
+    return jpa.existsByAbertaPorUsuarioId(abertaPorUsuarioId);
+  }
+
+  @Override
   public List<Solicitacao> findByModeloId(final UUID modeloId) {
     return jpa.findByModeloId(modeloId).stream().map(SolicitacaoMapper::toDomain).toList();
   }

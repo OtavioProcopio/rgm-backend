@@ -13,6 +13,10 @@ public interface SolicitacaoJpaRepository extends JpaRepository<SolicitacaoJpaEn
 
   boolean existsByModeloIdAndStatusIn(UUID modeloId, List<StatusSolicitacao> statuses);
 
+  boolean existsByModeloId(UUID modeloId);
+
+  boolean existsByAbertaPorUsuarioId(UUID abertaPorUsuarioId);
+
   List<SolicitacaoJpaEntity> findByModeloId(UUID modeloId);
 
   Page<SolicitacaoJpaEntity> findByStatus(StatusSolicitacao status, Pageable pageable);

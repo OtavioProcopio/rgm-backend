@@ -11,6 +11,8 @@ public interface ModeloJpaRepository extends JpaRepository<ModeloJpaEntity, UUID
 
   int countByMaquinaIdAndCodigo(UUID maquinaId, String codigo);
 
+  boolean existsByMaquinaId(UUID maquinaId);
+
   @Query(
       "SELECT m FROM ModeloJpaEntity m WHERE "
           + "(:ativo IS NULL OR m.ativo = :ativo) AND "

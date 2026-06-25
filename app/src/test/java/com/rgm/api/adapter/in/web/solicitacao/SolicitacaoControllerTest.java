@@ -12,8 +12,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rgm.api.adapter.config.GlobalExceptionHandler;
 import com.rgm.api.adapter.in.web.WebMvcTestConfig;
 import com.rgm.api.adapter.in.web.dto.request.AbrirSolicitacaoRequest;
+import com.rgm.api.adapter.in.web.dto.request.CancelarSolicitacaoRequest;
 import com.rgm.api.adapter.out.security.JwtAuthenticationFilter;
 import com.rgm.api.core.application.usecases.solicitacao.AbrirSolicitacaoUseCase;
+import com.rgm.api.core.application.usecases.solicitacao.CancelarSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.DevolverSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.EditarSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.EncerrarSolicitacaoUseCase;
@@ -22,6 +24,7 @@ import com.rgm.api.core.application.usecases.solicitacao.ListarSolicitacoesUseCa
 import com.rgm.api.core.application.usecases.solicitacao.RegistrarComentarioUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.TriarSolicitacaoUseCase;
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
+import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
 import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
 import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.PageResult;
@@ -55,6 +58,7 @@ class SolicitacaoControllerTest {
   @MockitoBean private EnviarParaValidacaoUseCase enviarUseCase;
   @MockitoBean private DevolverSolicitacaoUseCase devolverUseCase;
   @MockitoBean private EncerrarSolicitacaoUseCase encerrarUseCase;
+  @MockitoBean private CancelarSolicitacaoUseCase cancelarUseCase;
   @MockitoBean private RegistrarComentarioUseCase comentarioUseCase;
   @MockitoBean private EditarSolicitacaoUseCase editarUseCase;
   @MockitoBean private ListarSolicitacoesUseCase listarUseCase;
@@ -112,5 +116,40 @@ class SolicitacaoControllerTest {
         .andExpect(status().isCreated())
         .andExpect(jsonPath("$.titulo").value("Titulo"))
         .andExpect(jsonPath("$.status").value("A_FAZER"));
+  }
+
+  @Test
+  void cancelarSolicitacao() throws Exception {
+    final UUID solId = UUID.randomUUID();
+    final UUID userId = UUID.randomUUID();
+    final Instant agora = Instant.now();
+    final Solicitacao cancelada = new Solicitacao(
+        solId,
+        "Titulo",
+        "Desc",
+        TipoSolicitacao.REPARO,
+        StatusSolicitacao.CANCELADA,
+        null,
+        UUID.randomUUID(),
+        UUID.randomUUID(),
+        "Cancelado via API",
+        agora,
+        agora,
+        null,
+        agora);
+
+    when(cancelarUseCase.execute(any())).thenReturn(cancelada);
+
+    mockMvc
+        .perform(
+            org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch("/api/solicitacoes/{id}/cancelar", solId)
+                .with(user(userId.toString()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        new CancelarSolicitacaoRequest("Cancelado via API"))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("CANCELADA"))
+        .andExpect(jsonPath("$.comentarioFinal").value("Cancelado via API"));
   }
 }

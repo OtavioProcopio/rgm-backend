@@ -16,6 +16,7 @@ import com.rgm.api.core.application.usecases.modelo.ListarModelosUseCase;
 import com.rgm.api.core.application.usecases.modelo.RecalcularPendenciaUseCase;
 import com.rgm.api.core.application.usecases.modelo.SolicitacaoFinalizadaListener;
 import com.rgm.api.core.application.usecases.solicitacao.AbrirSolicitacaoUseCase;
+import com.rgm.api.core.application.usecases.solicitacao.CancelarSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.DevolverSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.EditarSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.EncerrarSolicitacaoUseCase;
@@ -103,6 +104,16 @@ public class UseCaseConfig {
       final AtividadeSolicitacaoRepository atividadeRepository,
       final DomainEventPublisher eventPublisher) {
     return new EncerrarSolicitacaoUseCase(
+        solicitacaoRepository, usuarioRepository, atividadeRepository, eventPublisher);
+  }
+
+  @Bean
+  public CancelarSolicitacaoUseCase cancelarSolicitacaoUseCase(
+      final SolicitacaoRepository solicitacaoRepository,
+      final UsuarioRepository usuarioRepository,
+      final AtividadeSolicitacaoRepository atividadeRepository,
+      final DomainEventPublisher eventPublisher) {
+    return new CancelarSolicitacaoUseCase(
         solicitacaoRepository, usuarioRepository, atividadeRepository, eventPublisher);
   }
 
@@ -224,7 +235,8 @@ public class UseCaseConfig {
       final MaquinaRepository maquinaRepository,
       final SolicitacaoAtribuicaoRepository atribuicaoRepository,
       final AtividadeSolicitacaoRepository atividadeRepository,
-      final SolicitacaoEvidenciaRepository solicitacaoEvidenciaRepository) {
+      final SolicitacaoEvidenciaRepository solicitacaoEvidenciaRepository,
+      final EventoModeloRepository eventoModeloRepository) {
     return new ExcluirRegistroUseCase(
         usuarioRepository,
         solicitacaoRepository,
@@ -232,7 +244,8 @@ public class UseCaseConfig {
         maquinaRepository,
         atribuicaoRepository,
         atividadeRepository,
-        solicitacaoEvidenciaRepository);
+        solicitacaoEvidenciaRepository,
+        eventoModeloRepository);
   }
 
   @Bean

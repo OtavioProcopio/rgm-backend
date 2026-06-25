@@ -41,6 +41,11 @@ public class ModeloRepositoryAdapter implements ModeloRepository {
   }
 
   @Override
+  public boolean existsByMaquinaId(final UUID maquinaId) {
+    return jpa.existsByMaquinaId(maquinaId);
+  }
+
+  @Override
   public PageResult<Modelo> findAll(final int page, final int size) {
     final var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "criadoEm"));
     final var result = jpa.findAll(pageable);

@@ -1,8 +1,8 @@
 package com.rgm.api.core.application.usecases.solicitacao;
 
+import com.rgm.api.core.domain.exceptions.BusinessRuleException;
 import com.rgm.api.core.domain.exceptions.NaoAutorizadoException;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
-import com.rgm.api.core.domain.exceptions.ValidationException;
 import com.rgm.api.core.domain.model.aggregates.Modelo;
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
 import com.rgm.api.core.domain.model.aggregates.Usuario;
@@ -60,7 +60,7 @@ public final class AbrirSolicitacaoUseCase {
             .orElseThrow(() -> new RecursoNaoEncontradoException("Modelo nao encontrado"));
 
     if (!modelo.isAtivo()) {
-      throw new ValidationException("Modelo inativo");
+      throw new BusinessRuleException("Modelo inativo");
     }
 
     final Solicitacao solicitacao =

@@ -1,6 +1,7 @@
 package com.rgm.api.adapter.in.web.solicitacao;
 
 import com.rgm.api.adapter.in.web.dto.request.AbrirSolicitacaoRequest;
+import com.rgm.api.adapter.in.web.dto.request.CancelarSolicitacaoRequest;
 import com.rgm.api.adapter.in.web.dto.request.ComentarioRequest;
 import com.rgm.api.adapter.in.web.dto.request.DevolverSolicitacaoRequest;
 import com.rgm.api.adapter.in.web.dto.request.EditarSolicitacaoRequest;
@@ -10,6 +11,7 @@ import com.rgm.api.adapter.in.web.dto.response.AtividadeResponse;
 import com.rgm.api.adapter.in.web.dto.response.PageResponse;
 import com.rgm.api.adapter.in.web.dto.response.SolicitacaoResponse;
 import com.rgm.api.core.application.usecases.solicitacao.AbrirSolicitacaoUseCase;
+import com.rgm.api.core.application.usecases.solicitacao.CancelarSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.DevolverSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.EditarSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.EncerrarSolicitacaoUseCase;
@@ -52,6 +54,7 @@ public class SolicitacaoController {
   private final EnviarParaValidacaoUseCase enviarUseCase;
   private final DevolverSolicitacaoUseCase devolverUseCase;
   private final EncerrarSolicitacaoUseCase encerrarUseCase;
+  private final CancelarSolicitacaoUseCase cancelarUseCase;
   private final RegistrarComentarioUseCase comentarioUseCase;
   private final EditarSolicitacaoUseCase editarUseCase;
   private final ListarSolicitacoesUseCase listarUseCase;
@@ -64,6 +67,7 @@ public class SolicitacaoController {
       final EnviarParaValidacaoUseCase enviarUseCase,
       final DevolverSolicitacaoUseCase devolverUseCase,
       final EncerrarSolicitacaoUseCase encerrarUseCase,
+      final CancelarSolicitacaoUseCase cancelarUseCase,
       final RegistrarComentarioUseCase comentarioUseCase,
       final EditarSolicitacaoUseCase editarUseCase,
       final ListarSolicitacoesUseCase listarUseCase,
@@ -74,6 +78,7 @@ public class SolicitacaoController {
     this.enviarUseCase = enviarUseCase;
     this.devolverUseCase = devolverUseCase;
     this.encerrarUseCase = encerrarUseCase;
+    this.cancelarUseCase = cancelarUseCase;
     this.comentarioUseCase = comentarioUseCase;
     this.editarUseCase = editarUseCase;
     this.listarUseCase = listarUseCase;
@@ -219,5 +224,19 @@ public class SolicitacaoController {
     comentarioUseCase.execute(
         new RegistrarComentarioUseCase.Input(id, request.comentario(), autorId));
     return ResponseEntity.status(HttpStatus.CREATED).build();
+  }
+
+  @Transactional
+  @PatchMapping("/{id}/cancelar")
+  public ResponseEntity<SolicitacaoResponse> cancelar(
+      @PathVariable final UUID id,
+      @Valid @RequestBody final CancelarSolicitacaoRequest request,
+      final Authentication authentication) {
+    log.info("SolicitacaoController.cancelar iniciado");
+    final UUID usuarioId = UUID.fromString(authentication.getName());
+    final var output =
+        cancelarUseCase.execute(
+            new CancelarSolicitacaoUseCase.Input(id, request.motivo(), usuarioId));
+    return ResponseEntity.ok(SolicitacaoResponse.from(output));
   }
 }
