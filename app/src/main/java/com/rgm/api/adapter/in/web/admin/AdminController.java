@@ -1,10 +1,12 @@
 package com.rgm.api.adapter.in.web.admin;
 
+import com.rgm.api.adapter.in.web.dto.request.AlterarPerfilRequest;
 import com.rgm.api.adapter.in.web.dto.request.CriarMaquinaRequest;
 import com.rgm.api.adapter.in.web.dto.request.CriarUsuarioRequest;
 import com.rgm.api.adapter.in.web.dto.request.EditarMaquinaRequest;
 import com.rgm.api.adapter.in.web.dto.request.EditarUsuarioRequest;
 import com.rgm.api.adapter.in.web.dto.request.ExcluirRegistroRequest;
+import com.rgm.api.adapter.in.web.dto.request.RedefinirSenhaRequest;
 import com.rgm.api.adapter.in.web.dto.response.MaquinaResponse;
 import com.rgm.api.adapter.in.web.dto.response.PageResponse;
 import com.rgm.api.adapter.in.web.dto.response.UsuarioResponse;
@@ -236,5 +238,34 @@ public class AdminController {
             request.recursoId(),
             adminId));
     return ResponseEntity.noContent().build();
+  }
+
+  @Transactional
+  @PatchMapping("/usuarios/{id}/senha")
+  public ResponseEntity<UsuarioResponse> redefinirSenha(
+      @PathVariable final UUID id,
+      @Valid @RequestBody final RedefinirSenhaRequest request,
+      final Authentication authentication) {
+    log.info("AdminController.redefinirSenha iniciado");
+    final UUID adminId = UUID.fromString(authentication.getName());
+    final Usuario usuario =
+        gerenciarUsuariosUseCase.redefinirSenha(
+            new GerenciarUsuariosUseCase.RedefinirSenhaInput(id, request.novaSenha(), adminId));
+    return ResponseEntity.ok(UsuarioResponse.from(usuario));
+  }
+
+  @Transactional
+  @PatchMapping("/usuarios/{id}/perfil")
+  public ResponseEntity<UsuarioResponse> alterarPerfil(
+      @PathVariable final UUID id,
+      @Valid @RequestBody final AlterarPerfilRequest request,
+      final Authentication authentication) {
+    log.info("AdminController.alterarPerfil iniciado");
+    final UUID adminId = UUID.fromString(authentication.getName());
+    final PerfilUsuario novoPerfil = PerfilUsuario.valueOf(request.perfil());
+    final Usuario usuario =
+        gerenciarUsuariosUseCase.alterarPerfil(
+            new GerenciarUsuariosUseCase.AlterarPerfilInput(id, novoPerfil, adminId));
+    return ResponseEntity.ok(UsuarioResponse.from(usuario));
   }
 }

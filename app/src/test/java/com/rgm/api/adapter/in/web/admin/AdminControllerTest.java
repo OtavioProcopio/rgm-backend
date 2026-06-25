@@ -12,8 +12,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rgm.api.adapter.config.GlobalExceptionHandler;
 import com.rgm.api.adapter.in.web.WebMvcTestConfig;
+import com.rgm.api.adapter.in.web.dto.request.AlterarPerfilRequest;
 import com.rgm.api.adapter.in.web.dto.request.CriarMaquinaRequest;
 import com.rgm.api.adapter.in.web.dto.request.CriarUsuarioRequest;
+import com.rgm.api.adapter.in.web.dto.request.RedefinirSenhaRequest;
 import com.rgm.api.adapter.out.security.JwtAuthenticationFilter;
 import com.rgm.api.core.application.usecases.admin.CadastrarPrestadorExternoUseCase;
 import com.rgm.api.core.application.usecases.admin.ExcluirRegistroUseCase;
@@ -142,5 +144,61 @@ class AdminControllerTest {
                         new CriarMaquinaRequest("CNC-02", "CNC02", "Fresadora"))))
         .andExpect(status().isCreated())
         .andExpect(jsonPath("$.nome").value("CNC-02"));
+  }
+
+  @Test
+  void redefinirSenha() throws Exception {
+    final Instant agora = Instant.now();
+    final UUID userId = UUID.randomUUID();
+    final Usuario u =
+        new Usuario(
+            userId,
+            "Alvo",
+            "alvo@t.com",
+            "hashed",
+            PerfilUsuario.OPERADOR,
+            true,
+            agora,
+            agora);
+    when(gerenciarUsuariosUseCase.redefinirSenha(any())).thenReturn(u);
+
+    mockMvc
+        .perform(
+            org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch("/api/admin/usuarios/{id}/senha", userId)
+                .with(user(UUID.randomUUID().toString()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        new RedefinirSenhaRequest("senhaTemporaria"))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.nome").value("Alvo"));
+  }
+
+  @Test
+  void alterarPerfil() throws Exception {
+    final Instant agora = Instant.now();
+    final UUID userId = UUID.randomUUID();
+    final Usuario u =
+        new Usuario(
+            userId,
+            "Alvo",
+            "alvo@t.com",
+            "hashed",
+            PerfilUsuario.GESTOR,
+            true,
+            agora,
+            agora);
+    when(gerenciarUsuariosUseCase.alterarPerfil(any())).thenReturn(u);
+
+    mockMvc
+        .perform(
+            org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch("/api/admin/usuarios/{id}/perfil", userId)
+                .with(user(UUID.randomUUID().toString()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        new AlterarPerfilRequest("GESTOR"))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.perfil").value("GESTOR"));
   }
 }

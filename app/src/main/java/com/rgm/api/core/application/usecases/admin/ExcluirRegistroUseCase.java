@@ -57,6 +57,10 @@ public final class ExcluirRegistroUseCase {
   public void execute(final Input input) {
     validarPermissao(input.adminId());
 
+    if (input.tipo() == TipoRecurso.USUARIO && input.recursoId().equals(input.adminId())) {
+      throw new BusinessRuleException("Nao e possivel excluir a propria conta de administrador");
+    }
+
     switch (input.tipo()) {
       case SOLICITACAO -> excluirSolicitacao(input.recursoId());
       case MODELO -> excluirModelo(input.recursoId());

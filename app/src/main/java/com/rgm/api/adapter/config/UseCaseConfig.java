@@ -6,6 +6,7 @@ import com.rgm.api.core.application.usecases.admin.GerenciarMaquinasUseCase;
 import com.rgm.api.core.application.usecases.admin.GerenciarUsuariosUseCase;
 import com.rgm.api.core.application.usecases.admin.ListarMaquinasUseCase;
 import com.rgm.api.core.application.usecases.admin.ListarUsuariosUseCase;
+import com.rgm.api.core.application.usecases.auth.AlterarSenhaPropriaUseCase;
 import com.rgm.api.core.application.usecases.auth.LoginUseCase;
 import com.rgm.api.core.application.usecases.auth.RefreshTokenUseCase;
 import com.rgm.api.core.application.usecases.evidencia.AnexarEvidenciaUseCase;
@@ -56,6 +57,12 @@ public class UseCaseConfig {
   public RefreshTokenUseCase refreshTokenUseCase(
       final UsuarioRepository usuarioRepository, final AccessTokenIssuer tokenIssuer) {
     return new RefreshTokenUseCase(usuarioRepository, tokenIssuer);
+  }
+
+  @Bean
+  public AlterarSenhaPropriaUseCase alterarSenhaPropriaUseCase(
+      final UsuarioRepository usuarioRepository, final PasswordHasher passwordHasher) {
+    return new AlterarSenhaPropriaUseCase(usuarioRepository, passwordHasher);
   }
 
   @Bean
