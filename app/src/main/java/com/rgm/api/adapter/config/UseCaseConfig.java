@@ -109,8 +109,11 @@ public class UseCaseConfig {
   @Bean
   public RegistrarComentarioUseCase registrarComentarioUseCase(
       final SolicitacaoRepository solicitacaoRepository,
-      final AtividadeSolicitacaoRepository atividadeRepository) {
-    return new RegistrarComentarioUseCase(solicitacaoRepository, atividadeRepository);
+      final AtividadeSolicitacaoRepository atividadeRepository,
+      final UsuarioRepository usuarioRepository,
+      final SolicitacaoAtribuicaoRepository atribuicaoRepository) {
+    return new RegistrarComentarioUseCase(
+        solicitacaoRepository, atividadeRepository, usuarioRepository, atribuicaoRepository);
   }
 
   @Bean
