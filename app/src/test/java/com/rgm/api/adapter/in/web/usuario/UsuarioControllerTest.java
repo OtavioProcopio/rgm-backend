@@ -49,15 +49,7 @@ class UsuarioControllerTest {
     final UUID userId = UUID.randomUUID();
     final Instant agora = Instant.now();
     final Usuario u =
-        new Usuario(
-            userId,
-            "Me",
-            "me@t.com",
-            "hash",
-            PerfilUsuario.OPERADOR,
-            true,
-            agora,
-            agora);
+        new Usuario(userId, "Me", "me@t.com", "hash", PerfilUsuario.OPERADOR, true, agora, agora);
     when(usuarioRepository.findById(userId)).thenReturn(Optional.of(u));
 
     mockMvc
@@ -73,14 +65,7 @@ class UsuarioControllerTest {
     final Instant agora = Instant.now();
     final Usuario u =
         new Usuario(
-            userId,
-            "Me",
-            "me@t.com",
-            "hashNovo",
-            PerfilUsuario.OPERADOR,
-            true,
-            agora,
-            agora);
+            userId, "Me", "me@t.com", "hashNovo", PerfilUsuario.OPERADOR, true, agora, agora);
     when(alterarSenhaUseCase.execute(any())).thenReturn(u);
 
     mockMvc

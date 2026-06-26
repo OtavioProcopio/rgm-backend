@@ -95,4 +95,19 @@ public class SolicitacaoRepositoryAdapter implements SolicitacaoRepository {
         result.getTotalElements(),
         result.getTotalPages());
   }
+
+  @Override
+  public long count() {
+    return jpa.count();
+  }
+
+  @Override
+  public long countByStatus(final StatusSolicitacao status) {
+    return jpa.countByStatus(status);
+  }
+
+  @Override
+  public List<Solicitacao> findByStatus(final StatusSolicitacao status) {
+    return jpa.findByStatus(status).stream().map(SolicitacaoMapper::toDomain).toList();
+  }
 }

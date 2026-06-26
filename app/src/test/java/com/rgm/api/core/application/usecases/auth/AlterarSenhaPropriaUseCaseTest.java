@@ -53,8 +53,7 @@ class AlterarSenhaPropriaUseCaseTest {
 
     final Usuario resultado =
         useCase.execute(
-            new AlterarSenhaPropriaUseCase.Input(
-                usuario.getId(), "senhaAtual", "novaSenha"));
+            new AlterarSenhaPropriaUseCase.Input(usuario.getId(), "senhaAtual", "novaSenha"));
 
     assertNotNull(resultado);
     assertEquals("novaSenhaHash", resultado.getSenhaHash());
@@ -87,8 +86,7 @@ class AlterarSenhaPropriaUseCaseTest {
         BusinessRuleException.class,
         () ->
             useCase.execute(
-                new AlterarSenhaPropriaUseCase.Input(
-                    externo.getId(), "senhaAtual", "novaSenha")));
+                new AlterarSenhaPropriaUseCase.Input(externo.getId(), "senhaAtual", "novaSenha")));
   }
 
   @Test

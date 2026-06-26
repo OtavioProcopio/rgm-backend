@@ -68,8 +68,7 @@ public final class CancelarSolicitacaoUseCase {
 
     // Registra tambem a justificativa/motivo do cancelamento como atividade de comentario
     atividadeRepository.save(
-        AtividadeSolicitacao.comentario(
-            salva.getId(), input.motivo(), input.usuarioId(), agora));
+        AtividadeSolicitacao.comentario(salva.getId(), input.motivo(), input.usuarioId(), agora));
 
     eventPublisher.publish(
         new SolicitacaoFinalizadaEvent(

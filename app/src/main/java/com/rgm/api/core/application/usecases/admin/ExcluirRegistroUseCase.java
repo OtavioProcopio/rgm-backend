@@ -6,7 +6,6 @@ import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.model.aggregates.Usuario;
 import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.EventoModeloRepository;
-import com.rgm.api.core.domain.ports.repositories.MaquinaRepository;
 import com.rgm.api.core.domain.ports.repositories.ModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoAtribuicaoRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoEvidenciaRepository;
@@ -20,7 +19,6 @@ public final class ExcluirRegistroUseCase {
   private final UsuarioRepository usuarioRepository;
   private final SolicitacaoRepository solicitacaoRepository;
   private final ModeloRepository modeloRepository;
-  private final MaquinaRepository maquinaRepository;
   private final SolicitacaoAtribuicaoRepository atribuicaoRepository;
   private final AtividadeSolicitacaoRepository atividadeRepository;
   private final SolicitacaoEvidenciaRepository solicitacaoEvidenciaRepository;
@@ -30,7 +28,6 @@ public final class ExcluirRegistroUseCase {
       final UsuarioRepository usuarioRepository,
       final SolicitacaoRepository solicitacaoRepository,
       final ModeloRepository modeloRepository,
-      final MaquinaRepository maquinaRepository,
       final SolicitacaoAtribuicaoRepository atribuicaoRepository,
       final AtividadeSolicitacaoRepository atividadeRepository,
       final SolicitacaoEvidenciaRepository solicitacaoEvidenciaRepository,
@@ -38,7 +35,6 @@ public final class ExcluirRegistroUseCase {
     this.usuarioRepository = usuarioRepository;
     this.solicitacaoRepository = solicitacaoRepository;
     this.modeloRepository = modeloRepository;
-    this.maquinaRepository = maquinaRepository;
     this.atribuicaoRepository = atribuicaoRepository;
     this.atividadeRepository = atividadeRepository;
     this.solicitacaoEvidenciaRepository = solicitacaoEvidenciaRepository;
@@ -48,8 +44,7 @@ public final class ExcluirRegistroUseCase {
   public enum TipoRecurso {
     SOLICITACAO,
     MODELO,
-    USUARIO,
-    MAQUINA
+    USUARIO
   }
 
   public record Input(TipoRecurso tipo, UUID recursoId, UUID adminId) {}
@@ -65,7 +60,6 @@ public final class ExcluirRegistroUseCase {
       case SOLICITACAO -> excluirSolicitacao(input.recursoId());
       case MODELO -> excluirModelo(input.recursoId());
       case USUARIO -> excluirUsuario(input.recursoId());
-      case MAQUINA -> excluirMaquina(input.recursoId());
     }
   }
 
@@ -93,26 +87,15 @@ public final class ExcluirRegistroUseCase {
     modeloRepository.deleteById(modeloId);
   }
 
-  private void excluirMaquina(final UUID maquinaId) {
-    maquinaRepository
-        .findById(maquinaId)
-        .orElseThrow(() -> new RecursoNaoEncontradoException("Maquina nao encontrada"));
-
-    if (modeloRepository.existsByMaquinaId(maquinaId)) {
-      throw new BusinessRuleException(
-          "Nao e possivel excluir maquina com modelos vinculados. Desative a maquina em vez de excluir.");
-    }
-
-    maquinaRepository.deleteById(maquinaId);
-  }
-
   private void excluirUsuario(final UUID usuarioId) {
     usuarioRepository
         .findById(usuarioId)
         .orElseThrow(() -> new RecursoNaoEncontradoException("Usuario nao encontrado"));
 
-    final boolean temSolicitacoesAbertas = solicitacaoRepository.existsByAbertaPorUsuarioId(usuarioId);
-    final boolean temAtribuicoes = atribuicaoRepository.existsByUsuarioIdAndRemovidoEmIsNull(usuarioId);
+    final boolean temSolicitacoesAbertas =
+        solicitacaoRepository.existsByAbertaPorUsuarioId(usuarioId);
+    final boolean temAtribuicoes =
+        atribuicaoRepository.existsByUsuarioIdAndRemovidoEmIsNull(usuarioId);
     final boolean temAtividades = atividadeRepository.existsByAutorId(usuarioId);
     final boolean temEventos = eventoModeloRepository.existsByExecutadoPorUsuarioId(usuarioId);
 

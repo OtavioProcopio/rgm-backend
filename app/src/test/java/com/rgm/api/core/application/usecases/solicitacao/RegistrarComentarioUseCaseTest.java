@@ -40,10 +40,7 @@ class RegistrarComentarioUseCaseTest {
     atribuicaoRepository = mock(SolicitacaoAtribuicaoRepository.class);
     useCase =
         new RegistrarComentarioUseCase(
-            solicitacaoRepository,
-            atividadeRepository,
-            usuarioRepository,
-            atribuicaoRepository);
+            solicitacaoRepository, atividadeRepository, usuarioRepository, atribuicaoRepository);
   }
 
   @Test
@@ -69,14 +66,7 @@ class RegistrarComentarioUseCaseTest {
     final UUID autorId = UUID.randomUUID();
     final Usuario autor =
         new Usuario(
-            autorId,
-            "Autor",
-            "autor@rgm.com",
-            "hash",
-            PerfilUsuario.GESTOR,
-            true,
-            agora,
-            agora);
+            autorId, "Autor", "autor@rgm.com", "hash", PerfilUsuario.GESTOR, true, agora, agora);
 
     when(solicitacaoRepository.findById(solicitacao.getId())).thenReturn(Optional.of(solicitacao));
     when(usuarioRepository.findById(autorId)).thenReturn(Optional.of(autor));
@@ -113,14 +103,7 @@ class RegistrarComentarioUseCaseTest {
     final UUID autorId = UUID.randomUUID();
     final Usuario autor =
         new Usuario(
-            autorId,
-            "Autor",
-            "autor@rgm.com",
-            "hash",
-            PerfilUsuario.GESTOR,
-            true,
-            agora,
-            agora);
+            autorId, "Autor", "autor@rgm.com", "hash", PerfilUsuario.GESTOR, true, agora, agora);
 
     when(solicitacaoRepository.findById(solicitacao.getId())).thenReturn(Optional.of(solicitacao));
     when(usuarioRepository.findById(autorId)).thenReturn(Optional.of(autor));
@@ -196,14 +179,7 @@ class RegistrarComentarioUseCaseTest {
     final UUID autorId = UUID.randomUUID();
     final Usuario autor =
         new Usuario(
-            autorId,
-            "Autor",
-            "autor@rgm.com",
-            "hash",
-            PerfilUsuario.GESTOR,
-            false,
-            agora,
-            agora);
+            autorId, "Autor", "autor@rgm.com", "hash", PerfilUsuario.GESTOR, false, agora, agora);
 
     when(solicitacaoRepository.findById(solicitacao.getId())).thenReturn(Optional.of(solicitacao));
     when(usuarioRepository.findById(autorId)).thenReturn(Optional.of(autor));
@@ -236,15 +212,7 @@ class RegistrarComentarioUseCaseTest {
 
     final UUID autorId = UUID.randomUUID();
     final Usuario autor =
-        new Usuario(
-            autorId,
-            "Autor",
-            null,
-            null,
-            PerfilUsuario.EXTERNO,
-            true,
-            agora,
-            agora);
+        new Usuario(autorId, "Autor", null, null, PerfilUsuario.EXTERNO, true, agora, agora);
 
     when(solicitacaoRepository.findById(solicitacao.getId())).thenReturn(Optional.of(solicitacao));
     when(usuarioRepository.findById(autorId)).thenReturn(Optional.of(autor));
@@ -384,7 +352,8 @@ class RegistrarComentarioUseCaseTest {
         NaoAutorizadoException.class,
         () ->
             useCase.execute(
-                new RegistrarComentarioUseCase.Input(solicitacao.getId(), "Comentario", operadorId)));
+                new RegistrarComentarioUseCase.Input(
+                    solicitacao.getId(), "Comentario", operadorId)));
   }
 
   @Test
@@ -425,7 +394,8 @@ class RegistrarComentarioUseCaseTest {
         NaoAutorizadoException.class,
         () ->
             useCase.execute(
-                new RegistrarComentarioUseCase.Input(solicitacao.getId(), "Comentario", operadorId)));
+                new RegistrarComentarioUseCase.Input(
+                    solicitacao.getId(), "Comentario", operadorId)));
   }
 
   @Test
@@ -450,14 +420,7 @@ class RegistrarComentarioUseCaseTest {
     final UUID gestorId = UUID.randomUUID();
     final Usuario gestor =
         new Usuario(
-            gestorId,
-            "Gestor",
-            "gestor@rgm.com",
-            "hash",
-            PerfilUsuario.GESTOR,
-            true,
-            agora,
-            agora);
+            gestorId, "Gestor", "gestor@rgm.com", "hash", PerfilUsuario.GESTOR, true, agora, agora);
 
     when(solicitacaoRepository.findById(solicitacao.getId())).thenReturn(Optional.of(solicitacao));
     when(usuarioRepository.findById(gestorId)).thenReturn(Optional.of(gestor));

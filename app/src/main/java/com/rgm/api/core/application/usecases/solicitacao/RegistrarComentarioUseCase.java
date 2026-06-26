@@ -57,18 +57,21 @@ public final class RegistrarComentarioUseCase {
     }
 
     if (solicitacao.getStatus().isTerminal()) {
-      if (usuario.getPerfil() != PerfilUsuario.GESTOR && usuario.getPerfil() != PerfilUsuario.ADMINISTRADOR) {
+      if (usuario.getPerfil() != PerfilUsuario.GESTOR
+          && usuario.getPerfil() != PerfilUsuario.ADMINISTRADOR) {
         throw new NaoAutorizadoException("Nao e possivel comentar em solicitacao encerrada");
       }
     }
 
-    if (usuario.getPerfil() != PerfilUsuario.GESTOR && usuario.getPerfil() != PerfilUsuario.ADMINISTRADOR) {
+    if (usuario.getPerfil() != PerfilUsuario.GESTOR
+        && usuario.getPerfil() != PerfilUsuario.ADMINISTRADOR) {
       final boolean ehAutor = solicitacao.getAbertaPorUsuarioId().equals(input.autorId());
       final boolean atribuido =
           atribuicaoRepository.existsBySolicitacaoIdAndUsuarioIdAndRemovidoEmIsNull(
               input.solicitacaoId(), input.autorId());
       if (!ehAutor && !atribuido) {
-        throw new NaoAutorizadoException("Usuario nao tem permissao para comentar nesta solicitacao");
+        throw new NaoAutorizadoException(
+            "Usuario nao tem permissao para comentar nesta solicitacao");
       }
     }
 

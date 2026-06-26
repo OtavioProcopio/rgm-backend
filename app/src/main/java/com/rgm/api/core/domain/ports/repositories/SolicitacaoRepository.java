@@ -28,4 +28,10 @@ public interface SolicitacaoRepository {
 
   PageResult<Solicitacao> findByFilters(
       StatusSolicitacao status, UUID modeloId, int page, int size);
+
+  long count();
+
+  long countByStatus(StatusSolicitacao status);
+
+  List<Solicitacao> findByStatus(StatusSolicitacao status);
 }

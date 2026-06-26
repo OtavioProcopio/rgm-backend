@@ -203,6 +203,74 @@ class GerenciarUsuariosUseCaseTest {
   }
 
   @Test
+  void deveAtivarUsuario() {
+    final Usuario admin = criarAdmin();
+    final Instant agora = Instant.now();
+    final Usuario alvo =
+        new Usuario(
+            UUID.randomUUID(),
+            "Alvo",
+            "alvo@test.com",
+            "hash",
+            PerfilUsuario.OPERADOR,
+            false,
+            agora,
+            agora);
+    when(usuarioRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+    when(usuarioRepository.findById(alvo.getId())).thenReturn(Optional.of(alvo));
+    when(usuarioRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    final Usuario resultado =
+        useCase.ativar(new GerenciarUsuariosUseCase.AtivarInput(alvo.getId(), admin.getId()));
+
+    assertTrue(resultado.isAtivo());
+  }
+
+  @Test
+  void deveEditarUsuario() {
+    final Usuario admin = criarAdmin();
+    final Instant agora = Instant.now();
+    final Usuario alvo =
+        new Usuario(
+            UUID.randomUUID(),
+            "Alvo",
+            "alvo@test.com",
+            "hash",
+            PerfilUsuario.OPERADOR,
+            true,
+            agora,
+            agora);
+    when(usuarioRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+    when(usuarioRepository.findById(alvo.getId())).thenReturn(Optional.of(alvo));
+    when(usuarioRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    final Usuario resultado =
+        useCase.editar(
+            new GerenciarUsuariosUseCase.EditarInput(
+                alvo.getId(), "Novo Nome", "novo@test.com", admin.getId()));
+
+    assertEquals("Novo Nome", resultado.getNome());
+  }
+
+  @Test
+  void deveFalharAoEditarUsuarioExterno() {
+    final Usuario admin = criarAdmin();
+    final Instant agora = Instant.now();
+    final Usuario externo =
+        new Usuario(
+            UUID.randomUUID(), "Ext", null, null, PerfilUsuario.EXTERNO, true, agora, agora);
+    when(usuarioRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+    when(usuarioRepository.findById(externo.getId())).thenReturn(Optional.of(externo));
+
+    assertThrows(
+        BusinessRuleException.class,
+        () ->
+            useCase.editar(
+                new GerenciarUsuariosUseCase.EditarInput(
+                    externo.getId(), "Nome", "e@t.com", admin.getId())));
+  }
+
+  @Test
   void deveFalharAoAlterarProprioPerfilDeAdmin() {
     final Usuario admin = criarAdmin();
     when(usuarioRepository.findById(admin.getId())).thenReturn(Optional.of(admin));

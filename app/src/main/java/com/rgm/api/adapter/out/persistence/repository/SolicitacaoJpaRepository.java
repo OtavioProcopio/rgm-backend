@@ -27,4 +27,8 @@ public interface SolicitacaoJpaRepository extends JpaRepository<SolicitacaoJpaEn
           + "(:modeloId IS NULL OR s.modeloId = :modeloId)")
   Page<SolicitacaoJpaEntity> findByFilters(
       StatusSolicitacao status, UUID modeloId, Pageable pageable);
+
+  long countByStatus(StatusSolicitacao status);
+
+  List<SolicitacaoJpaEntity> findByStatus(StatusSolicitacao status);
 }

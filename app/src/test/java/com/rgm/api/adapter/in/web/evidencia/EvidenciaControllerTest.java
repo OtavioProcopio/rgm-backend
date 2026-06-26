@@ -4,6 +4,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -61,5 +62,35 @@ class EvidenciaControllerTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$[0].nomeArquivo").value("foto.jpg"))
         .andExpect(jsonPath("$[0].publicUrl").value("http://minio/foto.jpg"));
+  }
+
+  @Test
+  void anexarEvidencia() throws Exception {
+    final UUID solId = UUID.randomUUID();
+    final UUID userId = UUID.randomUUID();
+    final Instant agora = Instant.now();
+    final Evidencia ev =
+        new Evidencia(
+            UUID.randomUUID(),
+            "http://minio/foto.jpg",
+            "image/jpeg",
+            "foto.jpg",
+            1024,
+            userId,
+            agora);
+    when(anexarUseCase.upload(any())).thenReturn("http://minio/foto.jpg");
+    when(anexarUseCase.persist(any(), any())).thenReturn(ev);
+
+    final org.springframework.mock.web.MockMultipartFile arquivo =
+        new org.springframework.mock.web.MockMultipartFile(
+            "file", "foto.jpg", "image/jpeg", "fake-content".getBytes());
+
+    mockMvc
+        .perform(
+            multipart("/api/solicitacoes/{solId}/evidencias", solId)
+                .file(arquivo)
+                .with(user(userId.toString())))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.nomeArquivo").value("foto.jpg"));
   }
 }

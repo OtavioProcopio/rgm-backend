@@ -19,7 +19,7 @@ public final class ModeloMapper {
         m.getEstadoAtualDescricao(),
         m.getEstadoAtualAtualizadoEm(),
         m.isAtivo(),
-        m.getMaquinaId(),
+        m.getMaquina(),
         m.isTemPendenciaAberta(),
         m.getCriadoEm(),
         m.getAtualizadoEm());
@@ -37,7 +37,7 @@ public final class ModeloMapper {
         e.getEstadoAtualDescricao(),
         e.getEstadoAtualAtualizadoEm(),
         e.isAtivo(),
-        e.getMaquinaId(),
+        e.getMaquina(),
         e.isTemPendenciaAberta(),
         e.getCriadoEm(),
         e.getAtualizadoEm());

@@ -25,4 +25,6 @@ public interface UsuarioRepository {
   PageResult<Usuario> findAll(int page, int size);
 
   PageResult<Usuario> findByFilters(PerfilUsuario perfil, Boolean ativo, int page, int size);
+
+  long count();
 }

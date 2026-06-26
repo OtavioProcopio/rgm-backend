@@ -32,7 +32,7 @@ class AbrirSolicitacaoUseCaseTest {
   private UsuarioRepository usuarioRepository;
   private AbrirSolicitacaoUseCase useCase;
 
-  private final UUID maquinaId = UUID.randomUUID();
+  private final String maquina = "FBOX";
   private final UUID usuarioId = UUID.randomUUID();
 
   @BeforeEach
@@ -59,7 +59,7 @@ class AbrirSolicitacaoUseCaseTest {
         null,
         null,
         ativo,
-        maquinaId,
+        maquina,
         temPendencia,
         agora,
         agora);

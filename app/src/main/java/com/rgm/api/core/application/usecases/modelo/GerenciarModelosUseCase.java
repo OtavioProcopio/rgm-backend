@@ -2,11 +2,8 @@ package com.rgm.api.core.application.usecases.modelo;
 
 import com.rgm.api.core.domain.exceptions.NaoAutorizadoException;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
-import com.rgm.api.core.domain.exceptions.ValidationException;
-import com.rgm.api.core.domain.model.aggregates.Maquina;
 import com.rgm.api.core.domain.model.aggregates.Modelo;
 import com.rgm.api.core.domain.model.aggregates.Usuario;
-import com.rgm.api.core.domain.ports.repositories.MaquinaRepository;
 import com.rgm.api.core.domain.ports.repositories.ModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import java.time.Instant;
@@ -16,50 +13,39 @@ import java.util.UUID;
 public final class GerenciarModelosUseCase {
 
   private final ModeloRepository modeloRepository;
-  private final MaquinaRepository maquinaRepository;
   private final UsuarioRepository usuarioRepository;
 
   public GerenciarModelosUseCase(
-      final ModeloRepository modeloRepository,
-      final MaquinaRepository maquinaRepository,
-      final UsuarioRepository usuarioRepository) {
+      final ModeloRepository modeloRepository, final UsuarioRepository usuarioRepository) {
     this.modeloRepository = modeloRepository;
-    this.maquinaRepository = maquinaRepository;
     this.usuarioRepository = usuarioRepository;
   }
 
   public record CriarInput(
-      String codigo, String descricao, String observacoes, UUID maquinaId, UUID gestorId) {}
+      String codigo, String descricao, String observacoes, String maquina, UUID gestorId) {}
 
   public record EditarInput(
-      UUID modeloId, String codigo, String descricao, String observacoes, UUID gestorId) {}
+      UUID modeloId,
+      String codigo,
+      String descricao,
+      String observacoes,
+      String maquina,
+      UUID gestorId) {}
 
   public record DesativarInput(UUID modeloId, UUID gestorId) {}
+
+  public record ReativarInput(UUID modeloId, UUID gestorId) {}
 
   public Modelo criar(final CriarInput input) {
     final Instant agora = Instant.now();
     validarPermissaoModelo(input.gestorId());
 
-    final Maquina maquina =
-        maquinaRepository
-            .findById(input.maquinaId())
-            .orElseThrow(() -> new RecursoNaoEncontradoException("Maquina nao encontrada"));
-
-    if (!maquina.isAtiva()) {
-      throw new ValidationException("Maquina inativa");
-    }
-
     final int versao =
-        modeloRepository.countByMaquinaIdAndCodigo(input.maquinaId(), input.codigo()) + 1;
+        modeloRepository.countByMaquinaAndCodigo(input.maquina(), input.codigo()) + 1;
 
     final Modelo modelo =
         Modelo.criar(
-            input.codigo(),
-            input.descricao(),
-            input.observacoes(),
-            input.maquinaId(),
-            versao,
-            agora);
+            input.codigo(), input.descricao(), input.observacoes(), input.maquina(), versao, agora);
 
     return modeloRepository.save(modelo);
   }
@@ -74,7 +60,8 @@ public final class GerenciarModelosUseCase {
             .orElseThrow(() -> new RecursoNaoEncontradoException("Modelo nao encontrado"));
 
     final Modelo editado =
-        modelo.editar(input.codigo(), input.descricao(), input.observacoes(), agora);
+        modelo.editar(
+            input.codigo(), input.descricao(), input.observacoes(), input.maquina(), agora);
 
     return modeloRepository.save(editado);
   }
@@ -90,6 +77,19 @@ public final class GerenciarModelosUseCase {
 
     final Modelo desativado = modelo.desativar(agora);
     return modeloRepository.save(desativado);
+  }
+
+  public Modelo reativar(final ReativarInput input) {
+    final Instant agora = Instant.now();
+    validarPermissaoModelo(input.gestorId());
+
+    final Modelo modelo =
+        modeloRepository
+            .findById(input.modeloId())
+            .orElseThrow(() -> new RecursoNaoEncontradoException("Modelo nao encontrado"));
+
+    final Modelo ativado = modelo.ativar(agora);
+    return modeloRepository.save(ativado);
   }
 
   private void validarPermissaoModelo(final UUID gestorId) {

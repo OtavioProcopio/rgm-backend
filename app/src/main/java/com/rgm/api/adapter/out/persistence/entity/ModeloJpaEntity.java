@@ -44,7 +44,7 @@ public class ModeloJpaEntity {
   private boolean ativo;
 
   @Column(nullable = false)
-  private UUID maquinaId;
+  private String maquina;
 
   @Column(nullable = false)
   private boolean temPendenciaAberta;

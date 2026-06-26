@@ -64,14 +64,7 @@ class CancelarSolicitacaoUseCaseTest {
   private Usuario criarUsuario(final PerfilUsuario perfil) {
     final Instant agora = Instant.now();
     return new Usuario(
-        UUID.randomUUID(),
-        "Nome Usuario",
-        "user@test.com",
-        "hash",
-        perfil,
-        true,
-        agora,
-        agora);
+        UUID.randomUUID(), "Nome Usuario", "user@test.com", "hash", perfil, true, agora, agora);
   }
 
   @Test
@@ -140,7 +133,6 @@ class CancelarSolicitacaoUseCaseTest {
         RecursoNaoEncontradoException.class,
         () ->
             useCase.execute(
-                new CancelarSolicitacaoUseCase.Input(
-                    solicitacaoId, "Cancelando", gestor.getId())));
+                new CancelarSolicitacaoUseCase.Input(solicitacaoId, "Cancelando", gestor.getId())));
   }
 }
