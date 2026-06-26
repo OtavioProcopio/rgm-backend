@@ -10,5 +10,7 @@ public interface AtividadeSolicitacaoJpaRepository
 
   List<AtividadeSolicitacaoJpaEntity> findBySolicitacaoId(UUID solicitacaoId);
 
+  boolean existsByAutorUsuarioId(UUID autorUsuarioId);
+
   void deleteBySolicitacaoId(UUID solicitacaoId);
 }

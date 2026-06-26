@@ -35,4 +35,37 @@ class GlobalExceptionHandlerTest {
     assertEquals(409, response.getStatusCode().value());
     assertEquals("Conflict", response.getBody().error());
   }
+
+  @Test
+  void deveRetornar400ParaTypeMismatch() {
+    final var ex =
+        org.mockito.Mockito.mock(
+            org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class);
+    org.mockito.Mockito.when(ex.getName()).thenReturn("id");
+
+    final ResponseEntity<ErrorResponse> response = handler.handleTypeMismatch(ex);
+
+    assertEquals(400, response.getStatusCode().value());
+    assertTrue(response.getBody().message().contains("Parâmetro 'id' com formato inválido"));
+  }
+
+  @Test
+  void deveRetornar405ParaMethodNotSupported() {
+    final var ex = new org.springframework.web.HttpRequestMethodNotSupportedException("POST");
+
+    final ResponseEntity<ErrorResponse> response = handler.handleMethodNotSupported(ex);
+
+    assertEquals(405, response.getStatusCode().value());
+    assertEquals("Method Not Allowed", response.getBody().error());
+  }
+
+  @Test
+  void deveRetornar403ParaAccessDenied() {
+    final var ex = new org.springframework.security.access.AccessDeniedException("Negado");
+
+    final ResponseEntity<ErrorResponse> response = handler.handleAccessDenied(ex);
+
+    assertEquals(403, response.getStatusCode().value());
+    assertEquals("Forbidden", response.getBody().error());
+  }
 }

@@ -9,7 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 
 public interface ModeloJpaRepository extends JpaRepository<ModeloJpaEntity, UUID> {
 
-  int countByMaquinaIdAndCodigo(UUID maquinaId, String codigo);
+  int countByMaquinaAndCodigo(String maquina, String codigo);
 
   @Query(
       "SELECT m FROM ModeloJpaEntity m WHERE "

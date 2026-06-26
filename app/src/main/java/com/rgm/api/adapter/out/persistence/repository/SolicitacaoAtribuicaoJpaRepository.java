@@ -12,5 +12,7 @@ public interface SolicitacaoAtribuicaoJpaRepository
 
   boolean existsBySolicitacaoIdAndUsuarioIdAndRemovidoEmIsNull(UUID solicitacaoId, UUID usuarioId);
 
+  boolean existsByUsuarioIdAndRemovidoEmIsNull(UUID usuarioId);
+
   void deleteBySolicitacaoId(UUID solicitacaoId);
 }
