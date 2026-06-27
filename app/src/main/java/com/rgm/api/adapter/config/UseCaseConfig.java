@@ -8,6 +8,7 @@ import com.rgm.api.core.application.usecases.auth.AlterarSenhaPropriaUseCase;
 import com.rgm.api.core.application.usecases.auth.LoginUseCase;
 import com.rgm.api.core.application.usecases.auth.RefreshTokenUseCase;
 import com.rgm.api.core.application.usecases.evidencia.AnexarEvidenciaUseCase;
+import com.rgm.api.core.application.usecases.evidencia.ExcluirEvidenciaUseCase;
 import com.rgm.api.core.application.usecases.evidencia.VisualizarEvidenciaUseCase;
 import com.rgm.api.core.application.usecases.modelo.AtualizarFotoCapaUseCase;
 import com.rgm.api.core.application.usecases.modelo.GerenciarModelosUseCase;
@@ -179,6 +180,21 @@ public class UseCaseConfig {
         solicitacaoEvidenciaRepository,
         atividadeRepository,
         storageService,
+        usuarioRepository,
+        atribuicaoRepository);
+  }
+
+  @Bean
+  public ExcluirEvidenciaUseCase excluirEvidenciaUseCase(
+      final SolicitacaoRepository solicitacaoRepository,
+      final EvidenciaRepository evidenciaRepository,
+      final SolicitacaoEvidenciaRepository solicitacaoEvidenciaRepository,
+      final UsuarioRepository usuarioRepository,
+      final SolicitacaoAtribuicaoRepository atribuicaoRepository) {
+    return new ExcluirEvidenciaUseCase(
+        solicitacaoRepository,
+        evidenciaRepository,
+        solicitacaoEvidenciaRepository,
         usuarioRepository,
         atribuicaoRepository);
   }

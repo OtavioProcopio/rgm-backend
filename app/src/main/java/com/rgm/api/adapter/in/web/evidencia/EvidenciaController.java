@@ -2,6 +2,7 @@ package com.rgm.api.adapter.in.web.evidencia;
 
 import com.rgm.api.adapter.in.web.dto.response.EvidenciaResponse;
 import com.rgm.api.core.application.usecases.evidencia.AnexarEvidenciaUseCase;
+import com.rgm.api.core.application.usecases.evidencia.ExcluirEvidenciaUseCase;
 import com.rgm.api.core.application.usecases.evidencia.VisualizarEvidenciaUseCase;
 import com.rgm.api.core.domain.model.aggregates.Evidencia;
 import java.util.List;
@@ -12,6 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -27,12 +29,15 @@ public class EvidenciaController {
 
   private final AnexarEvidenciaUseCase anexarUseCase;
   private final VisualizarEvidenciaUseCase visualizarUseCase;
+  private final ExcluirEvidenciaUseCase excluirUseCase;
 
   public EvidenciaController(
       final AnexarEvidenciaUseCase anexarUseCase,
-      final VisualizarEvidenciaUseCase visualizarUseCase) {
+      final VisualizarEvidenciaUseCase visualizarUseCase,
+      final ExcluirEvidenciaUseCase excluirUseCase) {
     this.anexarUseCase = anexarUseCase;
     this.visualizarUseCase = visualizarUseCase;
+    this.excluirUseCase = excluirUseCase;
   }
 
   @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -57,6 +62,17 @@ public class EvidenciaController {
     } catch (final java.io.IOException e) {
       throw new RuntimeException("Erro ao ler arquivo: " + e.getMessage(), e);
     }
+  }
+
+  @DeleteMapping("/{evidenciaId}")
+  public ResponseEntity<Void> excluir(
+      @PathVariable final UUID solicitacaoId,
+      @PathVariable final UUID evidenciaId,
+      final Authentication authentication) {
+    log.info("EvidenciaController.excluir solicitacaoId={} evidenciaId={}", solicitacaoId, evidenciaId);
+    final UUID usuarioId = UUID.fromString(authentication.getName());
+    excluirUseCase.execute(new ExcluirEvidenciaUseCase.Input(solicitacaoId, evidenciaId, usuarioId));
+    return ResponseEntity.noContent().build();
   }
 
   @GetMapping

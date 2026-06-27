@@ -9,4 +9,6 @@ public interface EvidenciaRepository {
   Optional<Evidencia> findById(UUID id);
 
   Evidencia save(Evidencia evidencia);
+
+  void deleteById(UUID id);
 }
