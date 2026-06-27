@@ -11,9 +11,9 @@ import com.lowagie.text.Phrase;
 import com.lowagie.text.pdf.PdfPCell;
 import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
+import com.rgm.api.core.domain.model.aggregates.EventoModelo;
 import com.rgm.api.core.domain.model.aggregates.Modelo;
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
-import com.rgm.api.core.domain.model.aggregates.EventoModelo;
 import com.rgm.api.core.domain.model.entities.AtividadeSolicitacao;
 import java.awt.Color;
 import java.io.ByteArrayOutputStream;
@@ -75,7 +75,8 @@ public class ModeloPdfService {
     if (!solicitacoes.isEmpty()) {
       addSecao(doc, "Histórico de Solicitações");
       for (final Solicitacao s : solicitacoes) {
-        addSolicitacaoComHistorico(doc, s, atividadesPorSolicitacao.getOrDefault(s.getId(), List.of()));
+        addSolicitacaoComHistorico(
+            doc, s, atividadesPorSolicitacao.getOrDefault(s.getId(), List.of()));
       }
     }
     doc.close();
@@ -124,19 +125,14 @@ public class ModeloPdfService {
       sub.setSpacingAfter(2);
       doc.add(sub);
 
-      doc.add(
-          new Paragraph(
-              "Gerado em: " + FMT.format(java.time.Instant.now()), SUBTITLE_FONT));
+      doc.add(new Paragraph("Gerado em: " + FMT.format(java.time.Instant.now()), SUBTITLE_FONT));
 
       doc.add(Chunk.NEWLINE);
 
       // KPI summary table
-      final long abertas =
-          solicitacoes.stream().filter(s -> !s.getStatus().isTerminal()).count();
+      final long abertas = solicitacoes.stream().filter(s -> !s.getStatus().isTerminal()).count();
       final long concluidas =
-          solicitacoes.stream()
-              .filter(s -> s.getStatus().name().equals("CONCLUIDA"))
-              .count();
+          solicitacoes.stream().filter(s -> s.getStatus().name().equals("CONCLUIDA")).count();
 
       final float[] kpiWidths = {2f, 2f, 2f, 2f, 2f};
       final var kpi = new PdfPTable(kpiWidths.length);
@@ -144,9 +140,15 @@ public class ModeloPdfService {
       kpi.setHorizontalAlignment(Element.ALIGN_LEFT);
       kpi.setWidths(kpiWidths);
       addKpiCell(kpi, "Máquina", modelo.getMaquina(), HEADER_BG);
-      addKpiCell(kpi, "Status", modelo.isAtivo() ? "Ativo" : "Inativo",
+      addKpiCell(
+          kpi,
+          "Status",
+          modelo.isAtivo() ? "Ativo" : "Inativo",
           modelo.isAtivo() ? GREEN_BG : RED_BG);
-      addKpiCell(kpi, "Pendência", modelo.isTemPendenciaAberta() ? "Sim" : "Não",
+      addKpiCell(
+          kpi,
+          "Pendência",
+          modelo.isTemPendenciaAberta() ? "Sim" : "Não",
           modelo.isTemPendenciaAberta() ? AMBER_BG : new Color(156, 163, 175));
       addKpiCell(kpi, "Sol. abertas", String.valueOf(abertas), HEADER_BG);
       addKpiCell(kpi, "Concluídas", String.valueOf(concluidas), new Color(21, 128, 61));
@@ -156,8 +158,8 @@ public class ModeloPdfService {
     }
   }
 
-  private void addKpiCell(final PdfPTable table, final String label, final String value,
-      final Color bg) {
+  private void addKpiCell(
+      final PdfPTable table, final String label, final String value, final Color bg) {
     final var cell = new PdfPCell();
     cell.setBackgroundColor(bg);
     cell.setPadding(6);
@@ -175,8 +177,8 @@ public class ModeloPdfService {
       table.setWidthPercentage(100);
       table.setWidths(widths);
 
-      addHeaderRow(table, "Código", "Versão", "Descrição", "Máquina", "Status", "Pendência",
-          "Criado em");
+      addHeaderRow(
+          table, "Código", "Versão", "Descrição", "Máquina", "Status", "Pendência", "Criado em");
 
       final Color even = new Color(245, 245, 245);
       boolean isEven = false;
@@ -188,7 +190,8 @@ public class ModeloPdfService {
         addCell(table, m.getMaquina(), bg, CELL_FONT);
         addCell(table, m.isAtivo() ? "Ativo" : "Inativo", bg, CELL_FONT);
         addCell(table, m.isTemPendenciaAberta() ? "⚠ Sim" : "Não", bg, CELL_FONT);
-        addCell(table, m.getCriadoEm() != null ? DATE_FMT.format(m.getCriadoEm()) : "—", bg, CELL_FONT);
+        addCell(
+            table, m.getCriadoEm() != null ? DATE_FMT.format(m.getCriadoEm()) : "—", bg, CELL_FONT);
         isEven = !isEven;
       }
       doc.add(table);
@@ -223,9 +226,7 @@ public class ModeloPdfService {
   }
 
   private void addSolicitacaoComHistorico(
-      final Document doc,
-      final Solicitacao s,
-      final List<AtividadeSolicitacao> atividades) {
+      final Document doc, final Solicitacao s, final List<AtividadeSolicitacao> atividades) {
     try {
       // Header da solicitação
       final var header = new Paragraph();
@@ -239,18 +240,27 @@ public class ModeloPdfService {
               + (s.getPrioridade() != null ? " · " + prioridadeLabel(s.getPrioridade().name()) : "")
               + "   Aberta: "
               + (s.getCriadaEm() != null ? FMT.format(s.getCriadaEm()) : "—")
-              + (s.getConcluidaEm() != null ? "   Concluída: " + FMT.format(s.getConcluidaEm()) : "");
-      header.add(new Chunk(meta, FontFactory.getFont(FontFactory.HELVETICA, 7, new Color(100, 100, 100))));
+              + (s.getConcluidaEm() != null
+                  ? "   Concluída: " + FMT.format(s.getConcluidaEm())
+                  : "");
+      header.add(
+          new Chunk(meta, FontFactory.getFont(FontFactory.HELVETICA, 7, new Color(100, 100, 100))));
       doc.add(header);
 
       if (s.getDescricao() != null && !s.getDescricao().isBlank()) {
-        final var desc = new Paragraph(s.getDescricao(), FontFactory.getFont(FontFactory.HELVETICA, 8, new Color(80, 80, 80)));
+        final var desc =
+            new Paragraph(
+                s.getDescricao(),
+                FontFactory.getFont(FontFactory.HELVETICA, 8, new Color(80, 80, 80)));
         desc.setSpacingAfter(4);
         doc.add(desc);
       }
 
       if (atividades.isEmpty()) {
-        doc.add(new Paragraph("  (sem registros de atividade)", FontFactory.getFont(FontFactory.HELVETICA_OBLIQUE, 7, Color.GRAY)));
+        doc.add(
+            new Paragraph(
+                "  (sem registros de atividade)",
+                FontFactory.getFont(FontFactory.HELVETICA_OBLIQUE, 7, Color.GRAY)));
         return;
       }
 
@@ -266,9 +276,12 @@ public class ModeloPdfService {
         final Color bg = isEven ? even : Color.WHITE;
         addCell(table, a.getCriadaEm() != null ? FMT.format(a.getCriadaEm()) : "—", bg, CELL_FONT);
         addCell(table, tipoAtividadeLabel(a.getTipo().name()), bg, CELL_FONT);
-        final String mudanca = (a.getDeStatus() != null && a.getParaStatus() != null)
-            ? statusLabel(a.getDeStatus().name()) + " → " + statusLabel(a.getParaStatus().name())
-            : "—";
+        final String mudanca =
+            (a.getDeStatus() != null && a.getParaStatus() != null)
+                ? statusLabel(a.getDeStatus().name())
+                    + " → "
+                    + statusLabel(a.getParaStatus().name())
+                : "—";
         addCell(table, mudanca, bg, CELL_FONT);
         addCell(table, a.getComentario() != null ? a.getComentario() : "—", bg, CELL_FONT);
         isEven = !isEven;

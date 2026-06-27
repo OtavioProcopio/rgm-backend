@@ -12,13 +12,12 @@ import com.rgm.api.core.application.usecases.modelo.GerenciarModelosUseCase;
 import com.rgm.api.core.application.usecases.modelo.ListarModelosUseCase;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.model.aggregates.Modelo;
+import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.EventoModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.ModeloRepository;
-import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import jakarta.validation.Valid;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -198,7 +197,8 @@ public class ModeloController {
       @RequestParam(required = false) final String maquina,
       @RequestParam(required = false) final String descricao) {
     final var result =
-        listarUseCase.execute(new ListarModelosUseCase.Input(ativo, codigo, maquina, descricao, 0, 1000));
+        listarUseCase.execute(
+            new ListarModelosUseCase.Input(ativo, codigo, maquina, descricao, 0, 1000));
     final byte[] pdf = modeloPdfService.gerarLista(result.content());
     final var headers = new HttpHeaders();
     headers.setContentType(MediaType.APPLICATION_PDF);
@@ -214,14 +214,17 @@ public class ModeloController {
             .orElseThrow(() -> new RecursoNaoEncontradoException("Modelo nao encontrado"));
     final var eventos = eventoModeloRepository.findByModeloId(id);
     final var solicitacoes = solicitacaoRepository.findByModeloId(id);
-    final var atividadesPorSolicitacao = solicitacoes.stream()
-        .collect(Collectors.toMap(
-            s -> s.getId(),
-            s -> atividadeRepository.findBySolicitacaoId(s.getId())));
-    final byte[] pdf = modeloPdfService.gerarFicha(modelo, eventos, solicitacoes, atividadesPorSolicitacao);
+    final var atividadesPorSolicitacao =
+        solicitacoes.stream()
+            .collect(
+                Collectors.toMap(
+                    s -> s.getId(), s -> atividadeRepository.findBySolicitacaoId(s.getId())));
+    final byte[] pdf =
+        modeloPdfService.gerarFicha(modelo, eventos, solicitacoes, atividadesPorSolicitacao);
     final var headers = new HttpHeaders();
     headers.setContentType(MediaType.APPLICATION_PDF);
-    final String filename = "ficha-modelo-" + modelo.getCodigo().replaceAll("[^a-zA-Z0-9]", "-") + ".pdf";
+    final String filename =
+        "ficha-modelo-" + modelo.getCodigo().replaceAll("[^a-zA-Z0-9]", "-") + ".pdf";
     headers.setContentDispositionFormData("attachment", filename);
     return new ResponseEntity<>(pdf, headers, HttpStatus.OK);
   }

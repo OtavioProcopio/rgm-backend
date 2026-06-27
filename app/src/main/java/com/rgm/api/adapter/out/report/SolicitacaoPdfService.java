@@ -91,7 +91,8 @@ public class SolicitacaoPdfService {
         addCell(table, s.getTitulo(), bg);
         addCell(table, tipoLabel(s.getTipo().name()), bg);
         addCell(table, statusLabel(s.getStatus().name()), bg);
-        addCell(table, s.getPrioridade() != null ? prioridadeLabel(s.getPrioridade().name()) : "—", bg);
+        addCell(
+            table, s.getPrioridade() != null ? prioridadeLabel(s.getPrioridade().name()) : "—", bg);
         addCell(table, s.getDescricao() != null ? s.getDescricao() : "—", bg);
         addCell(table, s.getCriadaEm() != null ? FMT.format(s.getCriadaEm()) : "—", bg);
         addCell(table, s.getConcluidaEm() != null ? FMT.format(s.getConcluidaEm()) : "—", bg);
