@@ -36,10 +36,20 @@ class ListarAtividadesUseCaseTest {
     final UUID solId = UUID.randomUUID();
     final UUID autorId = UUID.randomUUID();
     final Solicitacao sol =
-        Solicitacao.abrir("T", "D", TipoSolicitacao.REPARO, UUID.randomUUID(), autorId, Instant.now());
-    final AtividadeSolicitacao atividade = AtividadeSolicitacao.abertura(solId, autorId, Instant.now());
+        Solicitacao.abrir(
+            "T", "D", TipoSolicitacao.REPARO, UUID.randomUUID(), autorId, Instant.now());
+    final AtividadeSolicitacao atividade =
+        AtividadeSolicitacao.abertura(solId, autorId, Instant.now());
     final Usuario autor =
-        new Usuario(autorId, "Alice", "a@x.com", "hash", PerfilUsuario.OPERADOR, true, Instant.now(), Instant.now());
+        new Usuario(
+            autorId,
+            "Alice",
+            "a@x.com",
+            "hash",
+            PerfilUsuario.OPERADOR,
+            true,
+            Instant.now(),
+            Instant.now());
 
     when(solicitacaoRepository.findById(solId)).thenReturn(Optional.of(sol));
     when(atividadeRepository.findBySolicitacaoId(solId)).thenReturn(List.of(atividade));
@@ -57,8 +67,10 @@ class ListarAtividadesUseCaseTest {
     final UUID solId = UUID.randomUUID();
     final UUID autorId = UUID.randomUUID();
     final Solicitacao sol =
-        Solicitacao.abrir("T", "D", TipoSolicitacao.REPARO, UUID.randomUUID(), autorId, Instant.now());
-    final AtividadeSolicitacao atividade = AtividadeSolicitacao.abertura(solId, autorId, Instant.now());
+        Solicitacao.abrir(
+            "T", "D", TipoSolicitacao.REPARO, UUID.randomUUID(), autorId, Instant.now());
+    final AtividadeSolicitacao atividade =
+        AtividadeSolicitacao.abertura(solId, autorId, Instant.now());
 
     when(solicitacaoRepository.findById(solId)).thenReturn(Optional.of(sol));
     when(atividadeRepository.findBySolicitacaoId(solId)).thenReturn(List.of(atividade));

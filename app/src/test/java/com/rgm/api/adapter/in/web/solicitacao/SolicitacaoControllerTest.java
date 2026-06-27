@@ -33,9 +33,9 @@ import com.rgm.api.core.application.usecases.solicitacao.ListarAtividadesUseCase
 import com.rgm.api.core.application.usecases.solicitacao.ListarSolicitacoesUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ObterMetricasSolicitacoesUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ObterSolicitacaoUseCase;
-import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.application.usecases.solicitacao.RegistrarComentarioUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.TriarSolicitacaoUseCase;
+import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
 import com.rgm.api.core.domain.model.entities.AtividadeSolicitacao;
 import com.rgm.api.core.domain.model.enums.PrioridadeSolicitacao;

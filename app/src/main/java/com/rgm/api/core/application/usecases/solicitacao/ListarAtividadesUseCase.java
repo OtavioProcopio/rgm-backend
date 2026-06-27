@@ -43,7 +43,9 @@ public final class ListarAtividadesUseCase {
             .collect(Collectors.toMap(u -> u.getId(), u -> u.getNome()));
 
     return atividades.stream()
-        .map(a -> new AtividadeComAutor(a, nomesPorId.getOrDefault(a.getAutorUsuarioId(), "Usuário")))
+        .map(
+            a ->
+                new AtividadeComAutor(a, nomesPorId.getOrDefault(a.getAutorUsuarioId(), "Usuário")))
         .toList();
   }
 }

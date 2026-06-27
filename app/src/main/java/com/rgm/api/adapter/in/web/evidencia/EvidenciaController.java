@@ -69,9 +69,11 @@ public class EvidenciaController {
       @PathVariable final UUID solicitacaoId,
       @PathVariable final UUID evidenciaId,
       final Authentication authentication) {
-    log.info("EvidenciaController.excluir solicitacaoId={} evidenciaId={}", solicitacaoId, evidenciaId);
+    log.info(
+        "EvidenciaController.excluir solicitacaoId={} evidenciaId={}", solicitacaoId, evidenciaId);
     final UUID usuarioId = UUID.fromString(authentication.getName());
-    excluirUseCase.execute(new ExcluirEvidenciaUseCase.Input(solicitacaoId, evidenciaId, usuarioId));
+    excluirUseCase.execute(
+        new ExcluirEvidenciaUseCase.Input(solicitacaoId, evidenciaId, usuarioId));
     return ResponseEntity.noContent().build();
   }
 

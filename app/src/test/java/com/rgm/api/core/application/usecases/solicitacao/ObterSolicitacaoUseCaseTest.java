@@ -32,10 +32,12 @@ class ObterSolicitacaoUseCaseTest {
     final UUID solId = UUID.randomUUID();
     final UUID userId = UUID.randomUUID();
     final Solicitacao sol =
-        Solicitacao.abrir("T", "D", TipoSolicitacao.REPARO, UUID.randomUUID(), userId, Instant.now());
+        Solicitacao.abrir(
+            "T", "D", TipoSolicitacao.REPARO, UUID.randomUUID(), userId, Instant.now());
 
     final SolicitacaoAtribuicao atrib =
-        new SolicitacaoAtribuicao(UUID.randomUUID(), solId, userId, UUID.randomUUID(), Instant.now(), null);
+        new SolicitacaoAtribuicao(
+            UUID.randomUUID(), solId, userId, UUID.randomUUID(), Instant.now(), null);
 
     when(solicitacaoRepository.findById(solId)).thenReturn(Optional.of(sol));
     when(atribuicaoRepository.findBySolicitacaoId(solId)).thenReturn(List.of(atrib));
@@ -51,10 +53,12 @@ class ObterSolicitacaoUseCaseTest {
     final UUID solId = UUID.randomUUID();
     final UUID userId = UUID.randomUUID();
     final Solicitacao sol =
-        Solicitacao.abrir("T", "D", TipoSolicitacao.REPARO, UUID.randomUUID(), userId, Instant.now());
+        Solicitacao.abrir(
+            "T", "D", TipoSolicitacao.REPARO, UUID.randomUUID(), userId, Instant.now());
 
     final SolicitacaoAtribuicao removida =
-        new SolicitacaoAtribuicao(UUID.randomUUID(), solId, userId, UUID.randomUUID(), Instant.now(), Instant.now());
+        new SolicitacaoAtribuicao(
+            UUID.randomUUID(), solId, userId, UUID.randomUUID(), Instant.now(), Instant.now());
 
     when(solicitacaoRepository.findById(solId)).thenReturn(Optional.of(sol));
     when(atribuicaoRepository.findBySolicitacaoId(solId)).thenReturn(List.of(removida));
@@ -86,9 +90,15 @@ class ObterSolicitacaoUseCaseTest {
     final UUID user1 = UUID.randomUUID();
     final UUID user2 = UUID.randomUUID();
 
-    final var atrib1 = new SolicitacaoAtribuicao(UUID.randomUUID(), solId1, user1, UUID.randomUUID(), Instant.now(), null);
-    final var atrib2 = new SolicitacaoAtribuicao(UUID.randomUUID(), solId2, user2, UUID.randomUUID(), Instant.now(), null);
-    final var removida = new SolicitacaoAtribuicao(UUID.randomUUID(), solId1, user2, UUID.randomUUID(), Instant.now(), Instant.now());
+    final var atrib1 =
+        new SolicitacaoAtribuicao(
+            UUID.randomUUID(), solId1, user1, UUID.randomUUID(), Instant.now(), null);
+    final var atrib2 =
+        new SolicitacaoAtribuicao(
+            UUID.randomUUID(), solId2, user2, UUID.randomUUID(), Instant.now(), null);
+    final var removida =
+        new SolicitacaoAtribuicao(
+            UUID.randomUUID(), solId1, user2, UUID.randomUUID(), Instant.now(), Instant.now());
 
     when(atribuicaoRepository.findBySolicitacaoIdIn(List.of(solId1, solId2)))
         .thenReturn(List.of(atrib1, atrib2, removida));

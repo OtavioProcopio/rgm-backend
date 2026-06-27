@@ -166,12 +166,14 @@ public class SolicitacaoController {
                 size));
 
     final List<UUID> solIds = result.content().stream().map(s -> s.getId()).toList();
-    final Map<UUID, List<UUID>> responsaveisPorSol =
-        obterUseCase.listarResponsaveisBatch(solIds);
+    final Map<UUID, List<UUID>> responsaveisPorSol = obterUseCase.listarResponsaveisBatch(solIds);
 
     return ResponseEntity.ok(
         PageResponse.from(
-            result, s -> SolicitacaoResponse.from(s, responsaveisPorSol.getOrDefault(s.getId(), List.of()))));
+            result,
+            s ->
+                SolicitacaoResponse.from(
+                    s, responsaveisPorSol.getOrDefault(s.getId(), List.of()))));
   }
 
   private ListarSolicitacoesUseCase.Input buildInput(
@@ -217,7 +219,8 @@ public class SolicitacaoController {
   public ResponseEntity<SolicitacaoResponse> buscarPorId(@PathVariable final UUID id) {
     log.info("SolicitacaoController.buscarPorId id={}", id);
     final var output = obterUseCase.execute(id);
-    return ResponseEntity.ok(SolicitacaoResponse.from(output.solicitacao(), output.responsavelIds()));
+    return ResponseEntity.ok(
+        SolicitacaoResponse.from(output.solicitacao(), output.responsavelIds()));
   }
 
   @GetMapping("/{id}/atividades")

@@ -11,7 +11,6 @@ import com.rgm.api.core.domain.model.aggregates.Evidencia;
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
 import com.rgm.api.core.domain.model.aggregates.Usuario;
 import com.rgm.api.core.domain.model.enums.PerfilUsuario;
-import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
 import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
 import com.rgm.api.core.domain.ports.repositories.EvidenciaRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoAtribuicaoRepository;
@@ -38,19 +37,30 @@ class ExcluirEvidenciaUseCaseTest {
   @InjectMocks private ExcluirEvidenciaUseCase useCase;
 
   private Solicitacao solicitacaoAberta() {
-    return Solicitacao.abrir("T", "D", TipoSolicitacao.REPARO, UUID.randomUUID(), UUID.randomUUID(), Instant.now());
+    return Solicitacao.abrir(
+        "T", "D", TipoSolicitacao.REPARO, UUID.randomUUID(), UUID.randomUUID(), Instant.now());
   }
 
   private Evidencia evidencia(final UUID enviadaPor) {
-    return new Evidencia(UUID.randomUUID(), "http://url", "image/jpeg", "foto.jpg", 100, enviadaPor, Instant.now());
+    return new Evidencia(
+        UUID.randomUUID(), "http://url", "image/jpeg", "foto.jpg", 100, enviadaPor, Instant.now());
   }
 
   private Usuario gestor(final UUID id) {
-    return new Usuario(id, "Gestor", "gestor@rgm.com", "hash", PerfilUsuario.GESTOR, true, Instant.now(), Instant.now());
+    return new Usuario(
+        id,
+        "Gestor",
+        "gestor@rgm.com",
+        "hash",
+        PerfilUsuario.GESTOR,
+        true,
+        Instant.now(),
+        Instant.now());
   }
 
   private Usuario operador(final UUID id) {
-    return new Usuario(id, "Op", "op@rgm.com", "hash", PerfilUsuario.OPERADOR, true, Instant.now(), Instant.now());
+    return new Usuario(
+        id, "Op", "op@rgm.com", "hash", PerfilUsuario.OPERADOR, true, Instant.now(), Instant.now());
   }
 
   @Test
@@ -63,7 +73,8 @@ class ExcluirEvidenciaUseCaseTest {
 
     when(solicitacaoRepository.findById(solId)).thenReturn(Optional.of(sol));
     when(evidenciaRepository.findById(evId)).thenReturn(Optional.of(ev));
-    when(solicitacaoEvidenciaRepository.existsBySolicitacaoIdAndEvidenciaId(solId, evId)).thenReturn(true);
+    when(solicitacaoEvidenciaRepository.existsBySolicitacaoIdAndEvidenciaId(solId, evId))
+        .thenReturn(true);
     when(usuarioRepository.findById(gestorId)).thenReturn(Optional.of(gestor(gestorId)));
 
     useCase.execute(new ExcluirEvidenciaUseCase.Input(solId, evId, gestorId));
@@ -82,7 +93,8 @@ class ExcluirEvidenciaUseCaseTest {
 
     when(solicitacaoRepository.findById(solId)).thenReturn(Optional.of(sol));
     when(evidenciaRepository.findById(evId)).thenReturn(Optional.of(ev));
-    when(solicitacaoEvidenciaRepository.existsBySolicitacaoIdAndEvidenciaId(solId, evId)).thenReturn(true);
+    when(solicitacaoEvidenciaRepository.existsBySolicitacaoIdAndEvidenciaId(solId, evId))
+        .thenReturn(true);
     when(usuarioRepository.findById(operadorId)).thenReturn(Optional.of(operador(operadorId)));
 
     useCase.execute(new ExcluirEvidenciaUseCase.Input(solId, evId, operadorId));
@@ -97,7 +109,10 @@ class ExcluirEvidenciaUseCaseTest {
 
     when(solicitacaoRepository.findById(solId)).thenReturn(Optional.of(sol));
 
-    assertThatThrownBy(() -> useCase.execute(new ExcluirEvidenciaUseCase.Input(solId, UUID.randomUUID(), UUID.randomUUID())))
+    assertThatThrownBy(
+            () ->
+                useCase.execute(
+                    new ExcluirEvidenciaUseCase.Input(solId, UUID.randomUUID(), UUID.randomUUID())))
         .isInstanceOf(BusinessRuleException.class);
   }
 
@@ -108,7 +123,9 @@ class ExcluirEvidenciaUseCaseTest {
     when(solicitacaoRepository.findById(solId)).thenReturn(Optional.of(solicitacaoAberta()));
     when(evidenciaRepository.findById(evId)).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> useCase.execute(new ExcluirEvidenciaUseCase.Input(solId, evId, UUID.randomUUID())))
+    assertThatThrownBy(
+            () ->
+                useCase.execute(new ExcluirEvidenciaUseCase.Input(solId, evId, UUID.randomUUID())))
         .isInstanceOf(RecursoNaoEncontradoException.class);
   }
 
@@ -118,9 +135,12 @@ class ExcluirEvidenciaUseCaseTest {
     final UUID evId = UUID.randomUUID();
     when(solicitacaoRepository.findById(solId)).thenReturn(Optional.of(solicitacaoAberta()));
     when(evidenciaRepository.findById(evId)).thenReturn(Optional.of(evidencia(UUID.randomUUID())));
-    when(solicitacaoEvidenciaRepository.existsBySolicitacaoIdAndEvidenciaId(solId, evId)).thenReturn(false);
+    when(solicitacaoEvidenciaRepository.existsBySolicitacaoIdAndEvidenciaId(solId, evId))
+        .thenReturn(false);
 
-    assertThatThrownBy(() -> useCase.execute(new ExcluirEvidenciaUseCase.Input(solId, evId, UUID.randomUUID())))
+    assertThatThrownBy(
+            () ->
+                useCase.execute(new ExcluirEvidenciaUseCase.Input(solId, evId, UUID.randomUUID())))
         .isInstanceOf(RecursoNaoEncontradoException.class);
   }
 
@@ -131,11 +151,15 @@ class ExcluirEvidenciaUseCaseTest {
     final UUID operadorId = UUID.randomUUID();
     when(solicitacaoRepository.findById(solId)).thenReturn(Optional.of(solicitacaoAberta()));
     when(evidenciaRepository.findById(evId)).thenReturn(Optional.of(evidencia(UUID.randomUUID())));
-    when(solicitacaoEvidenciaRepository.existsBySolicitacaoIdAndEvidenciaId(solId, evId)).thenReturn(true);
+    when(solicitacaoEvidenciaRepository.existsBySolicitacaoIdAndEvidenciaId(solId, evId))
+        .thenReturn(true);
     when(usuarioRepository.findById(operadorId)).thenReturn(Optional.of(operador(operadorId)));
-    when(atribuicaoRepository.existsBySolicitacaoIdAndUsuarioIdAndRemovidoEmIsNull(solId, operadorId)).thenReturn(false);
+    when(atribuicaoRepository.existsBySolicitacaoIdAndUsuarioIdAndRemovidoEmIsNull(
+            solId, operadorId))
+        .thenReturn(false);
 
-    assertThatThrownBy(() -> useCase.execute(new ExcluirEvidenciaUseCase.Input(solId, evId, operadorId)))
+    assertThatThrownBy(
+            () -> useCase.execute(new ExcluirEvidenciaUseCase.Input(solId, evId, operadorId)))
         .isInstanceOf(NaoAutorizadoException.class);
   }
 }

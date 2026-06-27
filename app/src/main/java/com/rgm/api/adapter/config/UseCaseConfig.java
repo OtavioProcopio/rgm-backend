@@ -319,7 +319,7 @@ public class UseCaseConfig {
       final SolicitacaoRepository solicitacaoRepository,
       final AtividadeSolicitacaoRepository atividadeRepository,
       final UsuarioRepository usuarioRepository) {
-    return new ListarAtividadesUseCase(solicitacaoRepository, atividadeRepository, usuarioRepository);
+    return new ListarAtividadesUseCase(
+        solicitacaoRepository, atividadeRepository, usuarioRepository);
   }
-
 }
