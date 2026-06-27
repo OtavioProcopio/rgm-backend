@@ -4,7 +4,9 @@ import com.rgm.api.core.domain.model.aggregates.Solicitacao;
 import com.rgm.api.core.domain.model.enums.PrioridadeSolicitacao;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
 import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
+import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -33,8 +35,12 @@ public interface SolicitacaoRepository {
       UUID modeloId,
       TipoSolicitacao tipo,
       PrioridadeSolicitacao prioridade,
+      Instant criadaEmInicio,
+      Instant criadaEmFim,
       int page,
       int size);
+
+  Map<UUID, Long> countGroupByModeloId();
 
   long count();
 

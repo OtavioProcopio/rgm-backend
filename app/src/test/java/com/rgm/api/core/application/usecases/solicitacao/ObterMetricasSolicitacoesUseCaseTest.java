@@ -13,6 +13,7 @@ import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -89,6 +90,7 @@ class ObterMetricasSolicitacoesUseCaseTest {
 
     when(solicitacaoRepository.findByStatus(StatusSolicitacao.CONCLUIDA))
         .thenReturn(List.of(sol1, sol2));
+    when(solicitacaoRepository.countGroupByModeloId()).thenReturn(Map.of(modeloId, 2L));
 
     // WHEN
     final ObterMetricasSolicitacoesUseCase.Output metricas = useCase.execute();
@@ -105,6 +107,7 @@ class ObterMetricasSolicitacoesUseCaseTest {
 
     // Lead time médio: (120min + 60min) / 2 = 90min = 5400 segundos
     assertEquals(5400L, metricas.tempoMedioResolucaoSegundos());
+    assertEquals(2L, metricas.solicitacoesPorModelo().get(modeloId));
 
     // Distribuição por status
     assertEquals(8L, metricas.solicitacoesPorStatus().get("A_FAZER"));
@@ -121,13 +124,12 @@ class ObterMetricasSolicitacoesUseCaseTest {
 
   @Test
   void deveRetornarSlaZeroSeNaoHouverSolicitacoesConcluidas() {
-    // GIVEN
     when(solicitacaoRepository.findByStatus(StatusSolicitacao.CONCLUIDA)).thenReturn(List.of());
+    when(solicitacaoRepository.countGroupByModeloId()).thenReturn(Map.of());
 
-    // WHEN
     final ObterMetricasSolicitacoesUseCase.Output metricas = useCase.execute();
 
-    // THEN
     assertEquals(0L, metricas.tempoMedioResolucaoSegundos());
+    assertTrue(metricas.solicitacoesPorModelo().isEmpty());
   }
 }

@@ -11,6 +11,7 @@ import com.rgm.api.adapter.in.web.dto.response.AtividadeResponse;
 import com.rgm.api.adapter.in.web.dto.response.MetricasSolicitacaoResponse;
 import com.rgm.api.adapter.in.web.dto.response.PageResponse;
 import com.rgm.api.adapter.in.web.dto.response.SolicitacaoResponse;
+import com.rgm.api.adapter.out.report.SolicitacaoPdfService;
 import com.rgm.api.core.application.usecases.solicitacao.AbrirSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.CancelarSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.DevolverSolicitacaoUseCase;
@@ -30,6 +31,7 @@ import com.rgm.api.core.domain.ports.repositories.SolicitacaoAtribuicaoRepositor
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import jakarta.validation.Valid;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -69,6 +71,7 @@ public class SolicitacaoController {
   private final AtividadeSolicitacaoRepository atividadeRepository;
   private final SolicitacaoAtribuicaoRepository atribuicaoRepository;
   private final UsuarioRepository usuarioRepository;
+  private final SolicitacaoPdfService pdfService;
 
   public SolicitacaoController(
       final AbrirSolicitacaoUseCase abrirUseCase,
@@ -84,7 +87,8 @@ public class SolicitacaoController {
       final SolicitacaoRepository solicitacaoRepository,
       final AtividadeSolicitacaoRepository atividadeRepository,
       final SolicitacaoAtribuicaoRepository atribuicaoRepository,
-      final UsuarioRepository usuarioRepository) {
+      final UsuarioRepository usuarioRepository,
+      final SolicitacaoPdfService pdfService) {
     this.abrirUseCase = abrirUseCase;
     this.triarUseCase = triarUseCase;
     this.enviarUseCase = enviarUseCase;
@@ -99,6 +103,7 @@ public class SolicitacaoController {
     this.atividadeRepository = atividadeRepository;
     this.atribuicaoRepository = atribuicaoRepository;
     this.usuarioRepository = usuarioRepository;
+    this.pdfService = pdfService;
   }
 
   @GetMapping("/metricas")
@@ -108,46 +113,24 @@ public class SolicitacaoController {
     return ResponseEntity.ok(MetricasSolicitacaoResponse.from(output));
   }
 
-  @GetMapping("/exportar")
-  public ResponseEntity<byte[]> exportar(
+  @GetMapping("/relatorio")
+  public ResponseEntity<byte[]> gerarRelatorio(
       @RequestParam(required = false) final String status,
-      @RequestParam(required = false) final UUID modeloId) {
-    log.info("SolicitacaoController.exportar iniciado");
-    final StatusSolicitacao statusFilter =
-        status != null ? StatusSolicitacao.valueOf(status) : null;
-    final var pageResult =
-        listarUseCase.execute(
-            new ListarSolicitacoesUseCase.Input(
-                statusFilter, modeloId, null, null, 0, Integer.MAX_VALUE));
-
-    final StringBuilder csv = new StringBuilder();
-    csv.append("ID;Titulo;Tipo;Status;Prioridade;Modelo ID;Criada Em;Concluida Em;SLA (Minutos)\n");
-
-    for (final var s : pageResult.content()) {
-      long sla = 0;
-      if (s.getCriadaEm() != null && s.getConcluidaEm() != null) {
-        sla = java.time.Duration.between(s.getCriadaEm(), s.getConcluidaEm()).toMinutes();
-      }
-      csv.append(
-          String.format(
-              "%s;\"%s\";%s;%s;%s;%s;%s;%s;%d\n",
-              s.getId(),
-              s.getTitulo().replace("\"", "\"\""),
-              s.getTipo(),
-              s.getStatus(),
-              s.getPrioridade() != null ? s.getPrioridade() : "",
-              s.getModeloId(),
-              s.getCriadaEm(),
-              s.getConcluidaEm() != null ? s.getConcluidaEm() : "",
-              sla));
-    }
-
-    final byte[] content = csv.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+      @RequestParam(required = false) final UUID modeloId,
+      @RequestParam(required = false) final String tipo,
+      @RequestParam(required = false) final String prioridade,
+      @RequestParam(required = false) final String criadaEmInicio,
+      @RequestParam(required = false) final String criadaEmFim) {
+    log.info("SolicitacaoController.gerarRelatorio iniciado");
+    final var input =
+        buildInput(
+            status, modeloId, tipo, prioridade, criadaEmInicio, criadaEmFim, 0, Integer.MAX_VALUE);
+    final var solicitacoes = listarUseCase.execute(input).content();
+    final byte[] pdf = pdfService.gerar(solicitacoes);
     final var headers = new org.springframework.http.HttpHeaders();
-    headers.setContentType(org.springframework.http.MediaType.parseMediaType("text/csv"));
-    headers.setContentDispositionFormData("attachment", "solicitacoes.csv");
-
-    return new ResponseEntity<>(content, headers, HttpStatus.OK);
+    headers.setContentType(org.springframework.http.MediaType.APPLICATION_PDF);
+    headers.setContentDispositionFormData("attachment", "relatorio-solicitacoes.pdf");
+    return new ResponseEntity<>(pdf, headers, HttpStatus.OK);
   }
 
   @GetMapping
@@ -157,17 +140,34 @@ public class SolicitacaoController {
       @RequestParam(required = false) final String status,
       @RequestParam(required = false) final UUID modeloId,
       @RequestParam(required = false) final String tipo,
-      @RequestParam(required = false) final String prioridade) {
-    final StatusSolicitacao statusFilter =
-        status != null ? StatusSolicitacao.valueOf(status) : null;
-    final TipoSolicitacao tipoFilter = tipo != null ? TipoSolicitacao.valueOf(tipo) : null;
-    final PrioridadeSolicitacao prioridadeFilter =
-        prioridade != null ? PrioridadeSolicitacao.valueOf(prioridade) : null;
+      @RequestParam(required = false) final String prioridade,
+      @RequestParam(required = false) final String criadaEmInicio,
+      @RequestParam(required = false) final String criadaEmFim) {
     final var result =
         listarUseCase.execute(
-            new ListarSolicitacoesUseCase.Input(
-                statusFilter, modeloId, tipoFilter, prioridadeFilter, page, size));
+            buildInput(
+                status, modeloId, tipo, prioridade, criadaEmInicio, criadaEmFim, page, size));
     return ResponseEntity.ok(PageResponse.from(result, SolicitacaoResponse::from));
+  }
+
+  private ListarSolicitacoesUseCase.Input buildInput(
+      final String status,
+      final UUID modeloId,
+      final String tipo,
+      final String prioridade,
+      final String criadaEmInicio,
+      final String criadaEmFim,
+      final int page,
+      final int size) {
+    return new ListarSolicitacoesUseCase.Input(
+        status != null ? StatusSolicitacao.valueOf(status) : null,
+        modeloId,
+        tipo != null ? TipoSolicitacao.valueOf(tipo) : null,
+        prioridade != null ? PrioridadeSolicitacao.valueOf(prioridade) : null,
+        criadaEmInicio != null ? Instant.parse(criadaEmInicio) : null,
+        criadaEmFim != null ? Instant.parse(criadaEmFim) : null,
+        page,
+        size);
   }
 
   @Transactional

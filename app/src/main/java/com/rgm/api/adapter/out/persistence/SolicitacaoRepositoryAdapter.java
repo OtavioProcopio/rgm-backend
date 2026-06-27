@@ -8,7 +8,10 @@ import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
 import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
 import com.rgm.api.core.domain.ports.repositories.PageResult;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
+import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
@@ -91,16 +94,29 @@ public class SolicitacaoRepositoryAdapter implements SolicitacaoRepository {
       final UUID modeloId,
       final TipoSolicitacao tipo,
       final PrioridadeSolicitacao prioridade,
+      final Instant criadaEmInicio,
+      final Instant criadaEmFim,
       final int page,
       final int size) {
     final var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "criadaEm"));
-    final var result = jpa.findByFilters(status, modeloId, tipo, prioridade, pageable);
+    final var result =
+        jpa.findByFilters(
+            status, modeloId, tipo, prioridade, criadaEmInicio, criadaEmFim, pageable);
     return new PageResult<>(
         result.getContent().stream().map(SolicitacaoMapper::toDomain).toList(),
         result.getNumber(),
         result.getSize(),
         result.getTotalElements(),
         result.getTotalPages());
+  }
+
+  @Override
+  public Map<UUID, Long> countGroupByModeloId() {
+    final Map<UUID, Long> result = new HashMap<>();
+    for (final Object[] row : jpa.countGroupByModeloId()) {
+      result.put((UUID) row[0], (Long) row[1]);
+    }
+    return result;
   }
 
   @Override
