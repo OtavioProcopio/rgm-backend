@@ -21,7 +21,8 @@ class SolicitacaoAtribuicaoTest {
     final UUID adminId = UUID.randomUUID();
     final Instant agora = Instant.now();
 
-    final SolicitacaoAtribuicao atribuicao = SolicitacaoAtribuicao.criar(solId, userId, adminId, agora);
+    final SolicitacaoAtribuicao atribuicao =
+        SolicitacaoAtribuicao.criar(solId, userId, adminId, agora);
 
     assertNotNull(atribuicao.getId());
     assertEquals(solId, atribuicao.getSolicitacaoId());
@@ -40,7 +41,8 @@ class SolicitacaoAtribuicaoTest {
     final Instant agora = Instant.now();
     final Instant posterior = agora.plusSeconds(60);
 
-    final SolicitacaoAtribuicao atribuicao = SolicitacaoAtribuicao.criar(solId, userId, adminId, agora);
+    final SolicitacaoAtribuicao atribuicao =
+        SolicitacaoAtribuicao.criar(solId, userId, adminId, agora);
     final SolicitacaoAtribuicao removida = atribuicao.remover(posterior);
 
     assertFalse(removida.isAtiva());
@@ -54,7 +56,8 @@ class SolicitacaoAtribuicaoTest {
     final UUID adminId = UUID.randomUUID();
     final Instant agora = Instant.now();
 
-    final SolicitacaoAtribuicao atribuicao = SolicitacaoAtribuicao.criar(solId, userId, adminId, agora);
+    final SolicitacaoAtribuicao atribuicao =
+        SolicitacaoAtribuicao.criar(solId, userId, adminId, agora);
     final SolicitacaoAtribuicao removida = atribuicao.remover(agora);
 
     assertThrows(BusinessRuleException.class, () -> removida.remover(agora));

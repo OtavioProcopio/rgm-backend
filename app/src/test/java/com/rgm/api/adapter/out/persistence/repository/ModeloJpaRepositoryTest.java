@@ -74,7 +74,8 @@ class ModeloJpaRepositoryTest {
     persistirModelo("MOD-02", "INJETORA-B", "Modelo B", true);
 
     final Pageable pageable = PageRequest.of(0, 10);
-    final Page<ModeloJpaEntity> page = repository.findByFilters(null, "od-01", null, null, pageable);
+    final Page<ModeloJpaEntity> page =
+        repository.findByFilters(null, "od-01", null, null, pageable);
 
     assertNotNull(page);
     assertEquals(1, page.getTotalElements());
@@ -87,7 +88,8 @@ class ModeloJpaRepositoryTest {
     persistirModelo("MOD-02", "PRENSA-B", "Modelo B", true);
 
     final Pageable pageable = PageRequest.of(0, 10);
-    final Page<ModeloJpaEntity> page = repository.findByFilters(null, null, "jetora", null, pageable);
+    final Page<ModeloJpaEntity> page =
+        repository.findByFilters(null, null, "jetora", null, pageable);
 
     assertNotNull(page);
     assertEquals(1, page.getTotalElements());
@@ -100,7 +102,8 @@ class ModeloJpaRepositoryTest {
     persistirModelo("MOD-02", "PRENSA-B", "Modelo de Produção B", true);
 
     final Pageable pageable = PageRequest.of(0, 10);
-    final Page<ModeloJpaEntity> page = repository.findByFilters(null, null, null, "de teste", pageable);
+    final Page<ModeloJpaEntity> page =
+        repository.findByFilters(null, null, null, "de teste", pageable);
 
     assertNotNull(page);
     assertEquals(1, page.getTotalElements());
@@ -114,7 +117,8 @@ class ModeloJpaRepositoryTest {
     persistirModelo("MOD-03", "PRENSA-B", "Modelo de Teste A", true);
 
     final Pageable pageable = PageRequest.of(0, 10);
-    final Page<ModeloJpaEntity> page = repository.findByFilters(true, "MOD", "INJETORA", "teste", pageable);
+    final Page<ModeloJpaEntity> page =
+        repository.findByFilters(true, "MOD", "INJETORA", "teste", pageable);
 
     assertNotNull(page);
     assertEquals(1, page.getTotalElements());

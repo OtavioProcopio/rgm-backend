@@ -242,8 +242,7 @@ class ModeloControllerTest {
                 .with(user(UUID.randomUUID().toString()))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
-                    objectMapper.writeValueAsString(
-                        new FotoCapaUploadRequest(UUID.randomUUID()))))
+                    objectMapper.writeValueAsString(new FotoCapaUploadRequest(UUID.randomUUID()))))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.codigo").value("MOD-001"));
   }

@@ -1,7 +1,6 @@
 package com.rgm.api.adapter.config;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -12,6 +11,7 @@ import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.exceptions.TransicaoStatusInvalidaException;
 import com.rgm.api.core.domain.exceptions.ValidationException;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -20,13 +20,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
-import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
-import org.springframework.web.HttpRequestMethodNotSupportedException;
-
-import java.util.List;
 
 class GlobalExceptionHandlerTest {
 
@@ -79,7 +76,9 @@ class GlobalExceptionHandlerTest {
 
   @Test
   void handleTransicaoInvalida_deveRetornar409() {
-    final TransicaoStatusInvalidaException ex = new TransicaoStatusInvalidaException(StatusSolicitacao.A_FAZER, StatusSolicitacao.CONCLUIDA);
+    final TransicaoStatusInvalidaException ex =
+        new TransicaoStatusInvalidaException(
+            StatusSolicitacao.A_FAZER, StatusSolicitacao.CONCLUIDA);
     final ResponseEntity<ErrorResponse> response = handler.handleTransicaoInvalida(ex);
 
     assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
@@ -129,7 +128,8 @@ class GlobalExceptionHandlerTest {
 
   @Test
   void handleMethodNotSupported_deveRetornar405() {
-    final HttpRequestMethodNotSupportedException ex = new HttpRequestMethodNotSupportedException("POST");
+    final HttpRequestMethodNotSupportedException ex =
+        new HttpRequestMethodNotSupportedException("POST");
     final ResponseEntity<ErrorResponse> response = handler.handleMethodNotSupported(ex);
 
     assertEquals(HttpStatus.METHOD_NOT_ALLOWED, response.getStatusCode());
@@ -162,7 +162,7 @@ class GlobalExceptionHandlerTest {
     final MethodArgumentNotValidException ex = mock(MethodArgumentNotValidException.class);
     final BindingResult bindingResult = mock(BindingResult.class);
     final FieldError fieldError = new FieldError("dto", "email", "Formato inválido");
-    
+
     when(ex.getBindingResult()).thenReturn(bindingResult);
     when(bindingResult.getFieldErrors()).thenReturn(List.of(fieldError));
 

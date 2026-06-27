@@ -156,7 +156,8 @@ class ModeloRepositoryAdapterTest {
     final Page<ModeloJpaEntity> page = new PageImpl<>(List.of(entity), PageRequest.of(0, 10), 1);
     when(jpa.findByFilters(any(), any(), any(), any(), any(PageRequest.class))).thenReturn(page);
 
-    final PageResult<Modelo> result = adapter.findByFilters(true, "MOD-001", "MANUAL", "Desc", 0, 10);
+    final PageResult<Modelo> result =
+        adapter.findByFilters(true, "MOD-001", "MANUAL", "Desc", 0, 10);
 
     assertNotNull(result);
     assertEquals(1, result.content().size());

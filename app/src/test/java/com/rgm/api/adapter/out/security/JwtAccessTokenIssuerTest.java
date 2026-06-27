@@ -13,7 +13,8 @@ import org.junit.jupiter.api.Test;
 
 class JwtAccessTokenIssuerTest {
 
-  private static final String SECRET = "my-secret-key-must-be-at-least-32-bytes-long-for-jwt-signing";
+  private static final String SECRET =
+      "my-secret-key-must-be-at-least-32-bytes-long-for-jwt-signing";
   private JwtAccessTokenIssuer issuer;
 
   @BeforeEach
@@ -57,8 +58,10 @@ class JwtAccessTokenIssuerTest {
     // Gera um access token (que possui type "access")
     final String accessToken = issuer.issue(usuario);
 
-    assertThrows(IllegalArgumentException.class, () -> {
-      issuer.validateRefreshToken(accessToken);
-    });
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> {
+          issuer.validateRefreshToken(accessToken);
+        });
   }
 }

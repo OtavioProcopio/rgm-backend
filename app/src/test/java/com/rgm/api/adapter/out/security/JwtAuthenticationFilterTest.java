@@ -24,7 +24,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 
 class JwtAuthenticationFilterTest {
 
-  private static final String SECRET = "my-secret-key-must-be-at-least-32-bytes-long-for-jwt-signing";
+  private static final String SECRET =
+      "my-secret-key-must-be-at-least-32-bytes-long-for-jwt-signing";
   private JwtAuthenticationFilter filter;
   private SecretKey key;
 
@@ -71,14 +72,15 @@ class JwtAuthenticationFilterTest {
 
     final Instant now = Instant.now();
     final UUID userId = UUID.randomUUID();
-    final String token = Jwts.builder()
-        .subject(userId.toString())
-        .claim("perfil", "OPERADOR")
-        .claim("type", "access")
-        .issuedAt(Date.from(now))
-        .expiration(Date.from(now.plus(1, ChronoUnit.HOURS)))
-        .signWith(key)
-        .compact();
+    final String token =
+        Jwts.builder()
+            .subject(userId.toString())
+            .claim("perfil", "OPERADOR")
+            .claim("type", "access")
+            .issuedAt(Date.from(now))
+            .expiration(Date.from(now.plus(1, ChronoUnit.HOURS)))
+            .signWith(key)
+            .compact();
 
     when(request.getHeader("Authorization")).thenReturn("Bearer " + token);
 
@@ -86,7 +88,8 @@ class JwtAuthenticationFilterTest {
 
     verify(filterChain).doFilter(request, response);
     assertNotNull(SecurityContextHolder.getContext().getAuthentication());
-    assertEquals(userId.toString(), SecurityContextHolder.getContext().getAuthentication().getPrincipal());
+    assertEquals(
+        userId.toString(), SecurityContextHolder.getContext().getAuthentication().getPrincipal());
   }
 
   @Test
@@ -96,13 +99,14 @@ class JwtAuthenticationFilterTest {
     final FilterChain filterChain = mock(FilterChain.class);
 
     final Instant now = Instant.now();
-    final String token = Jwts.builder()
-        .subject(UUID.randomUUID().toString())
-        .claim("type", "refresh")
-        .issuedAt(Date.from(now))
-        .expiration(Date.from(now.plus(1, ChronoUnit.HOURS)))
-        .signWith(key)
-        .compact();
+    final String token =
+        Jwts.builder()
+            .subject(UUID.randomUUID().toString())
+            .claim("type", "refresh")
+            .issuedAt(Date.from(now))
+            .expiration(Date.from(now.plus(1, ChronoUnit.HOURS)))
+            .signWith(key)
+            .compact();
 
     when(request.getHeader("Authorization")).thenReturn("Bearer " + token);
 
@@ -119,14 +123,15 @@ class JwtAuthenticationFilterTest {
     final FilterChain filterChain = mock(FilterChain.class);
 
     final Instant past = Instant.now().minus(2, ChronoUnit.HOURS);
-    final String token = Jwts.builder()
-        .subject(UUID.randomUUID().toString())
-        .claim("perfil", "OPERADOR")
-        .claim("type", "access")
-        .issuedAt(Date.from(past))
-        .expiration(Date.from(past.plus(1, ChronoUnit.HOURS)))
-        .signWith(key)
-        .compact();
+    final String token =
+        Jwts.builder()
+            .subject(UUID.randomUUID().toString())
+            .claim("perfil", "OPERADOR")
+            .claim("type", "access")
+            .issuedAt(Date.from(past))
+            .expiration(Date.from(past.plus(1, ChronoUnit.HOURS)))
+            .signWith(key)
+            .compact();
 
     when(request.getHeader("Authorization")).thenReturn("Bearer " + token);
 

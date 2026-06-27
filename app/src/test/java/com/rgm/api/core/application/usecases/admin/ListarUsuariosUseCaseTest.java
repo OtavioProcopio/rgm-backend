@@ -28,8 +28,7 @@ class ListarUsuariosUseCaseTest {
 
   @Test
   void execute_comFiltrosNulos_deveChamarFindAll() {
-    final ListarUsuariosUseCase.Input input =
-        new ListarUsuariosUseCase.Input(null, null, 0, 20);
+    final ListarUsuariosUseCase.Input input = new ListarUsuariosUseCase.Input(null, null, 0, 20);
     final PageResult<Usuario> expectedPage = new PageResult<>(List.of(), 0, 20, 0, 0);
     when(usuarioRepository.findAll(anyInt(), anyInt())).thenReturn(expectedPage);
 
@@ -55,8 +54,7 @@ class ListarUsuariosUseCaseTest {
 
   @Test
   void execute_comAtivoNaoNulo_deveChamarFindByFilters() {
-    final ListarUsuariosUseCase.Input input =
-        new ListarUsuariosUseCase.Input(null, true, 0, 20);
+    final ListarUsuariosUseCase.Input input = new ListarUsuariosUseCase.Input(null, true, 0, 20);
     final PageResult<Usuario> expectedPage = new PageResult<>(List.of(), 0, 20, 0, 0);
     when(usuarioRepository.findByFilters(any(), any(), anyInt(), anyInt()))
         .thenReturn(expectedPage);

@@ -290,7 +290,14 @@ class GerenciarUsuariosUseCaseTest {
     final Instant agora = Instant.now();
     final Usuario alvo =
         new Usuario(
-            UUID.randomUUID(), "Alvo", "alvo@t.com", "h", PerfilUsuario.OPERADOR, true, agora, agora);
+            UUID.randomUUID(),
+            "Alvo",
+            "alvo@t.com",
+            "h",
+            PerfilUsuario.OPERADOR,
+            true,
+            agora,
+            agora);
 
     when(usuarioRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
     when(usuarioRepository.findById(alvo.getId())).thenReturn(Optional.of(alvo));
@@ -322,7 +329,8 @@ class GerenciarUsuariosUseCaseTest {
     final Usuario admin = criarAdmin();
     final Instant agora = Instant.now();
     final Usuario externo =
-        new Usuario(UUID.randomUUID(), "Ext", null, null, PerfilUsuario.EXTERNO, true, agora, agora);
+        new Usuario(
+            UUID.randomUUID(), "Ext", null, null, PerfilUsuario.EXTERNO, true, agora, agora);
 
     when(usuarioRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
     when(usuarioRepository.findById(externo.getId())).thenReturn(Optional.of(externo));
@@ -340,7 +348,8 @@ class GerenciarUsuariosUseCaseTest {
     final Usuario admin = criarAdmin();
     final Instant agora = Instant.now();
     final Usuario externo =
-        new Usuario(UUID.randomUUID(), "Ext", null, null, PerfilUsuario.EXTERNO, true, agora, agora);
+        new Usuario(
+            UUID.randomUUID(), "Ext", null, null, PerfilUsuario.EXTERNO, true, agora, agora);
 
     when(usuarioRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
     when(usuarioRepository.findById(externo.getId())).thenReturn(Optional.of(externo));
@@ -358,7 +367,8 @@ class GerenciarUsuariosUseCaseTest {
     final Usuario admin = criarAdmin();
     final Instant agora = Instant.now();
     final Usuario interno =
-        new Usuario(UUID.randomUUID(), "Int", "i@t.com", "h", PerfilUsuario.OPERADOR, true, agora, agora);
+        new Usuario(
+            UUID.randomUUID(), "Int", "i@t.com", "h", PerfilUsuario.OPERADOR, true, agora, agora);
 
     when(usuarioRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
     when(usuarioRepository.findById(interno.getId())).thenReturn(Optional.of(interno));

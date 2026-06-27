@@ -2,10 +2,9 @@ package com.rgm.api.adapter.config;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.never;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.HttpServletRequest;
@@ -83,10 +82,13 @@ class RateLimitFilterTest {
     verify(response).setContentType("application/json");
     verify(response).setHeader("Access-Control-Allow-Origin", "http://localhost:3000");
     verify(response).setHeader("Access-Control-Allow-Credentials", "true");
-    verify(filterChain, times(maxRequests)).doFilter(request, response); // Não incrementou o count de doFilter
-    
+    verify(filterChain, times(maxRequests))
+        .doFilter(request, response); // Não incrementou o count de doFilter
+
     final String responseContent = sw.toString();
-    assertEquals("{\"status\":429,\"error\":\"Too Many Requests\",\"message\":\"Limite de requisicoes excedido. Tente novamente em 60 segundos.\"}", responseContent);
+    assertEquals(
+        "{\"status\":429,\"error\":\"Too Many Requests\",\"message\":\"Limite de requisicoes excedido. Tente novamente em 60 segundos.\"}",
+        responseContent);
   }
 
   @Test
@@ -98,7 +100,8 @@ class RateLimitFilterTest {
     when(request.getRequestURI()).thenReturn("/api/auth/login");
     when(request.getRemoteAddr()).thenReturn("127.0.0.3");
 
-    // Simula 105 requests para forçar o evictExpiredEntries a rodar (acumulando requests no counter)
+    // Simula 105 requests para forçar o evictExpiredEntries a rodar (acumulando requests no
+    // counter)
     for (int i = 0; i < 105; i++) {
       final HttpServletRequest req = mock(HttpServletRequest.class);
       when(req.getRequestURI()).thenReturn("/api/auth/login");
