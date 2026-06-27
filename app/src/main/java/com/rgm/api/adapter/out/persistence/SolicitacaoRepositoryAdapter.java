@@ -100,7 +100,7 @@ public class SolicitacaoRepositoryAdapter implements SolicitacaoRepository {
       final UUID responsavelId,
       final int page,
       final int size) {
-    final var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "criadaEm"));
+    final var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "criada_em"));
     final var result =
         jpa.findByFilters(
             status != null ? status.name() : null,

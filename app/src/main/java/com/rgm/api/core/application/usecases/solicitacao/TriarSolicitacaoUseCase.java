@@ -84,8 +84,16 @@ public final class TriarSolicitacaoUseCase {
           SolicitacaoAtribuicao.criar(salva.getId(), resp.getId(), input.gestorId(), agora));
     }
 
+    final String nomesResponsaveis = responsaveis.stream()
+        .map(Usuario::getNome)
+        .collect(java.util.stream.Collectors.joining(", "));
+
     atividadeRepository.save(
-        AtividadeSolicitacao.atribuicao(salva.getId(), input.gestorId(), null, agora));
+        AtividadeSolicitacao.atribuicao(
+            salva.getId(),
+            input.gestorId(),
+            "Responsável(eis) atribuído(s) na triagem: " + nomesResponsaveis,
+            agora));
 
     atividadeRepository.save(
         AtividadeSolicitacao.mudancaStatus(
