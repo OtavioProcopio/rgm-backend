@@ -37,6 +37,8 @@ public interface SolicitacaoRepository {
       PrioridadeSolicitacao prioridade,
       Instant criadaEmInicio,
       Instant criadaEmFim,
+      UUID abertaPorUsuarioId,
+      UUID responsavelId,
       int page,
       int size);
 

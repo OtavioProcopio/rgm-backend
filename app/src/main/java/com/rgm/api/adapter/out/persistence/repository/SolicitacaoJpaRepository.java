@@ -31,7 +31,9 @@ public interface SolicitacaoJpaRepository extends JpaRepository<SolicitacaoJpaEn
           + "(:tipo IS NULL OR s.tipo = :tipo) AND "
           + "(:prioridade IS NULL OR s.prioridade = :prioridade) AND "
           + "(:criadaEmInicio IS NULL OR s.criadaEm >= :criadaEmInicio) AND "
-          + "(:criadaEmFim IS NULL OR s.criadaEm <= :criadaEmFim)")
+          + "(:criadaEmFim IS NULL OR s.criadaEm <= :criadaEmFim) AND "
+          + "(:abertaPorUsuarioId IS NULL OR s.abertaPorUsuarioId = :abertaPorUsuarioId) AND "
+          + "(:responsavelId IS NULL OR EXISTS (SELECT a FROM SolicitacaoAtribuicaoJpaEntity a WHERE a.solicitacaoId = s.id AND a.usuarioId = :responsavelId AND a.removidoEm IS NULL))")
   Page<SolicitacaoJpaEntity> findByFilters(
       StatusSolicitacao status,
       UUID modeloId,
@@ -39,6 +41,8 @@ public interface SolicitacaoJpaRepository extends JpaRepository<SolicitacaoJpaEn
       PrioridadeSolicitacao prioridade,
       Instant criadaEmInicio,
       Instant criadaEmFim,
+      UUID abertaPorUsuarioId,
+      UUID responsavelId,
       Pageable pageable);
 
   @Query("SELECT s.modeloId, COUNT(s) FROM SolicitacaoJpaEntity s GROUP BY s.modeloId")

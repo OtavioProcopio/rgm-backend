@@ -25,6 +25,8 @@ public final class ListarSolicitacoesUseCase {
       PrioridadeSolicitacao prioridade,
       Instant criadaEmInicio,
       Instant criadaEmFim,
+      UUID abertaPorUsuarioId,
+      UUID responsavelId,
       int page,
       int size) {}
 
@@ -34,7 +36,9 @@ public final class ListarSolicitacoesUseCase {
         || input.tipo() != null
         || input.prioridade() != null
         || input.criadaEmInicio() != null
-        || input.criadaEmFim() != null) {
+        || input.criadaEmFim() != null
+        || input.abertaPorUsuarioId() != null
+        || input.responsavelId() != null) {
       return solicitacaoRepository.findByFilters(
           input.status(),
           input.modeloId(),
@@ -42,6 +46,8 @@ public final class ListarSolicitacoesUseCase {
           input.prioridade(),
           input.criadaEmInicio(),
           input.criadaEmFim(),
+          input.abertaPorUsuarioId(),
+          input.responsavelId(),
           input.page(),
           input.size());
     }

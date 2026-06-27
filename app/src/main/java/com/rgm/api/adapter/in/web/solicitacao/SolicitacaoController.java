@@ -120,11 +120,22 @@ public class SolicitacaoController {
       @RequestParam(required = false) final String tipo,
       @RequestParam(required = false) final String prioridade,
       @RequestParam(required = false) final String criadaEmInicio,
-      @RequestParam(required = false) final String criadaEmFim) {
+      @RequestParam(required = false) final String criadaEmFim,
+      @RequestParam(required = false) final UUID abertaPorUsuarioId,
+      @RequestParam(required = false) final UUID responsavelId) {
     log.info("SolicitacaoController.gerarRelatorio iniciado");
     final var input =
         buildInput(
-            status, modeloId, tipo, prioridade, criadaEmInicio, criadaEmFim, 0, Integer.MAX_VALUE);
+            status,
+            modeloId,
+            tipo,
+            prioridade,
+            criadaEmInicio,
+            criadaEmFim,
+            abertaPorUsuarioId,
+            responsavelId,
+            0,
+            Integer.MAX_VALUE);
     final var solicitacoes = listarUseCase.execute(input).content();
     final byte[] pdf = pdfService.gerar(solicitacoes);
     final var headers = new org.springframework.http.HttpHeaders();
@@ -142,11 +153,22 @@ public class SolicitacaoController {
       @RequestParam(required = false) final String tipo,
       @RequestParam(required = false) final String prioridade,
       @RequestParam(required = false) final String criadaEmInicio,
-      @RequestParam(required = false) final String criadaEmFim) {
+      @RequestParam(required = false) final String criadaEmFim,
+      @RequestParam(required = false) final UUID abertaPorUsuarioId,
+      @RequestParam(required = false) final UUID responsavelId) {
     final var result =
         listarUseCase.execute(
             buildInput(
-                status, modeloId, tipo, prioridade, criadaEmInicio, criadaEmFim, page, size));
+                status,
+                modeloId,
+                tipo,
+                prioridade,
+                criadaEmInicio,
+                criadaEmFim,
+                abertaPorUsuarioId,
+                responsavelId,
+                page,
+                size));
     return ResponseEntity.ok(PageResponse.from(result, SolicitacaoResponse::from));
   }
 
@@ -157,6 +179,8 @@ public class SolicitacaoController {
       final String prioridade,
       final String criadaEmInicio,
       final String criadaEmFim,
+      final UUID abertaPorUsuarioId,
+      final UUID responsavelId,
       final int page,
       final int size) {
     return new ListarSolicitacoesUseCase.Input(
@@ -166,6 +190,8 @@ public class SolicitacaoController {
         prioridade != null ? PrioridadeSolicitacao.valueOf(prioridade) : null,
         criadaEmInicio != null ? Instant.parse(criadaEmInicio) : null,
         criadaEmFim != null ? Instant.parse(criadaEmFim) : null,
+        abertaPorUsuarioId,
+        responsavelId,
         page,
         size);
   }

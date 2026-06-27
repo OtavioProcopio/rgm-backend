@@ -7,6 +7,7 @@ import com.rgm.api.core.application.usecases.admin.ListarUsuariosUseCase;
 import com.rgm.api.core.application.usecases.auth.AlterarSenhaPropriaUseCase;
 import com.rgm.api.core.application.usecases.auth.LoginUseCase;
 import com.rgm.api.core.application.usecases.auth.RefreshTokenUseCase;
+import com.rgm.api.core.application.usecases.dashboard.ObterMetricasDashboardUseCase;
 import com.rgm.api.core.application.usecases.evidencia.AnexarEvidenciaUseCase;
 import com.rgm.api.core.application.usecases.evidencia.VisualizarEvidenciaUseCase;
 import com.rgm.api.core.application.usecases.modelo.AtualizarFotoCapaUseCase;
@@ -271,5 +272,15 @@ public class UseCaseConfig {
       final ModeloRepository modeloRepository) {
     return new ObterMetricasSolicitacoesUseCase(
         solicitacaoRepository, usuarioRepository, modeloRepository);
+  }
+
+  @Bean
+  public ObterMetricasDashboardUseCase obterMetricasDashboardUseCase(
+      final SolicitacaoRepository solicitacaoRepository,
+      final UsuarioRepository usuarioRepository,
+      final ModeloRepository modeloRepository,
+      final AtividadeSolicitacaoRepository atividadeRepository) {
+    return new ObterMetricasDashboardUseCase(
+        solicitacaoRepository, usuarioRepository, modeloRepository, atividadeRepository);
   }
 }

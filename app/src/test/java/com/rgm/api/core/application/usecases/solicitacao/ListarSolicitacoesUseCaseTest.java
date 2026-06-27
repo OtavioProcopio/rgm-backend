@@ -35,7 +35,8 @@ class ListarSolicitacoesUseCaseTest {
 
     final PageResult<Solicitacao> result =
         useCase.execute(
-            new ListarSolicitacoesUseCase.Input(null, null, null, null, null, null, 0, 20));
+            new ListarSolicitacoesUseCase.Input(
+                null, null, null, null, null, null, null, null, 0, 20));
 
     assertEquals(1, result.totalElements());
     verify(solicitacaoRepository).findAll(0, 20);
@@ -45,17 +46,38 @@ class ListarSolicitacoesUseCaseTest {
   @Test
   void deveListarPorStatus() {
     when(solicitacaoRepository.findByFilters(
-            StatusSolicitacao.EM_ANDAMENTO, null, null, null, null, null, 0, 10))
+            StatusSolicitacao.EM_ANDAMENTO, null, null, null, null, null, null, null, 0, 10))
         .thenReturn(new PageResult<>(List.of(), 0, 10, 0, 0));
 
     final PageResult<Solicitacao> result =
         useCase.execute(
             new ListarSolicitacoesUseCase.Input(
-                StatusSolicitacao.EM_ANDAMENTO, null, null, null, null, null, 0, 10));
+                StatusSolicitacao.EM_ANDAMENTO, null, null, null, null, null, null, null, 0, 10));
 
     assertEquals(0, result.totalElements());
     verify(solicitacaoRepository)
-        .findByFilters(StatusSolicitacao.EM_ANDAMENTO, null, null, null, null, null, 0, 10);
+        .findByFilters(
+            StatusSolicitacao.EM_ANDAMENTO, null, null, null, null, null, null, null, 0, 10);
+    verify(solicitacaoRepository, never()).findAll(anyInt(), anyInt());
+  }
+
+  @Test
+  void deveListarPorAutorEResponsavel() {
+    final UUID autorId = UUID.randomUUID();
+    final UUID responsavelId = UUID.randomUUID();
+
+    when(solicitacaoRepository.findByFilters(
+            null, null, null, null, null, null, autorId, responsavelId, 0, 10))
+        .thenReturn(new PageResult<>(List.of(), 0, 10, 0, 0));
+
+    final PageResult<Solicitacao> result =
+        useCase.execute(
+            new ListarSolicitacoesUseCase.Input(
+                null, null, null, null, null, null, autorId, responsavelId, 0, 10));
+
+    assertEquals(0, result.totalElements());
+    verify(solicitacaoRepository)
+        .findByFilters(null, null, null, null, null, null, autorId, responsavelId, 0, 10);
     verify(solicitacaoRepository, never()).findAll(anyInt(), anyInt());
   }
 }
