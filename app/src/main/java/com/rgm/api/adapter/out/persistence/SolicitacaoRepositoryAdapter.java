@@ -3,7 +3,9 @@ package com.rgm.api.adapter.out.persistence;
 import com.rgm.api.adapter.out.persistence.mapper.SolicitacaoMapper;
 import com.rgm.api.adapter.out.persistence.repository.SolicitacaoJpaRepository;
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
+import com.rgm.api.core.domain.model.enums.PrioridadeSolicitacao;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
+import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
 import com.rgm.api.core.domain.ports.repositories.PageResult;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import java.util.List;
@@ -75,9 +77,14 @@ public class SolicitacaoRepositoryAdapter implements SolicitacaoRepository {
 
   @Override
   public PageResult<Solicitacao> findByFilters(
-      final StatusSolicitacao status, final UUID modeloId, final int page, final int size) {
+      final StatusSolicitacao status,
+      final UUID modeloId,
+      final TipoSolicitacao tipo,
+      final PrioridadeSolicitacao prioridade,
+      final int page,
+      final int size) {
     final var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "criadaEm"));
-    final var result = jpa.findByFilters(status, modeloId, pageable);
+    final var result = jpa.findByFilters(status, modeloId, tipo, prioridade, pageable);
     return new PageResult<>(
         result.getContent().stream().map(SolicitacaoMapper::toDomain).toList(),
         result.getNumber(),

@@ -1,7 +1,9 @@
 package com.rgm.api.core.application.usecases.solicitacao;
 
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
+import com.rgm.api.core.domain.model.enums.PrioridadeSolicitacao;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
+import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
 import com.rgm.api.core.domain.ports.repositories.PageResult;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import java.util.UUID;
@@ -15,12 +17,22 @@ public final class ListarSolicitacoesUseCase {
     this.solicitacaoRepository = solicitacaoRepository;
   }
 
-  public record Input(StatusSolicitacao status, UUID modeloId, int page, int size) {}
+  public record Input(
+      StatusSolicitacao status,
+      UUID modeloId,
+      TipoSolicitacao tipo,
+      PrioridadeSolicitacao prioridade,
+      int page,
+      int size) {}
 
   public PageResult<Solicitacao> execute(final Input input) {
-    if (input.status() != null || input.modeloId() != null) {
+    if (input.status() != null
+        || input.modeloId() != null
+        || input.tipo() != null
+        || input.prioridade() != null) {
       return solicitacaoRepository.findByFilters(
-          input.status(), input.modeloId(), input.page(), input.size());
+          input.status(), input.modeloId(), input.tipo(), input.prioridade(),
+          input.page(), input.size());
     }
     return solicitacaoRepository.findAll(input.page(), input.size());
   }

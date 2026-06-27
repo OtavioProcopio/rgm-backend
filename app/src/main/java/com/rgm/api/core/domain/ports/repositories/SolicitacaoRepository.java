@@ -1,7 +1,9 @@
 package com.rgm.api.core.domain.ports.repositories;
 
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
+import com.rgm.api.core.domain.model.enums.PrioridadeSolicitacao;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
+import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -23,5 +25,10 @@ public interface SolicitacaoRepository {
   PageResult<Solicitacao> findByStatus(StatusSolicitacao status, int page, int size);
 
   PageResult<Solicitacao> findByFilters(
-      StatusSolicitacao status, UUID modeloId, int page, int size);
+      StatusSolicitacao status,
+      UUID modeloId,
+      TipoSolicitacao tipo,
+      PrioridadeSolicitacao prioridade,
+      int page,
+      int size);
 }

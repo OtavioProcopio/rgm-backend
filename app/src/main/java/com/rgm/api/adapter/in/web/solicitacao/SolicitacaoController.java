@@ -86,12 +86,17 @@ public class SolicitacaoController {
       @RequestParam(defaultValue = "0") final int page,
       @RequestParam(defaultValue = "20") final int size,
       @RequestParam(required = false) final String status,
-      @RequestParam(required = false) final UUID modeloId) {
+      @RequestParam(required = false) final UUID modeloId,
+      @RequestParam(required = false) final String tipo,
+      @RequestParam(required = false) final String prioridade) {
     final StatusSolicitacao statusFilter =
         status != null ? StatusSolicitacao.valueOf(status) : null;
+    final TipoSolicitacao tipoFilter = tipo != null ? TipoSolicitacao.valueOf(tipo) : null;
+    final PrioridadeSolicitacao prioridadeFilter =
+        prioridade != null ? PrioridadeSolicitacao.valueOf(prioridade) : null;
     final var result =
         listarUseCase.execute(
-            new ListarSolicitacoesUseCase.Input(statusFilter, modeloId, page, size));
+            new ListarSolicitacoesUseCase.Input(statusFilter, modeloId, tipoFilter, prioridadeFilter, page, size));
     return ResponseEntity.ok(PageResponse.from(result, SolicitacaoResponse::from));
   }
 
