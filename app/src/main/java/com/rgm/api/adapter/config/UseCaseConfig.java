@@ -7,6 +7,7 @@ import com.rgm.api.core.application.usecases.admin.ListarUsuariosUseCase;
 import com.rgm.api.core.application.usecases.auth.AlterarSenhaPropriaUseCase;
 import com.rgm.api.core.application.usecases.auth.LoginUseCase;
 import com.rgm.api.core.application.usecases.auth.RefreshTokenUseCase;
+import com.rgm.api.core.application.usecases.dashboard.ObterMetricasDashboardUseCase;
 import com.rgm.api.core.application.usecases.evidencia.AnexarEvidenciaUseCase;
 import com.rgm.api.core.application.usecases.evidencia.VisualizarEvidenciaUseCase;
 import com.rgm.api.core.application.usecases.modelo.AtualizarFotoCapaUseCase;
@@ -20,6 +21,7 @@ import com.rgm.api.core.application.usecases.solicitacao.DevolverSolicitacaoUseC
 import com.rgm.api.core.application.usecases.solicitacao.EditarSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.EncerrarSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.EnviarParaValidacaoUseCase;
+import com.rgm.api.core.application.usecases.solicitacao.GerenciarResponsaveisUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ListarSolicitacoesUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ObterMetricasSolicitacoesUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.RegistrarComentarioUseCase;
@@ -112,9 +114,14 @@ public class UseCaseConfig {
       final SolicitacaoRepository solicitacaoRepository,
       final UsuarioRepository usuarioRepository,
       final AtividadeSolicitacaoRepository atividadeRepository,
+      final EventoModeloRepository eventoModeloRepository,
       final DomainEventPublisher eventPublisher) {
     return new EncerrarSolicitacaoUseCase(
-        solicitacaoRepository, usuarioRepository, atividadeRepository, eventPublisher);
+        solicitacaoRepository,
+        usuarioRepository,
+        atividadeRepository,
+        eventoModeloRepository,
+        eventPublisher);
   }
 
   @Bean
@@ -144,6 +151,16 @@ public class UseCaseConfig {
       final SolicitacaoAtribuicaoRepository atribuicaoRepository) {
     return new EditarSolicitacaoUseCase(
         solicitacaoRepository, usuarioRepository, atribuicaoRepository);
+  }
+
+  @Bean
+  public GerenciarResponsaveisUseCase gerenciarResponsaveisUseCase(
+      final SolicitacaoRepository solicitacaoRepository,
+      final UsuarioRepository usuarioRepository,
+      final SolicitacaoAtribuicaoRepository atribuicaoRepository,
+      final AtividadeSolicitacaoRepository atividadeRepository) {
+    return new GerenciarResponsaveisUseCase(
+        solicitacaoRepository, usuarioRepository, atribuicaoRepository, atividadeRepository);
   }
 
   @Bean
@@ -271,5 +288,15 @@ public class UseCaseConfig {
       final ModeloRepository modeloRepository) {
     return new ObterMetricasSolicitacoesUseCase(
         solicitacaoRepository, usuarioRepository, modeloRepository);
+  }
+
+  @Bean
+  public ObterMetricasDashboardUseCase obterMetricasDashboardUseCase(
+      final SolicitacaoRepository solicitacaoRepository,
+      final UsuarioRepository usuarioRepository,
+      final ModeloRepository modeloRepository,
+      final AtividadeSolicitacaoRepository atividadeRepository) {
+    return new ObterMetricasDashboardUseCase(
+        solicitacaoRepository, usuarioRepository, modeloRepository, atividadeRepository);
   }
 }

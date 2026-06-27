@@ -6,6 +6,7 @@ import static org.mockito.Mockito.*;
 
 import com.rgm.api.core.domain.events.SolicitacaoFinalizadaEvent;
 import com.rgm.api.core.domain.exceptions.NaoAutorizadoException;
+import com.rgm.api.core.domain.model.aggregates.EventoModelo;
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
 import com.rgm.api.core.domain.model.aggregates.Usuario;
 import com.rgm.api.core.domain.model.enums.PerfilUsuario;
@@ -13,6 +14,7 @@ import com.rgm.api.core.domain.model.enums.PrioridadeSolicitacao;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
 import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
 import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository;
+import com.rgm.api.core.domain.ports.repositories.EventoModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import com.rgm.api.core.domain.ports.services.DomainEventPublisher;
@@ -27,6 +29,7 @@ class EncerrarSolicitacaoUseCaseTest {
   private SolicitacaoRepository solicitacaoRepository;
   private UsuarioRepository usuarioRepository;
   private AtividadeSolicitacaoRepository atividadeRepository;
+  private EventoModeloRepository eventoModeloRepository;
   private DomainEventPublisher eventPublisher;
   private EncerrarSolicitacaoUseCase useCase;
 
@@ -35,10 +38,15 @@ class EncerrarSolicitacaoUseCaseTest {
     solicitacaoRepository = mock(SolicitacaoRepository.class);
     usuarioRepository = mock(UsuarioRepository.class);
     atividadeRepository = mock(AtividadeSolicitacaoRepository.class);
+    eventoModeloRepository = mock(EventoModeloRepository.class);
     eventPublisher = mock(DomainEventPublisher.class);
     useCase =
         new EncerrarSolicitacaoUseCase(
-            solicitacaoRepository, usuarioRepository, atividadeRepository, eventPublisher);
+            solicitacaoRepository,
+            usuarioRepository,
+            atividadeRepository,
+            eventoModeloRepository,
+            eventPublisher);
   }
 
   private Solicitacao criarSolicitacaoEmValidacao() {
@@ -90,6 +98,7 @@ class EncerrarSolicitacaoUseCaseTest {
     assertEquals(StatusSolicitacao.CONCLUIDA, resultado.getStatus());
     assertNotNull(resultado.getConcluidaEm());
     verify(eventPublisher).publish(any(SolicitacaoFinalizadaEvent.class));
+    verify(eventoModeloRepository).save(any(EventoModelo.class));
   }
 
   @Test
@@ -110,6 +119,7 @@ class EncerrarSolicitacaoUseCaseTest {
     assertEquals(StatusSolicitacao.CANCELADA, resultado.getStatus());
     assertNotNull(resultado.getCanceladaEm());
     verify(eventPublisher).publish(any(SolicitacaoFinalizadaEvent.class));
+    verify(eventoModeloRepository, never()).save(any(EventoModelo.class));
   }
 
   @Test

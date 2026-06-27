@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+import com.rgm.api.core.domain.exceptions.BusinessRuleException;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.exceptions.ValidationException;
 import com.rgm.api.core.domain.model.aggregates.Evidencia;
@@ -141,7 +142,7 @@ class AnexarEvidenciaUseCaseTest {
     when(solicitacaoRepository.findById(sol.getId())).thenReturn(Optional.of(sol));
 
     assertThrows(
-        ValidationException.class,
+        BusinessRuleException.class,
         () ->
             useCase.upload(
                 new AnexarEvidenciaUseCase.Input(
@@ -181,5 +182,23 @@ class AnexarEvidenciaUseCaseTest {
 
     assertNotNull(resultado);
     assertEquals("application/pdf", resultado.getMimeType());
+  }
+
+  @Test
+  void deveFalharComMimeTypeNaoPermitido() {
+    final Solicitacao sol = criarSolicitacao(StatusSolicitacao.EM_ANDAMENTO);
+    when(solicitacaoRepository.findById(sol.getId())).thenReturn(Optional.of(sol));
+
+    assertThrows(
+        ValidationException.class,
+        () ->
+            useCase.upload(
+                new AnexarEvidenciaUseCase.Input(
+                    sol.getId(),
+                    "doc.html",
+                    "text/html",
+                    1024L,
+                    new ByteArrayInputStream(new byte[0]),
+                    UUID.randomUUID())));
   }
 }

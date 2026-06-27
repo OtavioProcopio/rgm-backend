@@ -19,6 +19,7 @@ import com.rgm.api.adapter.in.web.dto.request.ComentarioRequest;
 import com.rgm.api.adapter.in.web.dto.request.DevolverSolicitacaoRequest;
 import com.rgm.api.adapter.in.web.dto.request.EditarSolicitacaoRequest;
 import com.rgm.api.adapter.in.web.dto.request.EncerrarSolicitacaoRequest;
+import com.rgm.api.adapter.in.web.dto.request.GerenciarResponsaveisRequest;
 import com.rgm.api.adapter.in.web.dto.request.TriarSolicitacaoRequest;
 import com.rgm.api.adapter.out.security.JwtAuthenticationFilter;
 import com.rgm.api.core.application.usecases.solicitacao.AbrirSolicitacaoUseCase;
@@ -27,6 +28,7 @@ import com.rgm.api.core.application.usecases.solicitacao.DevolverSolicitacaoUseC
 import com.rgm.api.core.application.usecases.solicitacao.EditarSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.EncerrarSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.EnviarParaValidacaoUseCase;
+import com.rgm.api.core.application.usecases.solicitacao.GerenciarResponsaveisUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ListarSolicitacoesUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ObterMetricasSolicitacoesUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.RegistrarComentarioUseCase;
@@ -77,6 +79,7 @@ class SolicitacaoControllerTest {
   @MockitoBean private EditarSolicitacaoUseCase editarUseCase;
   @MockitoBean private ListarSolicitacoesUseCase listarUseCase;
   @MockitoBean private ObterMetricasSolicitacoesUseCase obterMetricasUseCase;
+  @MockitoBean private GerenciarResponsaveisUseCase gerenciarResponsaveisUseCase;
   @MockitoBean private SolicitacaoRepository solicitacaoRepository;
   @MockitoBean private AtividadeSolicitacaoRepository atividadeRepository;
   @MockitoBean private SolicitacaoAtribuicaoRepository atribuicaoRepository;
@@ -423,5 +426,23 @@ class SolicitacaoControllerTest {
     when(pdfService.gerar(any())).thenReturn(new byte[] {37, 80, 68, 70}); // %PDF magic bytes
 
     mockMvc.perform(get("/api/solicitacoes/relatorio").with(user("u"))).andExpect(status().isOk());
+  }
+
+  @Test
+  void gerenciarResponsaveis() throws Exception {
+    final Solicitacao sol = criarSolicitacao();
+    final UUID userId = UUID.randomUUID();
+    when(gerenciarResponsaveisUseCase.execute(any())).thenReturn(sol);
+
+    mockMvc
+        .perform(
+            patch("/api/solicitacoes/{id}/responsaveis", sol.getId())
+                .with(user(userId.toString()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        new GerenciarResponsaveisRequest(List.of(UUID.randomUUID())))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(sol.getId().toString()));
   }
 }

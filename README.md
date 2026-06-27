@@ -94,7 +94,7 @@ O perfil `dev` habilita: admin seed (`admin@rgm.com` / `admin123`), SQL logging 
 | Método | Path | Descrição |
 |--------|------|-----------|
 | POST | `/` | Upload de evidência (UC-08) |
-| GET | `/{id}` | Visualizar evidência (UC-09) |
+| GET | `/` | Listar evidências da solicitação (UC-09) |
 
 ### Modelos (`/api/modelos`)
 

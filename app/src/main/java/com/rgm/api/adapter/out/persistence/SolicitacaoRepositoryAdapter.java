@@ -96,12 +96,22 @@ public class SolicitacaoRepositoryAdapter implements SolicitacaoRepository {
       final PrioridadeSolicitacao prioridade,
       final Instant criadaEmInicio,
       final Instant criadaEmFim,
+      final UUID abertaPorUsuarioId,
+      final UUID responsavelId,
       final int page,
       final int size) {
     final var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "criadaEm"));
     final var result =
         jpa.findByFilters(
-            status, modeloId, tipo, prioridade, criadaEmInicio, criadaEmFim, pageable);
+            status != null ? status.name() : null,
+            modeloId,
+            tipo != null ? tipo.name() : null,
+            prioridade != null ? prioridade.name() : null,
+            criadaEmInicio,
+            criadaEmFim,
+            abertaPorUsuarioId,
+            responsavelId,
+            pageable);
     return new PageResult<>(
         result.getContent().stream().map(SolicitacaoMapper::toDomain).toList(),
         result.getNumber(),
