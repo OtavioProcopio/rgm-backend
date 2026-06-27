@@ -13,10 +13,14 @@ public final class ListarModelosUseCase {
     this.modeloRepository = modeloRepository;
   }
 
-  public record Input(Boolean ativo, String codigo, String maquina, String descricao, int page, int size) {}
+  public record Input(
+      Boolean ativo, String codigo, String maquina, String descricao, int page, int size) {}
 
   public PageResult<Modelo> execute(final Input input) {
-    if (input.ativo() != null || input.codigo() != null || input.maquina() != null || input.descricao() != null) {
+    if (input.ativo() != null
+        || input.codigo() != null
+        || input.maquina() != null
+        || input.descricao() != null) {
       return modeloRepository.findByFilters(
           input.ativo(),
           input.codigo(),

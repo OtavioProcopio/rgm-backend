@@ -16,7 +16,8 @@ public interface ModeloRepository {
 
   PageResult<Modelo> findAll(int page, int size);
 
-  PageResult<Modelo> findByFilters(Boolean ativo, String codigo, String maquina, String descricao, int page, int size);
+  PageResult<Modelo> findByFilters(
+      Boolean ativo, String codigo, String maquina, String descricao, int page, int size);
 
   long count();
 }
