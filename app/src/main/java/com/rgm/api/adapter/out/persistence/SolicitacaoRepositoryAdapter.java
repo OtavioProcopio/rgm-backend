@@ -46,6 +46,16 @@ public class SolicitacaoRepositoryAdapter implements SolicitacaoRepository {
   }
 
   @Override
+  public boolean existsByModeloId(final UUID modeloId) {
+    return jpa.existsByModeloId(modeloId);
+  }
+
+  @Override
+  public boolean existsByAbertaPorUsuarioId(final UUID abertaPorUsuarioId) {
+    return jpa.existsByAbertaPorUsuarioId(abertaPorUsuarioId);
+  }
+
+  @Override
   public List<Solicitacao> findByModeloId(final UUID modeloId) {
     return jpa.findByModeloId(modeloId).stream().map(SolicitacaoMapper::toDomain).toList();
   }
@@ -91,5 +101,20 @@ public class SolicitacaoRepositoryAdapter implements SolicitacaoRepository {
         result.getSize(),
         result.getTotalElements(),
         result.getTotalPages());
+  }
+
+  @Override
+  public long count() {
+    return jpa.count();
+  }
+
+  @Override
+  public long countByStatus(final StatusSolicitacao status) {
+    return jpa.countByStatus(status);
+  }
+
+  @Override
+  public List<Solicitacao> findByStatus(final StatusSolicitacao status) {
+    return jpa.findByStatus(status).stream().map(SolicitacaoMapper::toDomain).toList();
   }
 }

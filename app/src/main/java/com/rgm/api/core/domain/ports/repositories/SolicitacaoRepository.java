@@ -18,6 +18,10 @@ public interface SolicitacaoRepository {
 
   boolean existsByModeloIdAndStatusIn(UUID modeloId, List<StatusSolicitacao> statuses);
 
+  boolean existsByModeloId(UUID modeloId);
+
+  boolean existsByAbertaPorUsuarioId(UUID abertaPorUsuarioId);
+
   List<Solicitacao> findByModeloId(UUID modeloId);
 
   PageResult<Solicitacao> findAll(int page, int size);
@@ -31,4 +35,10 @@ public interface SolicitacaoRepository {
       PrioridadeSolicitacao prioridade,
       int page,
       int size);
+
+  long count();
+
+  long countByStatus(StatusSolicitacao status);
+
+  List<Solicitacao> findByStatus(StatusSolicitacao status);
 }

@@ -81,20 +81,16 @@ Referência de todos os casos de uso implementados no sistema.
 - **Fluxo**: UC-03 (atribuir externo) → UC-04/UC-05 (movimentar como gestor)
 - **Regras**: Autor real registrado na auditoria (gestor, não externo)
 
-## UC-13 — Administração (usuários, máquinas, modelos)
-- **Classes**: `GerenciarUsuariosUseCase`, `GerenciarMaquinasUseCase`, `GerenciarModelosUseCase`
+## UC-13 — Administração (usuários, modelos)
+- **Classes**: `GerenciarUsuariosUseCase`, `GerenciarModelosUseCase`
 - **Endpoints**:
   - `POST /api/admin/usuarios` — criar usuário
   - `PUT /api/admin/usuarios/{id}` — editar nome/email
   - `PATCH /api/admin/usuarios/{id}/ativar` — ativar
   - `PATCH /api/admin/usuarios/{id}/desativar` — desativar
-  - `POST /api/admin/maquinas` — criar máquina
-  - `PUT /api/admin/maquinas/{id}` — editar máquina
-  - `PATCH /api/admin/maquinas/{id}/desativar` — desativar
-  - `DELETE /api/admin/maquinas/{id}` — excluir (hard delete)
   - `POST /api/modelos` — criar modelo (Gestor)
   - `PUT /api/modelos/{id}` — editar modelo (Gestor)
-- **Regras**: ADMIN gerencia usuários e máquinas; GESTOR gerencia modelos
+- **Regras**: ADMIN gerencia usuários; GESTOR gerencia modelos
 
 ## UC-14 — Atualizar foto capa do modelo
 - **Ator**: Gestor, Administrador
@@ -105,7 +101,7 @@ Referência de todos os casos de uso implementados no sistema.
 ## UC-15 — Exclusão (hard delete)
 - **Ator**: Administrador
 - **Classe**: `ExcluirRegistroUseCase`
-- **Endpoints**: `DELETE /api/admin/registros` (genérico), `DELETE /api/admin/maquinas/{id}` (máquina)
+- **Endpoints**: `DELETE /api/admin/registros` (genérico)
 - **Regras**: Somente ADMIN; cascata em atribuições, atividades e vínculos
 
 ---
@@ -115,9 +111,9 @@ Referência de todos os casos de uso implementados no sistema.
 | Endpoint | Filtros | Paginação |
 |----------|---------|-----------|
 | `GET /api/solicitacoes` | `status`, `modeloId` | `page`, `size` |
+| `GET /api/solicitacoes/exportar` | `status`, `modeloId` | — (Exportação de arquivo CSV) |
 | `GET /api/admin/usuarios` | `perfil`, `ativo` | `page`, `size` |
 | `GET /api/modelos` | `ativo`, `codigo` | `page`, `size` |
-| `GET /api/admin/maquinas` | — | `page`, `size` |
 
 ## Endpoints de Consulta por ID
 
@@ -127,7 +123,6 @@ Referência de todos os casos de uso implementados no sistema.
 | `GET /api/solicitacoes/{id}/atividades` | Histórico de atividades |
 | `GET /api/solicitacoes/{id}/evidencias` | Lista de evidências |
 | `GET /api/admin/usuarios/{id}` | Detalhes do usuário |
-| `GET /api/admin/maquinas/{id}` | Detalhes da máquina |
 | `GET /api/modelos/{id}` | Detalhes do modelo |
 | `GET /api/modelos/{id}/eventos` | Eventos do modelo |
 

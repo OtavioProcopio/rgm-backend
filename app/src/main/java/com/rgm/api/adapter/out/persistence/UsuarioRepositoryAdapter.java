@@ -81,4 +81,9 @@ public class UsuarioRepositoryAdapter implements UsuarioRepository {
         result.getTotalElements(),
         result.getTotalPages());
   }
+
+  @Override
+  public long count() {
+    return jpa.count();
+  }
 }

@@ -32,6 +32,11 @@ public class AtividadeSolicitacaoRepositoryAdapter implements AtividadeSolicitac
   }
 
   @Override
+  public boolean existsByAutorId(final UUID autorId) {
+    return jpa.existsByAutorUsuarioId(autorId);
+  }
+
+  @Override
   @Transactional
   public void deleteBySolicitacaoId(final UUID solicitacaoId) {
     jpa.deleteBySolicitacaoId(solicitacaoId);

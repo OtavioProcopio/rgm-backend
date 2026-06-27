@@ -4,7 +4,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -12,11 +14,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rgm.api.adapter.config.GlobalExceptionHandler;
 import com.rgm.api.adapter.in.web.WebMvcTestConfig;
 import com.rgm.api.adapter.in.web.dto.request.CriarModeloRequest;
+import com.rgm.api.adapter.in.web.dto.request.EditarModeloRequest;
 import com.rgm.api.adapter.out.security.JwtAuthenticationFilter;
 import com.rgm.api.core.application.usecases.modelo.AtualizarFotoCapaUseCase;
 import com.rgm.api.core.application.usecases.modelo.GerenciarModelosUseCase;
 import com.rgm.api.core.application.usecases.modelo.ListarModelosUseCase;
+import com.rgm.api.core.domain.model.aggregates.EventoModelo;
 import com.rgm.api.core.domain.model.aggregates.Modelo;
+import com.rgm.api.core.domain.model.enums.TipoEventoModelo;
 import com.rgm.api.core.domain.ports.repositories.EventoModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.ModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.PageResult;
@@ -63,7 +68,7 @@ class ModeloControllerTest {
         null,
         null,
         true,
-        UUID.randomUUID(),
+        "FBOX",
         false,
         agora,
         agora);
@@ -93,8 +98,96 @@ class ModeloControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     objectMapper.writeValueAsString(
-                        new CriarModeloRequest("MOD-001", "Desc", "Obs", UUID.randomUUID()))))
+                        new CriarModeloRequest("MOD-001", "Desc", "Obs", "FBOX"))))
         .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.codigo").value("MOD-001"));
+  }
+
+  @Test
+  void deveDesativarModelo() throws Exception {
+    final Modelo modelo = criarModelo();
+    when(gerenciarUseCase.desativar(any())).thenReturn(modelo);
+
+    mockMvc
+        .perform(
+            org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+                    "/api/modelos/{id}/desativar", modelo.getId())
+                .with(user(UUID.randomUUID().toString())))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.codigo").value("MOD-001"));
+  }
+
+  @Test
+  void deveAtivarModelo() throws Exception {
+    final Modelo modelo = criarModelo();
+    when(gerenciarUseCase.reativar(any())).thenReturn(modelo);
+
+    mockMvc
+        .perform(
+            patch("/api/modelos/{id}/ativar", modelo.getId())
+                .with(user(UUID.randomUUID().toString())))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.codigo").value("MOD-001"))
+        .andExpect(jsonPath("$.ativo").value(true));
+  }
+
+  @Test
+  void buscarModeloPorId() throws Exception {
+    final Modelo modelo = criarModelo();
+    when(modeloRepository.findById(modelo.getId())).thenReturn(java.util.Optional.of(modelo));
+
+    mockMvc
+        .perform(get("/api/modelos/{id}", modelo.getId()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.codigo").value("MOD-001"));
+  }
+
+  @Test
+  void buscarModeloPorId_naoEncontrado() throws Exception {
+    final UUID id = UUID.randomUUID();
+    when(modeloRepository.findById(id)).thenReturn(java.util.Optional.empty());
+
+    mockMvc.perform(get("/api/modelos/{id}", id)).andExpect(status().isNotFound());
+  }
+
+  @Test
+  void listarEventosModelo() throws Exception {
+    final Modelo modelo = criarModelo();
+    final EventoModelo evento =
+        new EventoModelo(
+            UUID.randomUUID(),
+            modelo.getId(),
+            TipoEventoModelo.INSPECAO,
+            "Inspeção",
+            "Tudo ok",
+            "Bom",
+            false,
+            UUID.randomUUID(),
+            null,
+            java.time.Instant.now());
+    when(modeloRepository.findById(modelo.getId())).thenReturn(java.util.Optional.of(modelo));
+    when(eventoModeloRepository.findByModeloId(modelo.getId())).thenReturn(List.of(evento));
+
+    mockMvc
+        .perform(get("/api/modelos/{id}/eventos", modelo.getId()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[0].titulo").value("Inspeção"));
+  }
+
+  @Test
+  void editarModelo() throws Exception {
+    final Modelo modelo = criarModelo();
+    when(gerenciarUseCase.editar(any())).thenReturn(modelo);
+
+    mockMvc
+        .perform(
+            put("/api/modelos/{id}", modelo.getId())
+                .with(user(UUID.randomUUID().toString()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        new EditarModeloRequest("MOD-001", "Nova Desc", "Obs", "FBOX"))))
+        .andExpect(status().isOk())
         .andExpect(jsonPath("$.codigo").value("MOD-001"));
   }
 }

@@ -4,9 +4,9 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+import com.rgm.api.core.domain.exceptions.BusinessRuleException;
 import com.rgm.api.core.domain.exceptions.NaoAutorizadoException;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
-import com.rgm.api.core.domain.exceptions.ValidationException;
 import com.rgm.api.core.domain.model.aggregates.Modelo;
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
 import com.rgm.api.core.domain.model.aggregates.Usuario;
@@ -32,7 +32,7 @@ class AbrirSolicitacaoUseCaseTest {
   private UsuarioRepository usuarioRepository;
   private AbrirSolicitacaoUseCase useCase;
 
-  private final UUID maquinaId = UUID.randomUUID();
+  private final String maquina = "FBOX";
   private final UUID usuarioId = UUID.randomUUID();
 
   @BeforeEach
@@ -59,7 +59,7 @@ class AbrirSolicitacaoUseCaseTest {
         null,
         null,
         ativo,
-        maquinaId,
+        maquina,
         temPendencia,
         agora,
         agora);
@@ -135,7 +135,7 @@ class AbrirSolicitacaoUseCaseTest {
     when(modeloRepository.findById(modelo.getId())).thenReturn(Optional.of(modelo));
 
     assertThrows(
-        ValidationException.class,
+        BusinessRuleException.class,
         () ->
             useCase.execute(
                 new AbrirSolicitacaoUseCase.Input(

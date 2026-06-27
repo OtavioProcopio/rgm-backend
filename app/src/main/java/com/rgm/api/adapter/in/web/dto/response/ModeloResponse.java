@@ -12,7 +12,7 @@ public record ModeloResponse(
     String observacoes,
     String fotoUrl,
     boolean ativo,
-    UUID maquinaId,
+    String maquina,
     boolean temPendenciaAberta,
     Instant criadoEm,
     Instant atualizadoEm) {
@@ -26,7 +26,7 @@ public record ModeloResponse(
         m.getObservacoes(),
         m.getFotoUrl(),
         m.isAtivo(),
-        m.getMaquinaId(),
+        m.getMaquina(),
         m.isTemPendenciaAberta(),
         m.getCriadoEm(),
         m.getAtualizadoEm());

@@ -15,6 +15,10 @@ public interface SolicitacaoJpaRepository extends JpaRepository<SolicitacaoJpaEn
 
   boolean existsByModeloIdAndStatusIn(UUID modeloId, List<StatusSolicitacao> statuses);
 
+  boolean existsByModeloId(UUID modeloId);
+
+  boolean existsByAbertaPorUsuarioId(UUID abertaPorUsuarioId);
+
   List<SolicitacaoJpaEntity> findByModeloId(UUID modeloId);
 
   Page<SolicitacaoJpaEntity> findByStatus(StatusSolicitacao status, Pageable pageable);
@@ -31,4 +35,8 @@ public interface SolicitacaoJpaRepository extends JpaRepository<SolicitacaoJpaEn
       TipoSolicitacao tipo,
       PrioridadeSolicitacao prioridade,
       Pageable pageable);
+
+  long countByStatus(StatusSolicitacao status);
+
+  List<SolicitacaoJpaEntity> findByStatus(StatusSolicitacao status);
 }

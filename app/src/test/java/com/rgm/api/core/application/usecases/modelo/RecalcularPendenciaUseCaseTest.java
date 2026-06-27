@@ -39,7 +39,7 @@ class RecalcularPendenciaUseCaseTest {
         null,
         null,
         true,
-        UUID.randomUUID(),
+        "FBOX",
         temPendencia,
         agora,
         agora);

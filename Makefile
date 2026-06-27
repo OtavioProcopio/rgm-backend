@@ -1,4 +1,4 @@
-.PHONY: help setup build test test-fast test-all lint format run clean docker-up docker-down docker-logs check
+.PHONY: help setup build test test-fast test-all lint format run clean docker-up docker-down docker-logs check validate coverage
 
 help: ## Mostrar ajuda
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -32,10 +32,17 @@ test-fast: ## Rodar apenas testes unitarios (sem @WebMvcTest e Flyway)
 test-all: ## Rodar TODOS os testes incluindo Flyway/Testcontainers (requer Docker)
 	cd app && ./mvnw test
 
-check: ## Formatar + compilar + rodar testes
+check: ## Formatar + compilar + rodar testes (sem cobertura)
 	$(MAKE) format
 	$(MAKE) build
 	$(MAKE) test
+
+coverage: ## Rodar testes e gerar relatorio JaCoCo (target/site/jacoco)
+	cd app && ./mvnw verify -Dtest='!FlywayMigrationTest'
+
+validate: ## Pipeline completo XP: lint + testes + coverage 85% + build
+	$(MAKE) lint
+	cd app && ./mvnw verify
 
 # ── Execucao ───────────────────────────────────────────────
 

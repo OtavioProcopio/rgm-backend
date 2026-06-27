@@ -102,7 +102,7 @@ public class ModeloController {
                 request.codigo(),
                 request.descricao(),
                 request.observacoes(),
-                request.maquinaId(),
+                request.maquina(),
                 gestorId));
     return ResponseEntity.status(HttpStatus.CREATED).body(ModeloResponse.from(modelo));
   }
@@ -118,7 +118,12 @@ public class ModeloController {
     final Modelo modelo =
         gerenciarUseCase.editar(
             new GerenciarModelosUseCase.EditarInput(
-                id, request.codigo(), request.descricao(), request.observacoes(), gestorId));
+                id,
+                request.codigo(),
+                request.descricao(),
+                request.observacoes(),
+                request.maquina(),
+                gestorId));
     return ResponseEntity.ok(ModeloResponse.from(modelo));
   }
 
@@ -130,6 +135,17 @@ public class ModeloController {
     final UUID gestorId = UUID.fromString(authentication.getName());
     final Modelo modelo =
         gerenciarUseCase.desativar(new GerenciarModelosUseCase.DesativarInput(id, gestorId));
+    return ResponseEntity.ok(ModeloResponse.from(modelo));
+  }
+
+  @Transactional
+  @PatchMapping("/{id}/ativar")
+  public ResponseEntity<ModeloResponse> ativar(
+      @PathVariable final UUID id, final Authentication authentication) {
+    log.info("ModeloController.ativar iniciado");
+    final UUID gestorId = UUID.fromString(authentication.getName());
+    final Modelo modelo =
+        gerenciarUseCase.reativar(new GerenciarModelosUseCase.ReativarInput(id, gestorId));
     return ResponseEntity.ok(ModeloResponse.from(modelo));
   }
 

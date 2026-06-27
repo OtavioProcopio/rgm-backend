@@ -1,20 +1,24 @@
 package com.rgm.api.adapter.in.web.solicitacao;
 
 import com.rgm.api.adapter.in.web.dto.request.AbrirSolicitacaoRequest;
+import com.rgm.api.adapter.in.web.dto.request.CancelarSolicitacaoRequest;
 import com.rgm.api.adapter.in.web.dto.request.ComentarioRequest;
 import com.rgm.api.adapter.in.web.dto.request.DevolverSolicitacaoRequest;
 import com.rgm.api.adapter.in.web.dto.request.EditarSolicitacaoRequest;
 import com.rgm.api.adapter.in.web.dto.request.EncerrarSolicitacaoRequest;
 import com.rgm.api.adapter.in.web.dto.request.TriarSolicitacaoRequest;
 import com.rgm.api.adapter.in.web.dto.response.AtividadeResponse;
+import com.rgm.api.adapter.in.web.dto.response.MetricasSolicitacaoResponse;
 import com.rgm.api.adapter.in.web.dto.response.PageResponse;
 import com.rgm.api.adapter.in.web.dto.response.SolicitacaoResponse;
 import com.rgm.api.core.application.usecases.solicitacao.AbrirSolicitacaoUseCase;
+import com.rgm.api.core.application.usecases.solicitacao.CancelarSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.DevolverSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.EditarSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.EncerrarSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.EnviarParaValidacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ListarSolicitacoesUseCase;
+import com.rgm.api.core.application.usecases.solicitacao.ObterMetricasSolicitacoesUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.RegistrarComentarioUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.TriarSolicitacaoUseCase;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
@@ -22,10 +26,14 @@ import com.rgm.api.core.domain.model.enums.PrioridadeSolicitacao;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
 import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
 import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository;
+import com.rgm.api.core.domain.ports.repositories.SolicitacaoAtribuicaoRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
+import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -52,11 +60,15 @@ public class SolicitacaoController {
   private final EnviarParaValidacaoUseCase enviarUseCase;
   private final DevolverSolicitacaoUseCase devolverUseCase;
   private final EncerrarSolicitacaoUseCase encerrarUseCase;
+  private final CancelarSolicitacaoUseCase cancelarUseCase;
   private final RegistrarComentarioUseCase comentarioUseCase;
   private final EditarSolicitacaoUseCase editarUseCase;
   private final ListarSolicitacoesUseCase listarUseCase;
+  private final ObterMetricasSolicitacoesUseCase obterMetricasUseCase;
   private final SolicitacaoRepository solicitacaoRepository;
   private final AtividadeSolicitacaoRepository atividadeRepository;
+  private final SolicitacaoAtribuicaoRepository atribuicaoRepository;
+  private final UsuarioRepository usuarioRepository;
 
   public SolicitacaoController(
       final AbrirSolicitacaoUseCase abrirUseCase,
@@ -64,21 +76,77 @@ public class SolicitacaoController {
       final EnviarParaValidacaoUseCase enviarUseCase,
       final DevolverSolicitacaoUseCase devolverUseCase,
       final EncerrarSolicitacaoUseCase encerrarUseCase,
+      final CancelarSolicitacaoUseCase cancelarUseCase,
       final RegistrarComentarioUseCase comentarioUseCase,
       final EditarSolicitacaoUseCase editarUseCase,
       final ListarSolicitacoesUseCase listarUseCase,
+      final ObterMetricasSolicitacoesUseCase obterMetricasUseCase,
       final SolicitacaoRepository solicitacaoRepository,
-      final AtividadeSolicitacaoRepository atividadeRepository) {
+      final AtividadeSolicitacaoRepository atividadeRepository,
+      final SolicitacaoAtribuicaoRepository atribuicaoRepository,
+      final UsuarioRepository usuarioRepository) {
     this.abrirUseCase = abrirUseCase;
     this.triarUseCase = triarUseCase;
     this.enviarUseCase = enviarUseCase;
     this.devolverUseCase = devolverUseCase;
     this.encerrarUseCase = encerrarUseCase;
+    this.cancelarUseCase = cancelarUseCase;
     this.comentarioUseCase = comentarioUseCase;
     this.editarUseCase = editarUseCase;
     this.listarUseCase = listarUseCase;
+    this.obterMetricasUseCase = obterMetricasUseCase;
     this.solicitacaoRepository = solicitacaoRepository;
     this.atividadeRepository = atividadeRepository;
+    this.atribuicaoRepository = atribuicaoRepository;
+    this.usuarioRepository = usuarioRepository;
+  }
+
+  @GetMapping("/metricas")
+  public ResponseEntity<MetricasSolicitacaoResponse> obterMetricas() {
+    log.info("SolicitacaoController.obterMetricas iniciado");
+    final var output = obterMetricasUseCase.execute();
+    return ResponseEntity.ok(MetricasSolicitacaoResponse.from(output));
+  }
+
+  @GetMapping("/exportar")
+  public ResponseEntity<byte[]> exportar(
+      @RequestParam(required = false) final String status,
+      @RequestParam(required = false) final UUID modeloId) {
+    log.info("SolicitacaoController.exportar iniciado");
+    final StatusSolicitacao statusFilter =
+        status != null ? StatusSolicitacao.valueOf(status) : null;
+    final var pageResult =
+        listarUseCase.execute(
+            new ListarSolicitacoesUseCase.Input(statusFilter, modeloId, null, null, 0, Integer.MAX_VALUE));
+
+    final StringBuilder csv = new StringBuilder();
+    csv.append("ID;Titulo;Tipo;Status;Prioridade;Modelo ID;Criada Em;Concluida Em;SLA (Minutos)\n");
+
+    for (final var s : pageResult.content()) {
+      long sla = 0;
+      if (s.getCriadaEm() != null && s.getConcluidaEm() != null) {
+        sla = java.time.Duration.between(s.getCriadaEm(), s.getConcluidaEm()).toMinutes();
+      }
+      csv.append(
+          String.format(
+              "%s;\"%s\";%s;%s;%s;%s;%s;%s;%d\n",
+              s.getId(),
+              s.getTitulo().replace("\"", "\"\""),
+              s.getTipo(),
+              s.getStatus(),
+              s.getPrioridade() != null ? s.getPrioridade() : "",
+              s.getModeloId(),
+              s.getCriadaEm(),
+              s.getConcluidaEm() != null ? s.getConcluidaEm() : "",
+              sla));
+    }
+
+    final byte[] content = csv.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    final var headers = new org.springframework.http.HttpHeaders();
+    headers.setContentType(org.springframework.http.MediaType.parseMediaType("text/csv"));
+    headers.setContentDispositionFormData("attachment", "solicitacoes.csv");
+
+    return new ResponseEntity<>(content, headers, HttpStatus.OK);
   }
 
   @GetMapping
@@ -122,7 +190,12 @@ public class SolicitacaoController {
         solicitacaoRepository
             .findById(id)
             .orElseThrow(() -> new RecursoNaoEncontradoException("Solicitacao nao encontrada"));
-    return ResponseEntity.ok(SolicitacaoResponse.from(solicitacao));
+    final List<UUID> responsaveis =
+        atribuicaoRepository.findBySolicitacaoId(id).stream()
+            .filter(a -> a.getRemovidoEm() == null)
+            .map(a -> a.getUsuarioId())
+            .toList();
+    return ResponseEntity.ok(SolicitacaoResponse.from(solicitacao, responsaveis));
   }
 
   @GetMapping("/{id}/atividades")
@@ -131,9 +204,20 @@ public class SolicitacaoController {
     solicitacaoRepository
         .findById(id)
         .orElseThrow(() -> new RecursoNaoEncontradoException("Solicitacao nao encontrada"));
-    final var atividades =
-        atividadeRepository.findBySolicitacaoId(id).stream().map(AtividadeResponse::from).toList();
-    return ResponseEntity.ok(atividades);
+    final var atividades = atividadeRepository.findBySolicitacaoId(id);
+    final List<UUID> autorIds =
+        atividades.stream().map(a -> a.getAutorUsuarioId()).distinct().toList();
+    final Map<UUID, String> nomesPorId =
+        usuarioRepository.findAllByIdIn(autorIds).stream()
+            .collect(Collectors.toMap(u -> u.getId(), u -> u.getNome()));
+    final var response =
+        atividades.stream()
+            .map(
+                a ->
+                    AtividadeResponse.from(
+                        a, nomesPorId.getOrDefault(a.getAutorUsuarioId(), "Usuário")))
+            .toList();
+    return ResponseEntity.ok(response);
   }
 
   @Transactional
@@ -224,5 +308,19 @@ public class SolicitacaoController {
     comentarioUseCase.execute(
         new RegistrarComentarioUseCase.Input(id, request.comentario(), autorId));
     return ResponseEntity.status(HttpStatus.CREATED).build();
+  }
+
+  @Transactional
+  @PatchMapping("/{id}/cancelar")
+  public ResponseEntity<SolicitacaoResponse> cancelar(
+      @PathVariable final UUID id,
+      @Valid @RequestBody final CancelarSolicitacaoRequest request,
+      final Authentication authentication) {
+    log.info("SolicitacaoController.cancelar iniciado");
+    final UUID usuarioId = UUID.fromString(authentication.getName());
+    final var output =
+        cancelarUseCase.execute(
+            new CancelarSolicitacaoUseCase.Input(id, request.motivo(), usuarioId));
+    return ResponseEntity.ok(SolicitacaoResponse.from(output));
   }
 }

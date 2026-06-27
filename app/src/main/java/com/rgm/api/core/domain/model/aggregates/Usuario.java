@@ -85,6 +85,14 @@ public final class Usuario {
     return new Usuario(id, nome, email, senhaHash, perfil, novoAtivo, criadoEm, novoAtualizadoEm);
   }
 
+  public Usuario alterarPerfil(final PerfilUsuario novoPerfil, final Instant agora) {
+    return new Usuario(id, nome, email, senhaHash, novoPerfil, ativo, criadoEm, agora);
+  }
+
+  public Usuario withSenha(final String novaSenhaHash, final Instant agora) {
+    return new Usuario(id, nome, email, novaSenhaHash, perfil, ativo, criadoEm, agora);
+  }
+
   public UUID getId() {
     return id;
   }

@@ -10,5 +10,7 @@ public interface AtividadeSolicitacaoRepository {
 
   List<AtividadeSolicitacao> findBySolicitacaoId(UUID solicitacaoId);
 
+  boolean existsByAutorId(UUID autorId);
+
   void deleteBySolicitacaoId(UUID solicitacaoId);
 }

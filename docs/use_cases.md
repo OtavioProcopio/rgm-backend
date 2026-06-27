@@ -118,11 +118,13 @@ Leituras complementares (detalhes):
 **Pré-condições**
 - Solicitação está em `EM_ANDAMENTO`.
 
+**Regras**
+- Solicitações de `REPARO` ou `INSPECAO` exigem o anexo de pelo menos 1 evidência (foto/documento) antes de serem enviadas para validação (QC Gate).
+
 **Fluxo principal**
 1. Ator solicita mover para `EM_VALIDACAO`.
-2. Sistema aplica UC-04 (autorização) + valida transição.
-3. (Opcional) Ator envia evidências e comentário.
-4. Sistema registra atividades necessárias.
+2. Sistema aplica UC-04 (autorização) + valida transição e exigência de evidência.
+3. Sistema muda status para `EM_VALIDACAO` e registra atividade de mudança.
 
 **Exceções**
 - Operador não atribuído → `403`.
@@ -262,11 +264,11 @@ Leituras complementares (detalhes):
 
 ---
 
-## UC-13 — Administração (usuários, máquinas, modelos)
+## UC-13 — Administração (usuários, modelos)
 
 **Atores e restrições obrigatórias**
 - **Administrador**:
-  - único com permissão para criar/editar/gerenciar Usuários (inclui `EXTERNO`) e Máquinas;
+  - único com permissão para criar/editar/gerenciar Usuários (inclui `EXTERNO`);
   - herda permissões de Gestor para movimentar cards;
   - é invisível para atribuições: não pode ser responsável em `SolicitacaoAtribuicao`.
 - **Gestor**:

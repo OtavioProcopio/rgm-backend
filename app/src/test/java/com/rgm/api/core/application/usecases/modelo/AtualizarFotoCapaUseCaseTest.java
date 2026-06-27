@@ -70,7 +70,7 @@ class AtualizarFotoCapaUseCaseTest {
 
   private Modelo criarModelo() {
     final Instant agora = Instant.now();
-    return Modelo.criar("COD-01", "Desc", null, UUID.randomUUID(), 1, agora);
+    return Modelo.criar("COD-01", "Desc", null, "FBOX", 1, agora);
   }
 
   @Test
