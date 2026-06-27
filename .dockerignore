@@ -5,5 +5,10 @@
 .env.example
 *.md
 Makefile
-docker-compose.yml
-target
+docker-compose*.yml
+# Build artifacts (multi-stage build handles this)
+app/target/
+# Test sources excluded from prod image for smaller build context
+app/src/test/
+# Docs
+docs/
