@@ -63,9 +63,12 @@ public class ModeloController {
       @RequestParam(defaultValue = "0") final int page,
       @RequestParam(defaultValue = "20") final int size,
       @RequestParam(required = false) final Boolean ativo,
-      @RequestParam(required = false) final String codigo) {
+      @RequestParam(required = false) final String codigo,
+      @RequestParam(required = false) final String maquina,
+      @RequestParam(required = false) final String descricao) {
     final var result =
-        listarUseCase.execute(new ListarModelosUseCase.Input(ativo, codigo, page, size));
+        listarUseCase.execute(
+            new ListarModelosUseCase.Input(ativo, codigo, maquina, descricao, page, size));
     return ResponseEntity.ok(PageResponse.from(result, ModeloResponse::from));
   }
 
