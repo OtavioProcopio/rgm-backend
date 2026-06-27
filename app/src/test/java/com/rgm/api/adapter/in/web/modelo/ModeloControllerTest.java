@@ -23,9 +23,11 @@ import com.rgm.api.core.application.usecases.modelo.ListarModelosUseCase;
 import com.rgm.api.core.domain.model.aggregates.EventoModelo;
 import com.rgm.api.core.domain.model.aggregates.Modelo;
 import com.rgm.api.core.domain.model.enums.TipoEventoModelo;
+import com.rgm.api.adapter.out.report.ModeloPdfService;
 import com.rgm.api.core.domain.ports.repositories.EventoModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.ModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.PageResult;
+import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -55,6 +57,8 @@ class ModeloControllerTest {
   @MockitoBean private ListarModelosUseCase listarUseCase;
   @MockitoBean private ModeloRepository modeloRepository;
   @MockitoBean private EventoModeloRepository eventoModeloRepository;
+  @MockitoBean private SolicitacaoRepository solicitacaoRepository;
+  @MockitoBean private ModeloPdfService modeloPdfService;
 
   private Modelo criarModelo() {
     final Instant agora = Instant.now();
