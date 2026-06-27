@@ -84,9 +84,10 @@ public final class TriarSolicitacaoUseCase {
           SolicitacaoAtribuicao.criar(salva.getId(), resp.getId(), input.gestorId(), agora));
     }
 
-    final String nomesResponsaveis = responsaveis.stream()
-        .map(Usuario::getNome)
-        .collect(java.util.stream.Collectors.joining(", "));
+    final String nomesResponsaveis =
+        responsaveis.stream()
+            .map(Usuario::getNome)
+            .collect(java.util.stream.Collectors.joining(", "));
 
     atividadeRepository.save(
         AtividadeSolicitacao.atribuicao(
