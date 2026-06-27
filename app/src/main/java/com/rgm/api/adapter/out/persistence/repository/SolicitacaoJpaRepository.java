@@ -1,9 +1,7 @@
 package com.rgm.api.adapter.out.persistence.repository;
 
 import com.rgm.api.adapter.out.persistence.entity.SolicitacaoJpaEntity;
-import com.rgm.api.core.domain.model.enums.PrioridadeSolicitacao;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
-import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -53,7 +51,8 @@ public interface SolicitacaoJpaRepository extends JpaRepository<SolicitacaoJpaEn
       @org.springframework.data.repository.query.Param("prioridade") String prioridade,
       @org.springframework.data.repository.query.Param("criadaEmInicio") Instant criadaEmInicio,
       @org.springframework.data.repository.query.Param("criadaEmFim") Instant criadaEmFim,
-      @org.springframework.data.repository.query.Param("abertaPorUsuarioId") UUID abertaPorUsuarioId,
+      @org.springframework.data.repository.query.Param("abertaPorUsuarioId")
+          UUID abertaPorUsuarioId,
       @org.springframework.data.repository.query.Param("responsavelId") UUID responsavelId,
       Pageable pageable);
 
