@@ -24,6 +24,7 @@ import com.rgm.api.core.domain.model.aggregates.EventoModelo;
 import com.rgm.api.core.domain.model.aggregates.Modelo;
 import com.rgm.api.core.domain.model.enums.TipoEventoModelo;
 import com.rgm.api.adapter.out.report.ModeloPdfService;
+import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.EventoModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.ModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.PageResult;
@@ -58,6 +59,7 @@ class ModeloControllerTest {
   @MockitoBean private ModeloRepository modeloRepository;
   @MockitoBean private EventoModeloRepository eventoModeloRepository;
   @MockitoBean private SolicitacaoRepository solicitacaoRepository;
+  @MockitoBean private AtividadeSolicitacaoRepository atividadeRepository;
   @MockitoBean private ModeloPdfService modeloPdfService;
 
   private Modelo criarModelo() {

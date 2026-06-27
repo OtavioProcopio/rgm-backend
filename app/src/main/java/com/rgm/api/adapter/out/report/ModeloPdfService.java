@@ -14,11 +14,14 @@ import com.lowagie.text.pdf.PdfWriter;
 import com.rgm.api.core.domain.model.aggregates.Modelo;
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
 import com.rgm.api.core.domain.model.aggregates.EventoModelo;
+import com.rgm.api.core.domain.model.entities.AtividadeSolicitacao;
 import java.awt.Color;
 import java.io.ByteArrayOutputStream;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -54,11 +57,12 @@ public class ModeloPdfService {
     return out.toByteArray();
   }
 
-  /** Ficha completa de um modelo: dados + eventos + solicitações. */
+  /** Ficha completa de um modelo: dados + eventos + solicitações com histórico de atividades. */
   public byte[] gerarFicha(
       final Modelo modelo,
       final List<EventoModelo> eventos,
-      final List<Solicitacao> solicitacoes) {
+      final List<Solicitacao> solicitacoes,
+      final Map<UUID, List<AtividadeSolicitacao>> atividadesPorSolicitacao) {
     final var out = new ByteArrayOutputStream();
     final var doc = new Document(PageSize.A4, 36, 36, 50, 36);
     PdfWriter.getInstance(doc, out);
@@ -70,7 +74,9 @@ public class ModeloPdfService {
     }
     if (!solicitacoes.isEmpty()) {
       addSecao(doc, "Histórico de Solicitações");
-      addTabelaSolicitacoes(doc, solicitacoes);
+      for (final Solicitacao s : solicitacoes) {
+        addSolicitacaoComHistorico(doc, s, atividadesPorSolicitacao.getOrDefault(s.getId(), List.of()));
+      }
     }
     doc.close();
     return out.toByteArray();
@@ -216,31 +222,72 @@ public class ModeloPdfService {
     }
   }
 
-  private void addTabelaSolicitacoes(final Document doc, final List<Solicitacao> solicitacoes) {
+  private void addSolicitacaoComHistorico(
+      final Document doc,
+      final Solicitacao s,
+      final List<AtividadeSolicitacao> atividades) {
     try {
-      final float[] widths = {5f, 3f, 3f, 3f, 4f, 4f};
+      // Header da solicitação
+      final var header = new Paragraph();
+      header.setSpacingBefore(10);
+      header.add(new Chunk(s.getTitulo(), CELL_BOLD));
+      final String meta =
+          "   "
+              + tipoLabel(s.getTipo().name())
+              + " · "
+              + statusLabel(s.getStatus().name())
+              + (s.getPrioridade() != null ? " · " + prioridadeLabel(s.getPrioridade().name()) : "")
+              + "   Aberta: "
+              + (s.getCriadaEm() != null ? FMT.format(s.getCriadaEm()) : "—")
+              + (s.getConcluidaEm() != null ? "   Concluída: " + FMT.format(s.getConcluidaEm()) : "");
+      header.add(new Chunk(meta, FontFactory.getFont(FontFactory.HELVETICA, 7, new Color(100, 100, 100))));
+      doc.add(header);
+
+      if (s.getDescricao() != null && !s.getDescricao().isBlank()) {
+        final var desc = new Paragraph(s.getDescricao(), FontFactory.getFont(FontFactory.HELVETICA, 8, new Color(80, 80, 80)));
+        desc.setSpacingAfter(4);
+        doc.add(desc);
+      }
+
+      if (atividades.isEmpty()) {
+        doc.add(new Paragraph("  (sem registros de atividade)", FontFactory.getFont(FontFactory.HELVETICA_OBLIQUE, 7, Color.GRAY)));
+        return;
+      }
+
+      final float[] widths = {3f, 3f, 3f, 9f};
       final var table = new PdfPTable(widths.length);
       table.setWidthPercentage(100);
       table.setWidths(widths);
-
-      addHeaderRow(table, "Título", "Tipo", "Status", "Prioridade", "Abertura", "Conclusão");
+      addHeaderRow(table, "Data", "Tipo", "Mudança de status", "Comentário / Detalhe");
 
       final Color even = new Color(245, 245, 245);
       boolean isEven = false;
-      for (final Solicitacao s : solicitacoes) {
+      for (final AtividadeSolicitacao a : atividades) {
         final Color bg = isEven ? even : Color.WHITE;
-        addCell(table, s.getTitulo(), bg, CELL_FONT);
-        addCell(table, tipoLabel(s.getTipo().name()), bg, CELL_FONT);
-        addCell(table, statusLabel(s.getStatus().name()), bg, CELL_FONT);
-        addCell(table, s.getPrioridade() != null ? prioridadeLabel(s.getPrioridade().name()) : "—", bg, CELL_FONT);
-        addCell(table, s.getCriadaEm() != null ? FMT.format(s.getCriadaEm()) : "—", bg, CELL_FONT);
-        addCell(table, s.getConcluidaEm() != null ? FMT.format(s.getConcluidaEm()) : "—", bg, CELL_FONT);
+        addCell(table, a.getCriadaEm() != null ? FMT.format(a.getCriadaEm()) : "—", bg, CELL_FONT);
+        addCell(table, tipoAtividadeLabel(a.getTipo().name()), bg, CELL_FONT);
+        final String mudanca = (a.getDeStatus() != null && a.getParaStatus() != null)
+            ? statusLabel(a.getDeStatus().name()) + " → " + statusLabel(a.getParaStatus().name())
+            : "—";
+        addCell(table, mudanca, bg, CELL_FONT);
+        addCell(table, a.getComentario() != null ? a.getComentario() : "—", bg, CELL_FONT);
         isEven = !isEven;
       }
       doc.add(table);
     } catch (final Exception e) {
-      throw new RuntimeException("Erro ao gerar tabela de solicitações", e);
+      throw new RuntimeException("Erro ao gerar histórico de solicitação no PDF", e);
     }
+  }
+
+  private String tipoAtividadeLabel(final String tipo) {
+    return switch (tipo) {
+      case "ABERTURA" -> "Abertura";
+      case "ATRIBUICAO" -> "Atribuição";
+      case "MUDANCA_STATUS" -> "Mudança de status";
+      case "COMENTARIO" -> "Comentário";
+      case "EVIDENCIA_ADICIONADA" -> "Evidência";
+      default -> tipo;
+    };
   }
 
   private void addHeaderRow(final PdfPTable table, final String... headers) {
