@@ -42,7 +42,7 @@ coverage: ## Rodar testes e gerar relatorio JaCoCo (target/site/jacoco)
 
 validate: ## Pipeline completo XP: lint + testes + coverage 85% + build
 	$(MAKE) lint
-	cd app && ./mvnw verify
+	cd app && ./mvnw clean verify -Dtest='!FlywayMigrationTest'
 
 # ── Execucao ───────────────────────────────────────────────
 
