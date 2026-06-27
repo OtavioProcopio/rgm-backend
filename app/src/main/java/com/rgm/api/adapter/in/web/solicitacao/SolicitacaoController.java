@@ -6,6 +6,7 @@ import com.rgm.api.adapter.in.web.dto.request.ComentarioRequest;
 import com.rgm.api.adapter.in.web.dto.request.DevolverSolicitacaoRequest;
 import com.rgm.api.adapter.in.web.dto.request.EditarSolicitacaoRequest;
 import com.rgm.api.adapter.in.web.dto.request.EncerrarSolicitacaoRequest;
+import com.rgm.api.adapter.in.web.dto.request.GerenciarResponsaveisRequest;
 import com.rgm.api.adapter.in.web.dto.request.TriarSolicitacaoRequest;
 import com.rgm.api.adapter.in.web.dto.response.AtividadeResponse;
 import com.rgm.api.adapter.in.web.dto.response.MetricasSolicitacaoResponse;
@@ -18,6 +19,7 @@ import com.rgm.api.core.application.usecases.solicitacao.DevolverSolicitacaoUseC
 import com.rgm.api.core.application.usecases.solicitacao.EditarSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.EncerrarSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.EnviarParaValidacaoUseCase;
+import com.rgm.api.core.application.usecases.solicitacao.GerenciarResponsaveisUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ListarSolicitacoesUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ObterMetricasSolicitacoesUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.RegistrarComentarioUseCase;
@@ -67,6 +69,7 @@ public class SolicitacaoController {
   private final EditarSolicitacaoUseCase editarUseCase;
   private final ListarSolicitacoesUseCase listarUseCase;
   private final ObterMetricasSolicitacoesUseCase obterMetricasUseCase;
+  private final GerenciarResponsaveisUseCase gerenciarResponsaveisUseCase;
   private final SolicitacaoRepository solicitacaoRepository;
   private final AtividadeSolicitacaoRepository atividadeRepository;
   private final SolicitacaoAtribuicaoRepository atribuicaoRepository;
@@ -84,6 +87,7 @@ public class SolicitacaoController {
       final EditarSolicitacaoUseCase editarUseCase,
       final ListarSolicitacoesUseCase listarUseCase,
       final ObterMetricasSolicitacoesUseCase obterMetricasUseCase,
+      final GerenciarResponsaveisUseCase gerenciarResponsaveisUseCase,
       final SolicitacaoRepository solicitacaoRepository,
       final AtividadeSolicitacaoRepository atividadeRepository,
       final SolicitacaoAtribuicaoRepository atribuicaoRepository,
@@ -99,6 +103,7 @@ public class SolicitacaoController {
     this.editarUseCase = editarUseCase;
     this.listarUseCase = listarUseCase;
     this.obterMetricasUseCase = obterMetricasUseCase;
+    this.gerenciarResponsaveisUseCase = gerenciarResponsaveisUseCase;
     this.solicitacaoRepository = solicitacaoRepository;
     this.atividadeRepository = atividadeRepository;
     this.atribuicaoRepository = atribuicaoRepository;
@@ -349,6 +354,20 @@ public class SolicitacaoController {
     final var output =
         cancelarUseCase.execute(
             new CancelarSolicitacaoUseCase.Input(id, request.motivo(), usuarioId));
+    return ResponseEntity.ok(SolicitacaoResponse.from(output));
+  }
+
+  @Transactional
+  @PatchMapping("/{id}/responsaveis")
+  public ResponseEntity<SolicitacaoResponse> gerenciarResponsaveis(
+      @PathVariable final UUID id,
+      @Valid @RequestBody final GerenciarResponsaveisRequest request,
+      final Authentication authentication) {
+    log.info("SolicitacaoController.gerenciarResponsaveis iniciado");
+    final UUID gestorId = UUID.fromString(authentication.getName());
+    final var output =
+        gerenciarResponsaveisUseCase.execute(
+            new GerenciarResponsaveisUseCase.Input(id, request.responsavelIds(), gestorId));
     return ResponseEntity.ok(SolicitacaoResponse.from(output));
   }
 }

@@ -21,6 +21,7 @@ import com.rgm.api.core.application.usecases.solicitacao.DevolverSolicitacaoUseC
 import com.rgm.api.core.application.usecases.solicitacao.EditarSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.EncerrarSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.EnviarParaValidacaoUseCase;
+import com.rgm.api.core.application.usecases.solicitacao.GerenciarResponsaveisUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ListarSolicitacoesUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ObterMetricasSolicitacoesUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.RegistrarComentarioUseCase;
@@ -113,9 +114,14 @@ public class UseCaseConfig {
       final SolicitacaoRepository solicitacaoRepository,
       final UsuarioRepository usuarioRepository,
       final AtividadeSolicitacaoRepository atividadeRepository,
+      final EventoModeloRepository eventoModeloRepository,
       final DomainEventPublisher eventPublisher) {
     return new EncerrarSolicitacaoUseCase(
-        solicitacaoRepository, usuarioRepository, atividadeRepository, eventPublisher);
+        solicitacaoRepository,
+        usuarioRepository,
+        atividadeRepository,
+        eventoModeloRepository,
+        eventPublisher);
   }
 
   @Bean
@@ -145,6 +151,16 @@ public class UseCaseConfig {
       final SolicitacaoAtribuicaoRepository atribuicaoRepository) {
     return new EditarSolicitacaoUseCase(
         solicitacaoRepository, usuarioRepository, atribuicaoRepository);
+  }
+
+  @Bean
+  public GerenciarResponsaveisUseCase gerenciarResponsaveisUseCase(
+      final SolicitacaoRepository solicitacaoRepository,
+      final UsuarioRepository usuarioRepository,
+      final SolicitacaoAtribuicaoRepository atribuicaoRepository,
+      final AtividadeSolicitacaoRepository atividadeRepository) {
+    return new GerenciarResponsaveisUseCase(
+        solicitacaoRepository, usuarioRepository, atribuicaoRepository, atividadeRepository);
   }
 
   @Bean

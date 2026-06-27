@@ -25,24 +25,36 @@ public interface SolicitacaoJpaRepository extends JpaRepository<SolicitacaoJpaEn
   Page<SolicitacaoJpaEntity> findByStatus(StatusSolicitacao status, Pageable pageable);
 
   @Query(
-      "SELECT s FROM SolicitacaoJpaEntity s WHERE "
-          + "(:status IS NULL OR s.status = :status) AND "
-          + "(:modeloId IS NULL OR s.modeloId = :modeloId) AND "
-          + "(:tipo IS NULL OR s.tipo = :tipo) AND "
-          + "(:prioridade IS NULL OR s.prioridade = :prioridade) AND "
-          + "(:criadaEmInicio IS NULL OR s.criadaEm >= :criadaEmInicio) AND "
-          + "(:criadaEmFim IS NULL OR s.criadaEm <= :criadaEmFim) AND "
-          + "(:abertaPorUsuarioId IS NULL OR s.abertaPorUsuarioId = :abertaPorUsuarioId) AND "
-          + "(:responsavelId IS NULL OR EXISTS (SELECT a FROM SolicitacaoAtribuicaoJpaEntity a WHERE a.solicitacaoId = s.id AND a.usuarioId = :responsavelId AND a.removidoEm IS NULL))")
+      value =
+          "SELECT s.* FROM solicitacoes s WHERE "
+              + "(:status IS NULL OR s.status = :status) AND "
+              + "(:modeloId::uuid IS NULL OR s.modelo_id = :modeloId::uuid) AND "
+              + "(:tipo IS NULL OR s.tipo = :tipo) AND "
+              + "(:prioridade IS NULL OR s.prioridade = :prioridade) AND "
+              + "(:criadaEmInicio::timestamptz IS NULL OR s.criada_em >= :criadaEmInicio::timestamptz) AND "
+              + "(:criadaEmFim::timestamptz IS NULL OR s.criada_em <= :criadaEmFim::timestamptz) AND "
+              + "(:abertaPorUsuarioId::uuid IS NULL OR s.aberta_por_usuario_id = :abertaPorUsuarioId::uuid) AND "
+              + "(:responsavelId::uuid IS NULL OR EXISTS (SELECT 1 FROM solicitacao_atribuicoes a WHERE a.solicitacao_id = s.id AND a.usuario_id = :responsavelId::uuid AND a.removido_em IS NULL))",
+      countQuery =
+          "SELECT COUNT(s.*) FROM solicitacoes s WHERE "
+              + "(:status IS NULL OR s.status = :status) AND "
+              + "(:modeloId::uuid IS NULL OR s.modelo_id = :modeloId::uuid) AND "
+              + "(:tipo IS NULL OR s.tipo = :tipo) AND "
+              + "(:prioridade IS NULL OR s.prioridade = :prioridade) AND "
+              + "(:criadaEmInicio::timestamptz IS NULL OR s.criada_em >= :criadaEmInicio::timestamptz) AND "
+              + "(:criadaEmFim::timestamptz IS NULL OR s.criada_em <= :criadaEmFim::timestamptz) AND "
+              + "(:abertaPorUsuarioId::uuid IS NULL OR s.aberta_por_usuario_id = :abertaPorUsuarioId::uuid) AND "
+              + "(:responsavelId::uuid IS NULL OR EXISTS (SELECT 1 FROM solicitacao_atribuicoes a WHERE a.solicitacao_id = s.id AND a.usuario_id = :responsavelId::uuid AND a.removido_em IS NULL))",
+      nativeQuery = true)
   Page<SolicitacaoJpaEntity> findByFilters(
-      StatusSolicitacao status,
-      UUID modeloId,
-      TipoSolicitacao tipo,
-      PrioridadeSolicitacao prioridade,
-      Instant criadaEmInicio,
-      Instant criadaEmFim,
-      UUID abertaPorUsuarioId,
-      UUID responsavelId,
+      @org.springframework.data.repository.query.Param("status") String status,
+      @org.springframework.data.repository.query.Param("modeloId") UUID modeloId,
+      @org.springframework.data.repository.query.Param("tipo") String tipo,
+      @org.springframework.data.repository.query.Param("prioridade") String prioridade,
+      @org.springframework.data.repository.query.Param("criadaEmInicio") Instant criadaEmInicio,
+      @org.springframework.data.repository.query.Param("criadaEmFim") Instant criadaEmFim,
+      @org.springframework.data.repository.query.Param("abertaPorUsuarioId") UUID abertaPorUsuarioId,
+      @org.springframework.data.repository.query.Param("responsavelId") UUID responsavelId,
       Pageable pageable);
 
   @Query("SELECT s.modeloId, COUNT(s) FROM SolicitacaoJpaEntity s GROUP BY s.modeloId")

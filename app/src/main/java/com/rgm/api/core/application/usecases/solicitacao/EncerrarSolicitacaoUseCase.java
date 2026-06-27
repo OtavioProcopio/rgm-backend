@@ -4,11 +4,15 @@ import com.rgm.api.core.domain.events.SolicitacaoFinalizadaEvent;
 import com.rgm.api.core.domain.exceptions.NaoAutorizadoException;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.exceptions.ValidationException;
+import com.rgm.api.core.domain.model.aggregates.EventoModelo;
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
 import com.rgm.api.core.domain.model.aggregates.Usuario;
 import com.rgm.api.core.domain.model.entities.AtividadeSolicitacao;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
+import com.rgm.api.core.domain.model.enums.TipoEventoModelo;
+import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
 import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository;
+import com.rgm.api.core.domain.ports.repositories.EventoModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import com.rgm.api.core.domain.ports.services.DomainEventPublisher;
@@ -21,16 +25,19 @@ public final class EncerrarSolicitacaoUseCase {
   private final SolicitacaoRepository solicitacaoRepository;
   private final UsuarioRepository usuarioRepository;
   private final AtividadeSolicitacaoRepository atividadeRepository;
+  private final EventoModeloRepository eventoModeloRepository;
   private final DomainEventPublisher eventPublisher;
 
   public EncerrarSolicitacaoUseCase(
       final SolicitacaoRepository solicitacaoRepository,
       final UsuarioRepository usuarioRepository,
       final AtividadeSolicitacaoRepository atividadeRepository,
+      final EventoModeloRepository eventoModeloRepository,
       final DomainEventPublisher eventPublisher) {
     this.solicitacaoRepository = solicitacaoRepository;
     this.usuarioRepository = usuarioRepository;
     this.atividadeRepository = atividadeRepository;
+    this.eventoModeloRepository = eventoModeloRepository;
     this.eventPublisher = eventPublisher;
   }
 
@@ -75,9 +82,31 @@ public final class EncerrarSolicitacaoUseCase {
         AtividadeSolicitacao.mudancaStatus(
             salva.getId(), solicitacao.getStatus(), novoStatus, input.gestorId(), agora));
 
+    if (novoStatus == StatusSolicitacao.CONCLUIDA && salva.getModeloId() != null) {
+      eventoModeloRepository.save(
+          EventoModelo.criar(
+              salva.getModeloId(),
+              mapearTipoEvento(salva.getTipo()),
+              salva.getTitulo(),
+              input.comentarioFinal(),
+              null,
+              false,
+              input.gestorId(),
+              salva.getId(),
+              agora));
+    }
+
     eventPublisher.publish(
         new SolicitacaoFinalizadaEvent(salva.getId(), salva.getModeloId(), novoStatus, agora));
 
     return salva;
+  }
+
+  private static TipoEventoModelo mapearTipoEvento(final TipoSolicitacao tipo) {
+    return switch (tipo) {
+      case REPARO -> TipoEventoModelo.REPARO;
+      case INSPECAO -> TipoEventoModelo.INSPECAO;
+      case REENGENHARIA -> TipoEventoModelo.MODIFICACAO;
+    };
   }
 }
