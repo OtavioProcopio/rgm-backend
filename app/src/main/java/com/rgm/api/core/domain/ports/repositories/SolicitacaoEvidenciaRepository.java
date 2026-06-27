@@ -13,4 +13,6 @@ public interface SolicitacaoEvidenciaRepository {
   boolean existsBySolicitacaoIdAndEvidenciaId(UUID solicitacaoId, UUID evidenciaId);
 
   void deleteBySolicitacaoId(UUID solicitacaoId);
+
+  void deleteByEvidenciaId(UUID evidenciaId);
 }

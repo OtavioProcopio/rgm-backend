@@ -12,6 +12,7 @@ import com.rgm.api.adapter.config.GlobalExceptionHandler;
 import com.rgm.api.adapter.in.web.WebMvcTestConfig;
 import com.rgm.api.adapter.out.security.JwtAuthenticationFilter;
 import com.rgm.api.core.application.usecases.evidencia.AnexarEvidenciaUseCase;
+import com.rgm.api.core.application.usecases.evidencia.ExcluirEvidenciaUseCase;
 import com.rgm.api.core.application.usecases.evidencia.VisualizarEvidenciaUseCase;
 import com.rgm.api.core.domain.model.aggregates.Evidencia;
 import java.time.Instant;
@@ -38,6 +39,7 @@ class EvidenciaControllerTest {
   @Autowired private MockMvc mockMvc;
   @MockitoBean private AnexarEvidenciaUseCase anexarUseCase;
   @MockitoBean private VisualizarEvidenciaUseCase visualizarUseCase;
+  @MockitoBean private ExcluirEvidenciaUseCase excluirUseCase;
 
   @Test
   void visualizarEvidencias() throws Exception {
