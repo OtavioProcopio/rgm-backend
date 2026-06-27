@@ -26,4 +26,9 @@ public class EvidenciaRepositoryAdapter implements EvidenciaRepository {
   public Evidencia save(final Evidencia evidencia) {
     return EvidenciaMapper.toDomain(jpa.save(EvidenciaMapper.toJpa(evidencia)));
   }
+
+  @Override
+  public void deleteById(final UUID id) {
+    jpa.deleteById(id);
+  }
 }

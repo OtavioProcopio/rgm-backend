@@ -46,4 +46,10 @@ public class SolicitacaoEvidenciaRepositoryAdapter implements SolicitacaoEvidenc
   public void deleteBySolicitacaoId(final UUID solicitacaoId) {
     jpa.deleteBySolicitacaoId(solicitacaoId);
   }
+
+  @Override
+  @Transactional
+  public void deleteByEvidenciaId(final UUID evidenciaId) {
+    jpa.deleteByEvidenciaId(evidenciaId);
+  }
 }

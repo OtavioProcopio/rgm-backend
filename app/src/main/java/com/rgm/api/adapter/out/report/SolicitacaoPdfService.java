@@ -68,33 +68,32 @@ public class SolicitacaoPdfService {
 
   private void addTabela(final Document doc, final List<Solicitacao> solicitacoes) {
     try {
-      final float[] widths = {3f, 8f, 4f, 4f, 4f, 4f, 5f, 5f, 4f};
+      final float[] widths = {6f, 3f, 4f, 3f, 6f, 5f, 5f, 3f};
       final var table = new PdfPTable(widths.length);
       table.setWidthPercentage(100);
       table.setWidths(widths);
 
       addHeaderRow(
           table,
-          "ID",
           "Título",
           "Tipo",
           "Status",
           "Prioridade",
-          "Modelo ID",
-          "Criada Em",
-          "Concluída Em",
+          "Descrição",
+          "Abertura",
+          "Conclusão",
           "SLA (h)");
 
       final Color even = new Color(245, 245, 245);
       boolean isEven = false;
       for (final Solicitacao s : solicitacoes) {
         final Color bg = isEven ? even : Color.WHITE;
-        addCell(table, s.getId().toString().substring(0, 8) + "…", bg);
         addCell(table, s.getTitulo(), bg);
-        addCell(table, s.getTipo().name(), bg);
-        addCell(table, s.getStatus().name(), bg);
-        addCell(table, s.getPrioridade() != null ? s.getPrioridade().name() : "—", bg);
-        addCell(table, s.getModeloId().toString().substring(0, 8) + "…", bg);
+        addCell(table, tipoLabel(s.getTipo().name()), bg);
+        addCell(table, statusLabel(s.getStatus().name()), bg);
+        addCell(
+            table, s.getPrioridade() != null ? prioridadeLabel(s.getPrioridade().name()) : "—", bg);
+        addCell(table, s.getDescricao() != null ? s.getDescricao() : "—", bg);
         addCell(table, s.getCriadaEm() != null ? FMT.format(s.getCriadaEm()) : "—", bg);
         addCell(table, s.getConcluidaEm() != null ? FMT.format(s.getConcluidaEm()) : "—", bg);
         final String sla =
@@ -110,6 +109,36 @@ public class SolicitacaoPdfService {
     } catch (final Exception e) {
       throw new RuntimeException("Erro ao gerar tabela do PDF", e);
     }
+  }
+
+  private String tipoLabel(final String tipo) {
+    return switch (tipo) {
+      case "REPARO" -> "Reparo";
+      case "INSPECAO" -> "Inspeção";
+      case "REENGENHARIA" -> "Reengenharia";
+      default -> tipo;
+    };
+  }
+
+  private String statusLabel(final String status) {
+    return switch (status) {
+      case "A_FAZER" -> "A Fazer";
+      case "EM_ANDAMENTO" -> "Em Andamento";
+      case "EM_VALIDACAO" -> "Em Validação";
+      case "CONCLUIDA" -> "Concluída";
+      case "CANCELADA" -> "Cancelada";
+      default -> status;
+    };
+  }
+
+  private String prioridadeLabel(final String prioridade) {
+    return switch (prioridade) {
+      case "BAIXA" -> "Baixa";
+      case "MEDIA" -> "Média";
+      case "ALTA" -> "Alta";
+      case "URGENTE" -> "Urgente";
+      default -> prioridade;
+    };
   }
 
   private void addHeaderRow(final PdfPTable table, final String... headers) {

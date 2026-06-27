@@ -20,24 +20,20 @@ import com.rgm.api.core.application.usecases.solicitacao.EditarSolicitacaoUseCas
 import com.rgm.api.core.application.usecases.solicitacao.EncerrarSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.EnviarParaValidacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.GerenciarResponsaveisUseCase;
+import com.rgm.api.core.application.usecases.solicitacao.ListarAtividadesUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ListarSolicitacoesUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ObterMetricasSolicitacoesUseCase;
+import com.rgm.api.core.application.usecases.solicitacao.ObterSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.RegistrarComentarioUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.TriarSolicitacaoUseCase;
-import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.model.enums.PrioridadeSolicitacao;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
 import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
-import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository;
-import com.rgm.api.core.domain.ports.repositories.SolicitacaoAtribuicaoRepository;
-import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
-import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import jakarta.validation.Valid;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -70,10 +66,8 @@ public class SolicitacaoController {
   private final ListarSolicitacoesUseCase listarUseCase;
   private final ObterMetricasSolicitacoesUseCase obterMetricasUseCase;
   private final GerenciarResponsaveisUseCase gerenciarResponsaveisUseCase;
-  private final SolicitacaoRepository solicitacaoRepository;
-  private final AtividadeSolicitacaoRepository atividadeRepository;
-  private final SolicitacaoAtribuicaoRepository atribuicaoRepository;
-  private final UsuarioRepository usuarioRepository;
+  private final ObterSolicitacaoUseCase obterUseCase;
+  private final ListarAtividadesUseCase listarAtividadesUseCase;
   private final SolicitacaoPdfService pdfService;
 
   public SolicitacaoController(
@@ -88,10 +82,8 @@ public class SolicitacaoController {
       final ListarSolicitacoesUseCase listarUseCase,
       final ObterMetricasSolicitacoesUseCase obterMetricasUseCase,
       final GerenciarResponsaveisUseCase gerenciarResponsaveisUseCase,
-      final SolicitacaoRepository solicitacaoRepository,
-      final AtividadeSolicitacaoRepository atividadeRepository,
-      final SolicitacaoAtribuicaoRepository atribuicaoRepository,
-      final UsuarioRepository usuarioRepository,
+      final ObterSolicitacaoUseCase obterUseCase,
+      final ListarAtividadesUseCase listarAtividadesUseCase,
       final SolicitacaoPdfService pdfService) {
     this.abrirUseCase = abrirUseCase;
     this.triarUseCase = triarUseCase;
@@ -104,10 +96,8 @@ public class SolicitacaoController {
     this.listarUseCase = listarUseCase;
     this.obterMetricasUseCase = obterMetricasUseCase;
     this.gerenciarResponsaveisUseCase = gerenciarResponsaveisUseCase;
-    this.solicitacaoRepository = solicitacaoRepository;
-    this.atividadeRepository = atividadeRepository;
-    this.atribuicaoRepository = atribuicaoRepository;
-    this.usuarioRepository = usuarioRepository;
+    this.obterUseCase = obterUseCase;
+    this.listarAtividadesUseCase = listarAtividadesUseCase;
     this.pdfService = pdfService;
   }
 
@@ -174,7 +164,16 @@ public class SolicitacaoController {
                 responsavelId,
                 page,
                 size));
-    return ResponseEntity.ok(PageResponse.from(result, SolicitacaoResponse::from));
+
+    final List<UUID> solIds = result.content().stream().map(s -> s.getId()).toList();
+    final Map<UUID, List<UUID>> responsaveisPorSol = obterUseCase.listarResponsaveisBatch(solIds);
+
+    return ResponseEntity.ok(
+        PageResponse.from(
+            result,
+            s ->
+                SolicitacaoResponse.from(
+                    s, responsaveisPorSol.getOrDefault(s.getId(), List.of()))));
   }
 
   private ListarSolicitacoesUseCase.Input buildInput(
@@ -219,38 +218,17 @@ public class SolicitacaoController {
   @GetMapping("/{id}")
   public ResponseEntity<SolicitacaoResponse> buscarPorId(@PathVariable final UUID id) {
     log.info("SolicitacaoController.buscarPorId id={}", id);
-    final var solicitacao =
-        solicitacaoRepository
-            .findById(id)
-            .orElseThrow(() -> new RecursoNaoEncontradoException("Solicitacao nao encontrada"));
-    final List<UUID> responsaveis =
-        atribuicaoRepository.findBySolicitacaoId(id).stream()
-            .filter(a -> a.getRemovidoEm() == null)
-            .map(a -> a.getUsuarioId())
-            .toList();
-    return ResponseEntity.ok(SolicitacaoResponse.from(solicitacao, responsaveis));
+    final var output = obterUseCase.execute(id);
+    return ResponseEntity.ok(
+        SolicitacaoResponse.from(output.solicitacao(), output.responsavelIds()));
   }
 
   @GetMapping("/{id}/atividades")
   public ResponseEntity<List<AtividadeResponse>> listarAtividades(@PathVariable final UUID id) {
     log.info("SolicitacaoController.listarAtividades id={}", id);
-    solicitacaoRepository
-        .findById(id)
-        .orElseThrow(() -> new RecursoNaoEncontradoException("Solicitacao nao encontrada"));
-    final var atividades = atividadeRepository.findBySolicitacaoId(id);
-    final List<UUID> autorIds =
-        atividades.stream().map(a -> a.getAutorUsuarioId()).distinct().toList();
-    final Map<UUID, String> nomesPorId =
-        usuarioRepository.findAllByIdIn(autorIds).stream()
-            .collect(Collectors.toMap(u -> u.getId(), u -> u.getNome()));
-    final var response =
-        atividades.stream()
-            .map(
-                a ->
-                    AtividadeResponse.from(
-                        a, nomesPorId.getOrDefault(a.getAutorUsuarioId(), "Usuário")))
-            .toList();
-    return ResponseEntity.ok(response);
+    final var result = listarAtividadesUseCase.execute(id);
+    return ResponseEntity.ok(
+        result.stream().map(a -> AtividadeResponse.from(a.atividade(), a.autorNome())).toList());
   }
 
   @Transactional

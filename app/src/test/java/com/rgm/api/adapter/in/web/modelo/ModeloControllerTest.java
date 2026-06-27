@@ -16,6 +16,7 @@ import com.rgm.api.adapter.in.web.WebMvcTestConfig;
 import com.rgm.api.adapter.in.web.dto.request.CriarModeloRequest;
 import com.rgm.api.adapter.in.web.dto.request.EditarModeloRequest;
 import com.rgm.api.adapter.in.web.dto.request.FotoCapaUploadRequest;
+import com.rgm.api.adapter.out.report.ModeloPdfService;
 import com.rgm.api.adapter.out.security.JwtAuthenticationFilter;
 import com.rgm.api.core.application.usecases.modelo.AtualizarFotoCapaUseCase;
 import com.rgm.api.core.application.usecases.modelo.GerenciarModelosUseCase;
@@ -23,9 +24,11 @@ import com.rgm.api.core.application.usecases.modelo.ListarModelosUseCase;
 import com.rgm.api.core.domain.model.aggregates.EventoModelo;
 import com.rgm.api.core.domain.model.aggregates.Modelo;
 import com.rgm.api.core.domain.model.enums.TipoEventoModelo;
+import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.EventoModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.ModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.PageResult;
+import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -55,6 +58,9 @@ class ModeloControllerTest {
   @MockitoBean private ListarModelosUseCase listarUseCase;
   @MockitoBean private ModeloRepository modeloRepository;
   @MockitoBean private EventoModeloRepository eventoModeloRepository;
+  @MockitoBean private SolicitacaoRepository solicitacaoRepository;
+  @MockitoBean private AtividadeSolicitacaoRepository atividadeRepository;
+  @MockitoBean private ModeloPdfService modeloPdfService;
 
   private Modelo criarModelo() {
     final Instant agora = Instant.now();
@@ -229,6 +235,31 @@ class ModeloControllerTest {
                 .with(user(UUID.randomUUID().toString())))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.codigo").value("MOD-001"));
+  }
+
+  @Test
+  void exportarRelatorioLista() throws Exception {
+    when(listarUseCase.execute(any())).thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
+    when(modeloPdfService.gerarLista(any())).thenReturn(new byte[] {1, 2, 3});
+
+    mockMvc
+        .perform(get("/api/modelos/relatorio").with(user(UUID.randomUUID().toString())))
+        .andExpect(status().isOk());
+  }
+
+  @Test
+  void exportarFichaModelo() throws Exception {
+    final Modelo modelo = criarModelo();
+    when(modeloRepository.findById(modelo.getId())).thenReturn(java.util.Optional.of(modelo));
+    when(eventoModeloRepository.findByModeloId(modelo.getId())).thenReturn(List.of());
+    when(solicitacaoRepository.findByModeloId(modelo.getId())).thenReturn(List.of());
+    when(modeloPdfService.gerarFicha(any(), any(), any(), any())).thenReturn(new byte[] {1, 2, 3});
+
+    mockMvc
+        .perform(
+            get("/api/modelos/{id}/relatorio", modelo.getId())
+                .with(user(UUID.randomUUID().toString())))
+        .andExpect(status().isOk());
   }
 
   @Test

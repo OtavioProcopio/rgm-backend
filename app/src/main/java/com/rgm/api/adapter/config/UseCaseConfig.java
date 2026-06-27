@@ -7,8 +7,8 @@ import com.rgm.api.core.application.usecases.admin.ListarUsuariosUseCase;
 import com.rgm.api.core.application.usecases.auth.AlterarSenhaPropriaUseCase;
 import com.rgm.api.core.application.usecases.auth.LoginUseCase;
 import com.rgm.api.core.application.usecases.auth.RefreshTokenUseCase;
-import com.rgm.api.core.application.usecases.dashboard.ObterMetricasDashboardUseCase;
 import com.rgm.api.core.application.usecases.evidencia.AnexarEvidenciaUseCase;
+import com.rgm.api.core.application.usecases.evidencia.ExcluirEvidenciaUseCase;
 import com.rgm.api.core.application.usecases.evidencia.VisualizarEvidenciaUseCase;
 import com.rgm.api.core.application.usecases.modelo.AtualizarFotoCapaUseCase;
 import com.rgm.api.core.application.usecases.modelo.GerenciarModelosUseCase;
@@ -22,8 +22,10 @@ import com.rgm.api.core.application.usecases.solicitacao.EditarSolicitacaoUseCas
 import com.rgm.api.core.application.usecases.solicitacao.EncerrarSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.EnviarParaValidacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.GerenciarResponsaveisUseCase;
+import com.rgm.api.core.application.usecases.solicitacao.ListarAtividadesUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ListarSolicitacoesUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ObterMetricasSolicitacoesUseCase;
+import com.rgm.api.core.application.usecases.solicitacao.ObterSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.RegistrarComentarioUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.TriarSolicitacaoUseCase;
 import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository;
@@ -183,6 +185,21 @@ public class UseCaseConfig {
   }
 
   @Bean
+  public ExcluirEvidenciaUseCase excluirEvidenciaUseCase(
+      final SolicitacaoRepository solicitacaoRepository,
+      final EvidenciaRepository evidenciaRepository,
+      final SolicitacaoEvidenciaRepository solicitacaoEvidenciaRepository,
+      final UsuarioRepository usuarioRepository,
+      final SolicitacaoAtribuicaoRepository atribuicaoRepository) {
+    return new ExcluirEvidenciaUseCase(
+        solicitacaoRepository,
+        evidenciaRepository,
+        solicitacaoEvidenciaRepository,
+        usuarioRepository,
+        atribuicaoRepository);
+  }
+
+  @Bean
   public VisualizarEvidenciaUseCase visualizarEvidenciaUseCase(
       final SolicitacaoRepository solicitacaoRepository,
       final SolicitacaoEvidenciaRepository solicitacaoEvidenciaRepository,
@@ -291,12 +308,18 @@ public class UseCaseConfig {
   }
 
   @Bean
-  public ObterMetricasDashboardUseCase obterMetricasDashboardUseCase(
+  public ObterSolicitacaoUseCase obterSolicitacaoUseCase(
       final SolicitacaoRepository solicitacaoRepository,
-      final UsuarioRepository usuarioRepository,
-      final ModeloRepository modeloRepository,
-      final AtividadeSolicitacaoRepository atividadeRepository) {
-    return new ObterMetricasDashboardUseCase(
-        solicitacaoRepository, usuarioRepository, modeloRepository, atividadeRepository);
+      final SolicitacaoAtribuicaoRepository atribuicaoRepository) {
+    return new ObterSolicitacaoUseCase(solicitacaoRepository, atribuicaoRepository);
+  }
+
+  @Bean
+  public ListarAtividadesUseCase listarAtividadesUseCase(
+      final SolicitacaoRepository solicitacaoRepository,
+      final AtividadeSolicitacaoRepository atividadeRepository,
+      final UsuarioRepository usuarioRepository) {
+    return new ListarAtividadesUseCase(
+        solicitacaoRepository, atividadeRepository, usuarioRepository);
   }
 }

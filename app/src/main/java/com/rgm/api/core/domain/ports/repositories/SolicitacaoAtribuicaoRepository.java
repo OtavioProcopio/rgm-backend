@@ -10,6 +10,8 @@ public interface SolicitacaoAtribuicaoRepository {
 
   List<SolicitacaoAtribuicao> findBySolicitacaoId(UUID solicitacaoId);
 
+  List<SolicitacaoAtribuicao> findBySolicitacaoIdIn(List<UUID> solicitacaoIds);
+
   boolean existsBySolicitacaoIdAndUsuarioIdAndRemovidoEmIsNull(UUID solicitacaoId, UUID usuarioId);
 
   boolean existsByUsuarioIdAndRemovidoEmIsNull(UUID usuarioId);
