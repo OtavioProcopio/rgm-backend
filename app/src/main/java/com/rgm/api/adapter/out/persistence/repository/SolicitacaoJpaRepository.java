@@ -25,24 +25,24 @@ public interface SolicitacaoJpaRepository extends JpaRepository<SolicitacaoJpaEn
   @Query(
       value =
           "SELECT s.* FROM solicitacoes s WHERE "
-              + "(:status IS NULL OR s.status = :status) AND "
-              + "(:modeloId::uuid IS NULL OR s.modelo_id = :modeloId::uuid) AND "
-              + "(:tipo IS NULL OR s.tipo = :tipo) AND "
-              + "(:prioridade IS NULL OR s.prioridade = :prioridade) AND "
-              + "(:criadaEmInicio::timestamptz IS NULL OR s.criada_em >= :criadaEmInicio::timestamptz) AND "
-              + "(:criadaEmFim::timestamptz IS NULL OR s.criada_em <= :criadaEmFim::timestamptz) AND "
-              + "(:abertaPorUsuarioId::uuid IS NULL OR s.aberta_por_usuario_id = :abertaPorUsuarioId::uuid) AND "
-              + "(:responsavelId::uuid IS NULL OR EXISTS (SELECT 1 FROM solicitacao_atribuicoes a WHERE a.solicitacao_id = s.id AND a.usuario_id = :responsavelId::uuid AND a.removido_em IS NULL))",
+              + "(CAST(:status AS text) IS NULL OR s.status = :status) AND "
+              + "(CAST(:modeloId AS uuid) IS NULL OR s.modelo_id = :modeloId) AND "
+              + "(CAST(:tipo AS text) IS NULL OR s.tipo = :tipo) AND "
+              + "(CAST(:prioridade AS text) IS NULL OR s.prioridade = :prioridade) AND "
+              + "(CAST(:criadaEmInicio AS timestamptz) IS NULL OR s.criada_em >= :criadaEmInicio) AND "
+              + "(CAST(:criadaEmFim AS timestamptz) IS NULL OR s.criada_em <= :criadaEmFim) AND "
+              + "(CAST(:abertaPorUsuarioId AS uuid) IS NULL OR s.aberta_por_usuario_id = :abertaPorUsuarioId) AND "
+              + "(CAST(:responsavelId AS uuid) IS NULL OR EXISTS (SELECT 1 FROM solicitacao_atribuicoes a WHERE a.solicitacao_id = s.id AND a.usuario_id = :responsavelId AND a.removido_em IS NULL))",
       countQuery =
           "SELECT COUNT(s.*) FROM solicitacoes s WHERE "
-              + "(:status IS NULL OR s.status = :status) AND "
-              + "(:modeloId::uuid IS NULL OR s.modelo_id = :modeloId::uuid) AND "
-              + "(:tipo IS NULL OR s.tipo = :tipo) AND "
-              + "(:prioridade IS NULL OR s.prioridade = :prioridade) AND "
-              + "(:criadaEmInicio::timestamptz IS NULL OR s.criada_em >= :criadaEmInicio::timestamptz) AND "
-              + "(:criadaEmFim::timestamptz IS NULL OR s.criada_em <= :criadaEmFim::timestamptz) AND "
-              + "(:abertaPorUsuarioId::uuid IS NULL OR s.aberta_por_usuario_id = :abertaPorUsuarioId::uuid) AND "
-              + "(:responsavelId::uuid IS NULL OR EXISTS (SELECT 1 FROM solicitacao_atribuicoes a WHERE a.solicitacao_id = s.id AND a.usuario_id = :responsavelId::uuid AND a.removido_em IS NULL))",
+              + "(CAST(:status AS text) IS NULL OR s.status = :status) AND "
+              + "(CAST(:modeloId AS uuid) IS NULL OR s.modelo_id = :modeloId) AND "
+              + "(CAST(:tipo AS text) IS NULL OR s.tipo = :tipo) AND "
+              + "(CAST(:prioridade AS text) IS NULL OR s.prioridade = :prioridade) AND "
+              + "(CAST(:criadaEmInicio AS timestamptz) IS NULL OR s.criada_em >= :criadaEmInicio) AND "
+              + "(CAST(:criadaEmFim AS timestamptz) IS NULL OR s.criada_em <= :criadaEmFim) AND "
+              + "(CAST(:abertaPorUsuarioId AS uuid) IS NULL OR s.aberta_por_usuario_id = :abertaPorUsuarioId) AND "
+              + "(CAST(:responsavelId AS uuid) IS NULL OR EXISTS (SELECT 1 FROM solicitacao_atribuicoes a WHERE a.solicitacao_id = s.id AND a.usuario_id = :responsavelId AND a.removido_em IS NULL))",
       nativeQuery = true)
   Page<SolicitacaoJpaEntity> findByFilters(
       @org.springframework.data.repository.query.Param("status") String status,
