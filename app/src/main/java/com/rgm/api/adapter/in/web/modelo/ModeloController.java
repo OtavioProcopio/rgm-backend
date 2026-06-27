@@ -6,6 +6,7 @@ import com.rgm.api.adapter.in.web.dto.request.FotoCapaUploadRequest;
 import com.rgm.api.adapter.in.web.dto.response.EventoModeloResponse;
 import com.rgm.api.adapter.in.web.dto.response.ModeloResponse;
 import com.rgm.api.adapter.in.web.dto.response.PageResponse;
+import com.rgm.api.adapter.out.report.ModeloPdfService;
 import com.rgm.api.core.application.usecases.modelo.AtualizarFotoCapaUseCase;
 import com.rgm.api.core.application.usecases.modelo.GerenciarModelosUseCase;
 import com.rgm.api.core.application.usecases.modelo.ListarModelosUseCase;
@@ -13,11 +14,13 @@ import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.model.aggregates.Modelo;
 import com.rgm.api.core.domain.ports.repositories.EventoModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.ModeloRepository;
+import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -44,18 +47,24 @@ public class ModeloController {
   private final ListarModelosUseCase listarUseCase;
   private final ModeloRepository modeloRepository;
   private final EventoModeloRepository eventoModeloRepository;
+  private final SolicitacaoRepository solicitacaoRepository;
+  private final ModeloPdfService modeloPdfService;
 
   public ModeloController(
       final GerenciarModelosUseCase gerenciarUseCase,
       final AtualizarFotoCapaUseCase fotoCapaUseCase,
       final ListarModelosUseCase listarUseCase,
       final ModeloRepository modeloRepository,
-      final EventoModeloRepository eventoModeloRepository) {
+      final EventoModeloRepository eventoModeloRepository,
+      final SolicitacaoRepository solicitacaoRepository,
+      final ModeloPdfService modeloPdfService) {
     this.gerenciarUseCase = gerenciarUseCase;
     this.fotoCapaUseCase = fotoCapaUseCase;
     this.listarUseCase = listarUseCase;
     this.modeloRepository = modeloRepository;
     this.eventoModeloRepository = eventoModeloRepository;
+    this.solicitacaoRepository = solicitacaoRepository;
+    this.modeloPdfService = modeloPdfService;
   }
 
   @GetMapping
@@ -174,6 +183,37 @@ public class ModeloController {
     } catch (final java.io.IOException e) {
       throw new RuntimeException("Erro ao ler arquivo: " + e.getMessage(), e);
     }
+  }
+
+  @GetMapping("/relatorio")
+  public ResponseEntity<byte[]> gerarRelatorioLista(
+      @RequestParam(required = false) final Boolean ativo,
+      @RequestParam(required = false) final String codigo,
+      @RequestParam(required = false) final String maquina,
+      @RequestParam(required = false) final String descricao) {
+    final var result =
+        listarUseCase.execute(new ListarModelosUseCase.Input(ativo, codigo, maquina, descricao, 0, 1000));
+    final byte[] pdf = modeloPdfService.gerarLista(result.content());
+    final var headers = new HttpHeaders();
+    headers.setContentType(MediaType.APPLICATION_PDF);
+    headers.setContentDispositionFormData("attachment", "relatorio-modelos.pdf");
+    return new ResponseEntity<>(pdf, headers, HttpStatus.OK);
+  }
+
+  @GetMapping("/{id}/relatorio")
+  public ResponseEntity<byte[]> gerarFichaModelo(@PathVariable final UUID id) {
+    final var modelo =
+        modeloRepository
+            .findById(id)
+            .orElseThrow(() -> new RecursoNaoEncontradoException("Modelo nao encontrado"));
+    final var eventos = eventoModeloRepository.findByModeloId(id);
+    final var solicitacoes = solicitacaoRepository.findByModeloId(id);
+    final byte[] pdf = modeloPdfService.gerarFicha(modelo, eventos, solicitacoes);
+    final var headers = new HttpHeaders();
+    headers.setContentType(MediaType.APPLICATION_PDF);
+    final String filename = "ficha-modelo-" + modelo.getCodigo().replaceAll("[^a-zA-Z0-9]", "-") + ".pdf";
+    headers.setContentDispositionFormData("attachment", filename);
+    return new ResponseEntity<>(pdf, headers, HttpStatus.OK);
   }
 
   @Transactional
