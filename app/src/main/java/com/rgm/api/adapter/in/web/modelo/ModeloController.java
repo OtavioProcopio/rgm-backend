@@ -14,10 +14,13 @@ import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.model.aggregates.Modelo;
 import com.rgm.api.core.domain.ports.repositories.EventoModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.ModeloRepository;
+import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
@@ -48,6 +51,7 @@ public class ModeloController {
   private final ModeloRepository modeloRepository;
   private final EventoModeloRepository eventoModeloRepository;
   private final SolicitacaoRepository solicitacaoRepository;
+  private final AtividadeSolicitacaoRepository atividadeRepository;
   private final ModeloPdfService modeloPdfService;
 
   public ModeloController(
@@ -57,6 +61,7 @@ public class ModeloController {
       final ModeloRepository modeloRepository,
       final EventoModeloRepository eventoModeloRepository,
       final SolicitacaoRepository solicitacaoRepository,
+      final AtividadeSolicitacaoRepository atividadeRepository,
       final ModeloPdfService modeloPdfService) {
     this.gerenciarUseCase = gerenciarUseCase;
     this.fotoCapaUseCase = fotoCapaUseCase;
@@ -64,6 +69,7 @@ public class ModeloController {
     this.modeloRepository = modeloRepository;
     this.eventoModeloRepository = eventoModeloRepository;
     this.solicitacaoRepository = solicitacaoRepository;
+    this.atividadeRepository = atividadeRepository;
     this.modeloPdfService = modeloPdfService;
   }
 
@@ -208,7 +214,11 @@ public class ModeloController {
             .orElseThrow(() -> new RecursoNaoEncontradoException("Modelo nao encontrado"));
     final var eventos = eventoModeloRepository.findByModeloId(id);
     final var solicitacoes = solicitacaoRepository.findByModeloId(id);
-    final byte[] pdf = modeloPdfService.gerarFicha(modelo, eventos, solicitacoes);
+    final var atividadesPorSolicitacao = solicitacoes.stream()
+        .collect(Collectors.toMap(
+            s -> s.getId(),
+            s -> atividadeRepository.findBySolicitacaoId(s.getId())));
+    final byte[] pdf = modeloPdfService.gerarFicha(modelo, eventos, solicitacoes, atividadesPorSolicitacao);
     final var headers = new HttpHeaders();
     headers.setContentType(MediaType.APPLICATION_PDF);
     final String filename = "ficha-modelo-" + modelo.getCodigo().replaceAll("[^a-zA-Z0-9]", "-") + ".pdf";
