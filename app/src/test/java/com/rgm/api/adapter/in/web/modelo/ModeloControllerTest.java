@@ -238,6 +238,31 @@ class ModeloControllerTest {
   }
 
   @Test
+  void exportarRelatorioLista() throws Exception {
+    when(listarUseCase.execute(any())).thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
+    when(modeloPdfService.gerarLista(any())).thenReturn(new byte[] {1, 2, 3});
+
+    mockMvc
+        .perform(get("/api/modelos/relatorio").with(user(UUID.randomUUID().toString())))
+        .andExpect(status().isOk());
+  }
+
+  @Test
+  void exportarFichaModelo() throws Exception {
+    final Modelo modelo = criarModelo();
+    when(modeloRepository.findById(modelo.getId())).thenReturn(java.util.Optional.of(modelo));
+    when(eventoModeloRepository.findByModeloId(modelo.getId())).thenReturn(List.of());
+    when(solicitacaoRepository.findByModeloId(modelo.getId())).thenReturn(List.of());
+    when(modeloPdfService.gerarFicha(any(), any(), any(), any())).thenReturn(new byte[] {1, 2, 3});
+
+    mockMvc
+        .perform(
+            get("/api/modelos/{id}/relatorio", modelo.getId())
+                .with(user(UUID.randomUUID().toString())))
+        .andExpect(status().isOk());
+  }
+
+  @Test
   void usarEvidenciaComoFotoCapa() throws Exception {
     final Modelo modelo = criarModelo();
     when(fotoCapaUseCase.executeEvidenciaExistente(any())).thenReturn(modelo);
