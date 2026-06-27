@@ -54,7 +54,7 @@ Referência de todos os casos de uso implementados no sistema.
 - **Atores**: Operador, Gestor, Administrador
 - **Classe**: `AnexarEvidenciaUseCase`
 - **Endpoint**: `POST /api/solicitacoes/{id}/evidencias`
-- **Regras**: Valida MIME type (imagens/PDF) e tamanho (max 10MB); armazena publicUrl persistente; upload fora da transação DB
+- **Regras**: Valida MIME type (imagens, PDF ou vídeo MP4) e tamanho (max 10MB); armazena publicUrl persistente; upload fora da transação DB
 - **Erros**: 422 (tipo/tamanho inválido), 500 (MinIO indisponível)
 
 ## UC-09 — Visualizar evidências
