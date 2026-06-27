@@ -1,7 +1,10 @@
 package com.rgm.api.adapter.out.persistence.repository;
 
 import com.rgm.api.adapter.out.persistence.entity.SolicitacaoJpaEntity;
+import com.rgm.api.core.domain.model.enums.PrioridadeSolicitacao;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
+import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -24,9 +27,22 @@ public interface SolicitacaoJpaRepository extends JpaRepository<SolicitacaoJpaEn
   @Query(
       "SELECT s FROM SolicitacaoJpaEntity s WHERE "
           + "(:status IS NULL OR s.status = :status) AND "
-          + "(:modeloId IS NULL OR s.modeloId = :modeloId)")
+          + "(:modeloId IS NULL OR s.modeloId = :modeloId) AND "
+          + "(:tipo IS NULL OR s.tipo = :tipo) AND "
+          + "(:prioridade IS NULL OR s.prioridade = :prioridade) AND "
+          + "(:criadaEmInicio IS NULL OR s.criadaEm >= :criadaEmInicio) AND "
+          + "(:criadaEmFim IS NULL OR s.criadaEm <= :criadaEmFim)")
   Page<SolicitacaoJpaEntity> findByFilters(
-      StatusSolicitacao status, UUID modeloId, Pageable pageable);
+      StatusSolicitacao status,
+      UUID modeloId,
+      TipoSolicitacao tipo,
+      PrioridadeSolicitacao prioridade,
+      Instant criadaEmInicio,
+      Instant criadaEmFim,
+      Pageable pageable);
+
+  @Query("SELECT s.modeloId, COUNT(s) FROM SolicitacaoJpaEntity s GROUP BY s.modeloId")
+  List<Object[]> countGroupByModeloId();
 
   long countByStatus(StatusSolicitacao status);
 

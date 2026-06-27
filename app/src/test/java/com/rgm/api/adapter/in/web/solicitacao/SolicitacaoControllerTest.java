@@ -81,6 +81,7 @@ class SolicitacaoControllerTest {
   @MockitoBean private AtividadeSolicitacaoRepository atividadeRepository;
   @MockitoBean private SolicitacaoAtribuicaoRepository atribuicaoRepository;
   @MockitoBean private UsuarioRepository usuarioRepository;
+  @MockitoBean private com.rgm.api.adapter.out.report.SolicitacaoPdfService pdfService;
 
   private Solicitacao criarSolicitacao() {
     return Solicitacao.abrir(
@@ -177,7 +178,15 @@ class SolicitacaoControllerTest {
     when(obterMetricasUseCase.execute())
         .thenReturn(
             new ObterMetricasSolicitacoesUseCase.Output(
-                10L, 15L, 42L, java.util.Map.of("A_FAZER", 42L), 42L, 0L, 0L, 120L));
+                10L,
+                15L,
+                42L,
+                java.util.Map.of("A_FAZER", 42L),
+                42L,
+                0L,
+                0L,
+                120L,
+                java.util.Map.of()));
 
     mockMvc
         .perform(get("/api/solicitacoes/metricas").with(user("admin")))
@@ -407,11 +416,12 @@ class SolicitacaoControllerTest {
   }
 
   @Test
-  void exportarCsv() throws Exception {
+  void gerarRelatorio() throws Exception {
     final Solicitacao sol = criarSolicitacao();
     when(listarUseCase.execute(any()))
         .thenReturn(new PageResult<>(List.of(sol), 0, Integer.MAX_VALUE, 1, 1));
+    when(pdfService.gerar(any())).thenReturn(new byte[] {37, 80, 68, 70}); // %PDF magic bytes
 
-    mockMvc.perform(get("/api/solicitacoes/exportar").with(user("u"))).andExpect(status().isOk());
+    mockMvc.perform(get("/api/solicitacoes/relatorio").with(user("u"))).andExpect(status().isOk());
   }
 }

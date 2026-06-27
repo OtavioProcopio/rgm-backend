@@ -2,6 +2,7 @@ package com.rgm.api.adapter.in.web.dto.response;
 
 import com.rgm.api.core.application.usecases.solicitacao.ObterMetricasSolicitacoesUseCase;
 import java.util.Map;
+import java.util.UUID;
 
 public record MetricasSolicitacaoResponse(
     long totalUsuarios,
@@ -11,7 +12,8 @@ public record MetricasSolicitacaoResponse(
     long solicitacoesAbertas,
     long solicitacoesPendentes,
     long solicitacoesConcluidas,
-    long tempoMedioResolucaoSegundos) {
+    long tempoMedioResolucaoSegundos,
+    Map<UUID, Long> solicitacoesPorModelo) {
 
   public static MetricasSolicitacaoResponse from(
       final ObterMetricasSolicitacoesUseCase.Output output) {
@@ -23,6 +25,7 @@ public record MetricasSolicitacaoResponse(
         output.solicitacoesAbertas(),
         output.solicitacoesPendentes(),
         output.solicitacoesConcluidas(),
-        output.tempoMedioResolucaoSegundos());
+        output.tempoMedioResolucaoSegundos(),
+        output.solicitacoesPorModelo());
   }
 }

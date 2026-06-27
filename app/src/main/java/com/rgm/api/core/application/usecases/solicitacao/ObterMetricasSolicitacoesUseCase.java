@@ -9,6 +9,7 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /** Caso de uso para obter métricas e KPIs consolidados do sistema. */
 public final class ObterMetricasSolicitacoesUseCase {
@@ -34,7 +35,8 @@ public final class ObterMetricasSolicitacoesUseCase {
       long solicitacoesAbertas,
       long solicitacoesPendentes,
       long solicitacoesConcluidas,
-      long tempoMedioResolucaoSegundos) {}
+      long tempoMedioResolucaoSegundos,
+      Map<UUID, Long> solicitacoesPorModelo) {}
 
   public Output execute() {
     final long totalUsuarios = usuarioRepository.count();
@@ -74,6 +76,8 @@ public final class ObterMetricasSolicitacoesUseCase {
     }
     final long tempoMedioResolucaoSegundos = comTimestamp == 0 ? 0 : (totalSegundos / comTimestamp);
 
+    final Map<UUID, Long> solicitacoesPorModelo = solicitacaoRepository.countGroupByModeloId();
+
     return new Output(
         totalUsuarios,
         totalModelos,
@@ -82,6 +86,7 @@ public final class ObterMetricasSolicitacoesUseCase {
         solicitacoesAbertas,
         solicitacoesPendentes,
         solicitacoesConcluidas,
-        tempoMedioResolucaoSegundos);
+        tempoMedioResolucaoSegundos,
+        solicitacoesPorModelo);
   }
 }
