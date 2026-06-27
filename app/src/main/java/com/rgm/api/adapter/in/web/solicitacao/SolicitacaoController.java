@@ -117,7 +117,8 @@ public class SolicitacaoController {
         status != null ? StatusSolicitacao.valueOf(status) : null;
     final var pageResult =
         listarUseCase.execute(
-            new ListarSolicitacoesUseCase.Input(statusFilter, modeloId, null, null, 0, Integer.MAX_VALUE));
+            new ListarSolicitacoesUseCase.Input(
+                statusFilter, modeloId, null, null, 0, Integer.MAX_VALUE));
 
     final StringBuilder csv = new StringBuilder();
     csv.append("ID;Titulo;Tipo;Status;Prioridade;Modelo ID;Criada Em;Concluida Em;SLA (Minutos)\n");
@@ -164,7 +165,8 @@ public class SolicitacaoController {
         prioridade != null ? PrioridadeSolicitacao.valueOf(prioridade) : null;
     final var result =
         listarUseCase.execute(
-            new ListarSolicitacoesUseCase.Input(statusFilter, modeloId, tipoFilter, prioridadeFilter, page, size));
+            new ListarSolicitacoesUseCase.Input(
+                statusFilter, modeloId, tipoFilter, prioridadeFilter, page, size));
     return ResponseEntity.ok(PageResponse.from(result, SolicitacaoResponse::from));
   }
 

@@ -31,8 +31,12 @@ public final class ListarSolicitacoesUseCase {
         || input.tipo() != null
         || input.prioridade() != null) {
       return solicitacaoRepository.findByFilters(
-          input.status(), input.modeloId(), input.tipo(), input.prioridade(),
-          input.page(), input.size());
+          input.status(),
+          input.modeloId(),
+          input.tipo(),
+          input.prioridade(),
+          input.page(),
+          input.size());
     }
     return solicitacaoRepository.findAll(input.page(), input.size());
   }

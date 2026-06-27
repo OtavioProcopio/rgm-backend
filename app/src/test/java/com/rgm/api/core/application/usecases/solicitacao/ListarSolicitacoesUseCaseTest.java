@@ -43,15 +43,18 @@ class ListarSolicitacoesUseCaseTest {
 
   @Test
   void deveListarPorStatus() {
-    when(solicitacaoRepository.findByFilters(StatusSolicitacao.EM_ANDAMENTO, null, null, null, 0, 10))
+    when(solicitacaoRepository.findByFilters(
+            StatusSolicitacao.EM_ANDAMENTO, null, null, null, 0, 10))
         .thenReturn(new PageResult<>(List.of(), 0, 10, 0, 0));
 
     final PageResult<Solicitacao> result =
         useCase.execute(
-            new ListarSolicitacoesUseCase.Input(StatusSolicitacao.EM_ANDAMENTO, null, null, null, 0, 10));
+            new ListarSolicitacoesUseCase.Input(
+                StatusSolicitacao.EM_ANDAMENTO, null, null, null, 0, 10));
 
     assertEquals(0, result.totalElements());
-    verify(solicitacaoRepository).findByFilters(StatusSolicitacao.EM_ANDAMENTO, null, null, null, 0, 10);
+    verify(solicitacaoRepository)
+        .findByFilters(StatusSolicitacao.EM_ANDAMENTO, null, null, null, 0, 10);
     verify(solicitacaoRepository, never()).findAll(anyInt(), anyInt());
   }
 }
