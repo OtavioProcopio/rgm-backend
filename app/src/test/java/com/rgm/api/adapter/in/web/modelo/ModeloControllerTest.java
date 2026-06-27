@@ -87,6 +87,25 @@ class ModeloControllerTest {
   }
 
   @Test
+  void listarModelos_comFiltros() throws Exception {
+    final Modelo modelo = criarModelo();
+    when(listarUseCase.execute(any())).thenReturn(new PageResult<>(List.of(modelo), 0, 20, 1, 1));
+
+    mockMvc
+        .perform(
+            get("/api/modelos")
+                .param("ativo", "true")
+                .param("codigo", "MOD-001")
+                .param("maquina", "FBOX")
+                .param("descricao", "Desc")
+                .param("page", "0")
+                .param("size", "20"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.content[0].codigo").value("MOD-001"))
+        .andExpect(jsonPath("$.totalElements").value(1));
+  }
+
+  @Test
   void deveCriarModelo() throws Exception {
     final Modelo modelo = criarModelo();
     when(gerenciarUseCase.criar(any())).thenReturn(modelo);
