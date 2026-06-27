@@ -32,6 +32,13 @@ public class SolicitacaoAtribuicaoRepositoryAdapter implements SolicitacaoAtribu
   }
 
   @Override
+  public List<SolicitacaoAtribuicao> findBySolicitacaoIdIn(final List<UUID> solicitacaoIds) {
+    return jpa.findBySolicitacaoIdIn(solicitacaoIds).stream()
+        .map(SolicitacaoAtribuicaoMapper::toDomain)
+        .toList();
+  }
+
+  @Override
   public boolean existsBySolicitacaoIdAndUsuarioIdAndRemovidoEmIsNull(
       final UUID solicitacaoId, final UUID usuarioId) {
     return jpa.existsBySolicitacaoIdAndUsuarioIdAndRemovidoEmIsNull(solicitacaoId, usuarioId);

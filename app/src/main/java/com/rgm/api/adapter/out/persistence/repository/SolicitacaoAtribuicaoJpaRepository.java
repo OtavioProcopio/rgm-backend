@@ -10,6 +10,8 @@ public interface SolicitacaoAtribuicaoJpaRepository
 
   List<SolicitacaoAtribuicaoJpaEntity> findBySolicitacaoId(UUID solicitacaoId);
 
+  List<SolicitacaoAtribuicaoJpaEntity> findBySolicitacaoIdIn(List<UUID> solicitacaoIds);
+
   boolean existsBySolicitacaoIdAndUsuarioIdAndRemovidoEmIsNull(UUID solicitacaoId, UUID usuarioId);
 
   boolean existsByUsuarioIdAndRemovidoEmIsNull(UUID usuarioId);

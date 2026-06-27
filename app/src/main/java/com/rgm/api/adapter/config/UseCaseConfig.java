@@ -22,8 +22,10 @@ import com.rgm.api.core.application.usecases.solicitacao.EditarSolicitacaoUseCas
 import com.rgm.api.core.application.usecases.solicitacao.EncerrarSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.EnviarParaValidacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.GerenciarResponsaveisUseCase;
+import com.rgm.api.core.application.usecases.solicitacao.ListarAtividadesUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ListarSolicitacoesUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ObterMetricasSolicitacoesUseCase;
+import com.rgm.api.core.application.usecases.solicitacao.ObterSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.RegistrarComentarioUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.TriarSolicitacaoUseCase;
 import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository;
@@ -288,6 +290,21 @@ public class UseCaseConfig {
       final ModeloRepository modeloRepository) {
     return new ObterMetricasSolicitacoesUseCase(
         solicitacaoRepository, usuarioRepository, modeloRepository);
+  }
+
+  @Bean
+  public ObterSolicitacaoUseCase obterSolicitacaoUseCase(
+      final SolicitacaoRepository solicitacaoRepository,
+      final SolicitacaoAtribuicaoRepository atribuicaoRepository) {
+    return new ObterSolicitacaoUseCase(solicitacaoRepository, atribuicaoRepository);
+  }
+
+  @Bean
+  public ListarAtividadesUseCase listarAtividadesUseCase(
+      final SolicitacaoRepository solicitacaoRepository,
+      final AtividadeSolicitacaoRepository atividadeRepository,
+      final UsuarioRepository usuarioRepository) {
+    return new ListarAtividadesUseCase(solicitacaoRepository, atividadeRepository, usuarioRepository);
   }
 
   @Bean

@@ -29,22 +29,19 @@ import com.rgm.api.core.application.usecases.solicitacao.EditarSolicitacaoUseCas
 import com.rgm.api.core.application.usecases.solicitacao.EncerrarSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.EnviarParaValidacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.GerenciarResponsaveisUseCase;
+import com.rgm.api.core.application.usecases.solicitacao.ListarAtividadesUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ListarSolicitacoesUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ObterMetricasSolicitacoesUseCase;
+import com.rgm.api.core.application.usecases.solicitacao.ObterSolicitacaoUseCase;
+import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.application.usecases.solicitacao.RegistrarComentarioUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.TriarSolicitacaoUseCase;
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
-import com.rgm.api.core.domain.model.aggregates.Usuario;
 import com.rgm.api.core.domain.model.entities.AtividadeSolicitacao;
-import com.rgm.api.core.domain.model.enums.PerfilUsuario;
 import com.rgm.api.core.domain.model.enums.PrioridadeSolicitacao;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
 import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
-import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.PageResult;
-import com.rgm.api.core.domain.ports.repositories.SolicitacaoAtribuicaoRepository;
-import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
-import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -80,10 +77,8 @@ class SolicitacaoControllerTest {
   @MockitoBean private ListarSolicitacoesUseCase listarUseCase;
   @MockitoBean private ObterMetricasSolicitacoesUseCase obterMetricasUseCase;
   @MockitoBean private GerenciarResponsaveisUseCase gerenciarResponsaveisUseCase;
-  @MockitoBean private SolicitacaoRepository solicitacaoRepository;
-  @MockitoBean private AtividadeSolicitacaoRepository atividadeRepository;
-  @MockitoBean private SolicitacaoAtribuicaoRepository atribuicaoRepository;
-  @MockitoBean private UsuarioRepository usuarioRepository;
+  @MockitoBean private ObterSolicitacaoUseCase obterUseCase;
+  @MockitoBean private ListarAtividadesUseCase listarAtividadesUseCase;
   @MockitoBean private com.rgm.api.adapter.out.report.SolicitacaoPdfService pdfService;
 
   private Solicitacao criarSolicitacao() {
@@ -100,6 +95,7 @@ class SolicitacaoControllerTest {
   void listarSolicitacoes() throws Exception {
     final Solicitacao sol = criarSolicitacao();
     when(listarUseCase.execute(any())).thenReturn(new PageResult<>(List.of(sol), 0, 20, 1, 1));
+    when(obterUseCase.listarResponsaveisBatch(any())).thenReturn(java.util.Map.of());
 
     mockMvc
         .perform(get("/api/solicitacoes").param("page", "0").param("size", "20"))
@@ -112,6 +108,7 @@ class SolicitacaoControllerTest {
   @Test
   void listarSolicitacoesPorStatus() throws Exception {
     when(listarUseCase.execute(any())).thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
+    when(obterUseCase.listarResponsaveisBatch(any())).thenReturn(java.util.Map.of());
 
     mockMvc
         .perform(get("/api/solicitacoes").param("status", "A_FAZER"))
@@ -205,8 +202,8 @@ class SolicitacaoControllerTest {
   void buscarPorId() throws Exception {
     final UUID solId = UUID.randomUUID();
     final Solicitacao sol = criarSolicitacao();
-    when(solicitacaoRepository.findById(solId)).thenReturn(java.util.Optional.of(sol));
-    when(atribuicaoRepository.findBySolicitacaoId(solId)).thenReturn(List.of());
+    when(obterUseCase.execute(solId))
+        .thenReturn(new ObterSolicitacaoUseCase.Output(sol, List.of()));
 
     mockMvc
         .perform(get("/api/solicitacoes/{id}", solId).with(user("u")))
@@ -217,7 +214,8 @@ class SolicitacaoControllerTest {
   @Test
   void buscarPorId_naoEncontrado() throws Exception {
     final UUID solId = UUID.randomUUID();
-    when(solicitacaoRepository.findById(solId)).thenReturn(java.util.Optional.empty());
+    when(obterUseCase.execute(solId))
+        .thenThrow(new RecursoNaoEncontradoException("Solicitacao nao encontrada"));
 
     mockMvc
         .perform(get("/api/solicitacoes/{id}", solId).with(user("u")))
@@ -228,23 +226,11 @@ class SolicitacaoControllerTest {
   void listarAtividades() throws Exception {
     final UUID solId = UUID.randomUUID();
     final UUID autorId = UUID.randomUUID();
-    final Solicitacao sol = criarSolicitacao();
     final AtividadeSolicitacao atividade =
         AtividadeSolicitacao.abertura(solId, autorId, Instant.now());
-    final Usuario autor =
-        new Usuario(
-            autorId,
-            "Alice",
-            "a@x.com",
-            "hash",
-            PerfilUsuario.OPERADOR,
-            true,
-            Instant.now(),
-            Instant.now());
 
-    when(solicitacaoRepository.findById(solId)).thenReturn(java.util.Optional.of(sol));
-    when(atividadeRepository.findBySolicitacaoId(solId)).thenReturn(List.of(atividade));
-    when(usuarioRepository.findAllByIdIn(any())).thenReturn(List.of(autor));
+    when(listarAtividadesUseCase.execute(solId))
+        .thenReturn(List.of(new ListarAtividadesUseCase.AtividadeComAutor(atividade, "Alice")));
 
     mockMvc
         .perform(get("/api/solicitacoes/{id}/atividades", solId).with(user("u")))
