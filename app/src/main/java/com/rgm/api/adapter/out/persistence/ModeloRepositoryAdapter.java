@@ -54,9 +54,14 @@ public class ModeloRepositoryAdapter implements ModeloRepository {
 
   @Override
   public PageResult<Modelo> findByFilters(
-      final Boolean ativo, final String codigo, final int page, final int size) {
+      final Boolean ativo,
+      final String codigo,
+      final String maquina,
+      final String descricao,
+      final int page,
+      final int size) {
     final var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "criadoEm"));
-    final var result = jpa.findByFilters(ativo, codigo, pageable);
+    final var result = jpa.findByFilters(ativo, codigo, maquina, descricao, pageable);
     return new PageResult<>(
         result.getContent().stream().map(ModeloMapper::toDomain).toList(),
         result.getNumber(),

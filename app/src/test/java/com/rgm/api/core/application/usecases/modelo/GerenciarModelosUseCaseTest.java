@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 import com.rgm.api.core.domain.exceptions.NaoAutorizadoException;
+import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.model.aggregates.Modelo;
 import com.rgm.api.core.domain.model.aggregates.Usuario;
 import com.rgm.api.core.domain.model.enums.PerfilUsuario;
@@ -170,5 +171,79 @@ class GerenciarModelosUseCaseTest {
         () ->
             useCase.reativar(
                 new GerenciarModelosUseCase.ReativarInput(UUID.randomUUID(), operador.getId())));
+  }
+
+  @Test
+  void deveEditarModeloComSucesso() {
+    final Usuario gestor = criarGestor();
+    final Instant agora = Instant.now();
+    final Modelo modelo =
+        new Modelo(
+            UUID.randomUUID(),
+            "MOD-01",
+            1,
+            "Desc",
+            null,
+            null,
+            null,
+            null,
+            null,
+            true,
+            "FBOX",
+            false,
+            agora,
+            agora);
+
+    when(usuarioRepository.findById(gestor.getId())).thenReturn(Optional.of(gestor));
+    when(modeloRepository.findById(modelo.getId())).thenReturn(Optional.of(modelo));
+    when(modeloRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    final Modelo resultado =
+        useCase.editar(
+            new GerenciarModelosUseCase.EditarInput(
+                modelo.getId(), "MOD-EDITADO", "Desc Editada", "Obs", "MAQ", gestor.getId()));
+
+    assertNotNull(resultado);
+    assertEquals("MOD-EDITADO", resultado.getCodigo());
+    assertEquals("Desc Editada", resultado.getDescricao());
+    assertEquals("MAQ", resultado.getMaquina());
+  }
+
+  @Test
+  void deveFalharEditarSeModeloNaoExistir() {
+    final Usuario gestor = criarGestor();
+    when(usuarioRepository.findById(gestor.getId())).thenReturn(Optional.of(gestor));
+    when(modeloRepository.findById(any())).thenReturn(Optional.empty());
+
+    assertThrows(
+        RecursoNaoEncontradoException.class,
+        () ->
+            useCase.editar(
+                new GerenciarModelosUseCase.EditarInput(
+                    UUID.randomUUID(), "MOD", "Desc", "Obs", "MAQ", gestor.getId())));
+  }
+
+  @Test
+  void deveFalharDesativarSeModeloNaoExistir() {
+    final Usuario gestor = criarGestor();
+    when(usuarioRepository.findById(gestor.getId())).thenReturn(Optional.of(gestor));
+    when(modeloRepository.findById(any())).thenReturn(Optional.empty());
+
+    assertThrows(
+        RecursoNaoEncontradoException.class,
+        () ->
+            useCase.desativar(
+                new GerenciarModelosUseCase.DesativarInput(UUID.randomUUID(), gestor.getId())));
+  }
+
+  @Test
+  void deveFalharSeUsuarioNaoExistir() {
+    when(usuarioRepository.findById(any())).thenReturn(Optional.empty());
+
+    assertThrows(
+        RecursoNaoEncontradoException.class,
+        () ->
+            useCase.reativar(
+                new GerenciarModelosUseCase.ReativarInput(UUID.randomUUID(), UUID.randomUUID())));
   }
 }

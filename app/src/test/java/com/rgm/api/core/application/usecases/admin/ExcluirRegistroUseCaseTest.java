@@ -243,4 +243,114 @@ class ExcluirRegistroUseCaseTest {
                 new ExcluirRegistroUseCase.Input(
                     ExcluirRegistroUseCase.TipoRecurso.USUARIO, usuarioId, admin.getId())));
   }
+
+  @Test
+  void deveFalharAoExcluirAdminSiMesmo() {
+    final Usuario admin = criarAdmin();
+    when(usuarioRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+
+    assertThrows(
+        BusinessRuleException.class,
+        () ->
+            useCase.execute(
+                new ExcluirRegistroUseCase.Input(
+                    ExcluirRegistroUseCase.TipoRecurso.USUARIO, admin.getId(), admin.getId())));
+  }
+
+  @Test
+  void deveFalharAoExcluirModeloInexistente() {
+    final Usuario admin = criarAdmin();
+    when(usuarioRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+    when(modeloRepository.findById(any())).thenReturn(Optional.empty());
+
+    assertThrows(
+        RecursoNaoEncontradoException.class,
+        () ->
+            useCase.execute(
+                new ExcluirRegistroUseCase.Input(
+                    ExcluirRegistroUseCase.TipoRecurso.MODELO, UUID.randomUUID(), admin.getId())));
+  }
+
+  @Test
+  void deveFalharAoExcluirUsuarioInexistente() {
+    final Usuario admin = criarAdmin();
+    when(usuarioRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+    when(usuarioRepository.findById(any(UUID.class))).thenReturn(Optional.empty());
+
+    assertThrows(
+        RecursoNaoEncontradoException.class,
+        () ->
+            useCase.execute(
+                new ExcluirRegistroUseCase.Input(
+                    ExcluirRegistroUseCase.TipoRecurso.USUARIO, UUID.randomUUID(), admin.getId())));
+  }
+
+  @Test
+  void deveFalharAoExcluirUsuarioComAtribuicao() {
+    final Usuario admin = criarAdmin();
+    final UUID usuarioId = UUID.randomUUID();
+    final Instant agora = Instant.now();
+    final Usuario usuario =
+        new Usuario(
+            usuarioId, "User", "user@test.com", "hash", PerfilUsuario.OPERADOR, true, agora, agora);
+
+    when(usuarioRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+    when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.of(usuario));
+    when(solicitacaoRepository.existsByAbertaPorUsuarioId(usuarioId)).thenReturn(false);
+    when(atribuicaoRepository.existsByUsuarioIdAndRemovidoEmIsNull(usuarioId)).thenReturn(true);
+
+    assertThrows(
+        BusinessRuleException.class,
+        () ->
+            useCase.execute(
+                new ExcluirRegistroUseCase.Input(
+                    ExcluirRegistroUseCase.TipoRecurso.USUARIO, usuarioId, admin.getId())));
+  }
+
+  @Test
+  void deveFalharAoExcluirUsuarioComAtividades() {
+    final Usuario admin = criarAdmin();
+    final UUID usuarioId = UUID.randomUUID();
+    final Instant agora = Instant.now();
+    final Usuario usuario =
+        new Usuario(
+            usuarioId, "User", "user@test.com", "hash", PerfilUsuario.OPERADOR, true, agora, agora);
+
+    when(usuarioRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+    when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.of(usuario));
+    when(solicitacaoRepository.existsByAbertaPorUsuarioId(usuarioId)).thenReturn(false);
+    when(atribuicaoRepository.existsByUsuarioIdAndRemovidoEmIsNull(usuarioId)).thenReturn(false);
+    when(atividadeRepository.existsByAutorId(usuarioId)).thenReturn(true);
+
+    assertThrows(
+        BusinessRuleException.class,
+        () ->
+            useCase.execute(
+                new ExcluirRegistroUseCase.Input(
+                    ExcluirRegistroUseCase.TipoRecurso.USUARIO, usuarioId, admin.getId())));
+  }
+
+  @Test
+  void deveFalharAoExcluirUsuarioComEventosDeModelo() {
+    final Usuario admin = criarAdmin();
+    final UUID usuarioId = UUID.randomUUID();
+    final Instant agora = Instant.now();
+    final Usuario usuario =
+        new Usuario(
+            usuarioId, "User", "user@test.com", "hash", PerfilUsuario.OPERADOR, true, agora, agora);
+
+    when(usuarioRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+    when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.of(usuario));
+    when(solicitacaoRepository.existsByAbertaPorUsuarioId(usuarioId)).thenReturn(false);
+    when(atribuicaoRepository.existsByUsuarioIdAndRemovidoEmIsNull(usuarioId)).thenReturn(false);
+    when(atividadeRepository.existsByAutorId(usuarioId)).thenReturn(false);
+    when(eventoModeloRepository.existsByExecutadoPorUsuarioId(usuarioId)).thenReturn(true);
+
+    assertThrows(
+        BusinessRuleException.class,
+        () ->
+            useCase.execute(
+                new ExcluirRegistroUseCase.Input(
+                    ExcluirRegistroUseCase.TipoRecurso.USUARIO, usuarioId, admin.getId())));
+  }
 }
