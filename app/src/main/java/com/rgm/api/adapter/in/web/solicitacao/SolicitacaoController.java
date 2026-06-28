@@ -6,6 +6,7 @@ import com.rgm.api.adapter.in.web.dto.request.ComentarioRequest;
 import com.rgm.api.adapter.in.web.dto.request.DevolverSolicitacaoRequest;
 import com.rgm.api.adapter.in.web.dto.request.EditarSolicitacaoRequest;
 import com.rgm.api.adapter.in.web.dto.request.EncerrarSolicitacaoRequest;
+import com.rgm.api.adapter.in.web.dto.request.EnviarParaValidacaoRequest;
 import com.rgm.api.adapter.in.web.dto.request.GerenciarResponsaveisRequest;
 import com.rgm.api.adapter.in.web.dto.request.TriarSolicitacaoRequest;
 import com.rgm.api.adapter.in.web.dto.response.AtividadeResponse;
@@ -270,10 +271,14 @@ public class SolicitacaoController {
   @Transactional
   @PatchMapping("/{id}/enviar-validacao")
   public ResponseEntity<SolicitacaoResponse> enviarParaValidacao(
-      @PathVariable final UUID id, final Authentication authentication) {
+      @PathVariable final UUID id,
+      @Valid @RequestBody final EnviarParaValidacaoRequest request,
+      final Authentication authentication) {
     log.info("SolicitacaoController.enviarParaValidacao iniciado");
     final UUID usuarioId = UUID.fromString(authentication.getName());
-    final var output = enviarUseCase.execute(new EnviarParaValidacaoUseCase.Input(id, usuarioId));
+    final var output =
+        enviarUseCase.execute(
+            new EnviarParaValidacaoUseCase.Input(id, usuarioId, request.comentario()));
     return ResponseEntity.ok(SolicitacaoResponse.from(output));
   }
 

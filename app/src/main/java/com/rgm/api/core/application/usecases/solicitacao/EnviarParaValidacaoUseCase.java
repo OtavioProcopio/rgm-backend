@@ -2,6 +2,7 @@ package com.rgm.api.core.application.usecases.solicitacao;
 
 import com.rgm.api.core.domain.exceptions.BusinessRuleException;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
+import com.rgm.api.core.domain.exceptions.ValidationException;
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
 import com.rgm.api.core.domain.model.aggregates.Usuario;
 import com.rgm.api.core.domain.model.entities.AtividadeSolicitacao;
@@ -37,10 +38,15 @@ public final class EnviarParaValidacaoUseCase {
     this.solicitacaoEvidenciaRepository = solicitacaoEvidenciaRepository;
   }
 
-  public record Input(UUID solicitacaoId, UUID usuarioId) {}
+  public record Input(UUID solicitacaoId, UUID usuarioId, String comentario) {}
 
   public Solicitacao execute(final Input input) {
     final Instant agora = Instant.now();
+
+    if (input.comentario() == null || input.comentario().isBlank()) {
+      throw new ValidationException(
+          "Comentário é obrigatório ao enviar para validação");
+    }
 
     final Usuario usuario =
         usuarioRepository
@@ -66,7 +72,7 @@ public final class EnviarParaValidacaoUseCase {
             || solicitacao.getTipo() == TipoSolicitacao.INSPECAO)
         && solicitacaoEvidenciaRepository.findBySolicitacaoId(solicitacao.getId()).isEmpty()) {
       throw new BusinessRuleException(
-          "Solicitações de REPARO ou INSPEÇÃO exigem o anexo de pelo menos 1 evidência (foto/documento) antes de serem enviadas para validação.");
+          "Solicitações de REPARO ou INSPEÇÃO exigem o anexo de pelo menos 1 evidência do serviço realizado antes de serem enviadas para validação.");
     }
 
     final Solicitacao atualizada = solicitacao.enviarParaValidacao(agora);
@@ -79,6 +85,10 @@ public final class EnviarParaValidacaoUseCase {
             StatusSolicitacao.EM_VALIDACAO,
             input.usuarioId(),
             agora));
+
+    atividadeRepository.save(
+        AtividadeSolicitacao.comentario(
+            salva.getId(), input.comentario(), input.usuarioId(), agora));
 
     return salva;
   }
