@@ -201,6 +201,50 @@ class EnviarParaValidacaoUseCaseTest {
   }
 
   @Test
+  void deveFalharAoEnviarParaValidacaoSeReengenhariaSemEvidencia() {
+    final Instant agora = Instant.now();
+    final Usuario gestor =
+        new Usuario(
+            UUID.randomUUID(),
+            "Gestor",
+            "g@test.com",
+            "hash",
+            PerfilUsuario.GESTOR,
+            true,
+            agora,
+            agora);
+    final Solicitacao solicitacao =
+        new Solicitacao(
+            UUID.randomUUID(),
+            "Titulo",
+            "Desc",
+            TipoSolicitacao.REENGENHARIA,
+            StatusSolicitacao.EM_ANDAMENTO,
+            PrioridadeSolicitacao.ALTA,
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            null,
+            agora,
+            agora,
+            null,
+            null);
+
+    when(usuarioRepository.findById(gestor.getId())).thenReturn(Optional.of(gestor));
+    when(solicitacaoRepository.findById(solicitacao.getId())).thenReturn(Optional.of(solicitacao));
+    when(solicitacaoEvidenciaRepository.findBySolicitacaoId(solicitacao.getId()))
+        .thenReturn(java.util.Collections.emptyList());
+
+    final var ex =
+        assertThrows(
+            com.rgm.api.core.domain.exceptions.BusinessRuleException.class,
+            () ->
+                useCase.execute(
+                    new EnviarParaValidacaoUseCase.Input(solicitacao.getId(), gestor.getId(), "Reengenharia concluída")));
+
+    assertTrue(ex.getMessage().contains("exigem o anexo de pelo menos 1 evidência"));
+  }
+
+  @Test
   void deveFalharAoEnviarParaValidacaoSeReparoSemEvidencia() {
     final Instant agora = Instant.now();
     final Usuario gestor =
