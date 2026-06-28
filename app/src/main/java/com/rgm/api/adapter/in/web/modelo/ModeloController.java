@@ -256,10 +256,14 @@ public class ModeloController {
 
   private String resolveNome(final Authentication authentication) {
     if (authentication == null) return "Sistema";
-    return usuarioRepository
-        .findById(UUID.fromString(authentication.getName()))
-        .map(u -> u.getNome())
-        .orElse("Sistema");
+    try {
+      return usuarioRepository
+          .findById(UUID.fromString(authentication.getName()))
+          .map(u -> u.getNome())
+          .orElse("Sistema");
+    } catch (final IllegalArgumentException e) {
+      return "Sistema";
+    }
   }
 
   @Transactional
