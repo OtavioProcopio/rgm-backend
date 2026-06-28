@@ -24,6 +24,7 @@ import com.rgm.api.core.application.usecases.solicitacao.EnviarParaValidacaoUseC
 import com.rgm.api.core.application.usecases.solicitacao.GerenciarResponsaveisUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ListarAtividadesUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ListarSolicitacoesUseCase;
+import com.rgm.api.core.application.usecases.solicitacao.ObterHistoricoMetricasUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ObterMetricasSolicitacoesUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ObterSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.RegistrarComentarioUseCase;
@@ -305,6 +306,12 @@ public class UseCaseConfig {
       final ModeloRepository modeloRepository) {
     return new ObterMetricasSolicitacoesUseCase(
         solicitacaoRepository, usuarioRepository, modeloRepository);
+  }
+
+  @Bean
+  public ObterHistoricoMetricasUseCase obterHistoricoMetricasUseCase(
+      final SolicitacaoRepository solicitacaoRepository) {
+    return new ObterHistoricoMetricasUseCase(solicitacaoRepository);
   }
 
   @Bean

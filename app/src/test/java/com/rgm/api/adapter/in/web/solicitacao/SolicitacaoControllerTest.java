@@ -80,6 +80,9 @@ class SolicitacaoControllerTest {
   @MockitoBean private ObterSolicitacaoUseCase obterUseCase;
   @MockitoBean private ListarAtividadesUseCase listarAtividadesUseCase;
   @MockitoBean private com.rgm.api.adapter.out.report.SolicitacaoPdfService pdfService;
+  @MockitoBean private com.rgm.api.core.domain.ports.repositories.UsuarioRepository usuarioRepository;
+  @MockitoBean private com.rgm.api.core.application.usecases.solicitacao.ObterHistoricoMetricasUseCase obterHistoricoMetricasUseCase;
+  @MockitoBean private SolicitacaoEventPublisher eventPublisher;
 
   private Solicitacao criarSolicitacao() {
     return Solicitacao.abrir(
@@ -316,7 +319,13 @@ class SolicitacaoControllerTest {
 
     mockMvc
         .perform(
-            patch("/api/solicitacoes/{id}/enviar-validacao", solId).with(user(userId.toString())))
+            patch("/api/solicitacoes/{id}/enviar-validacao", solId)
+                .with(user(userId.toString()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        new com.rgm.api.adapter.in.web.dto.request.EnviarParaValidacaoRequest(
+                            "Serviço de reparo concluído com sucesso"))))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.status").value("EM_VALIDACAO"));
   }
@@ -409,7 +418,9 @@ class SolicitacaoControllerTest {
     final Solicitacao sol = criarSolicitacao();
     when(listarUseCase.execute(any()))
         .thenReturn(new PageResult<>(List.of(sol), 0, Integer.MAX_VALUE, 1, 1));
-    when(pdfService.gerar(any())).thenReturn(new byte[] {37, 80, 68, 70}); // %PDF magic bytes
+    when(pdfService.gerar(any(), any(), any())).thenReturn(new byte[] {37, 80, 68, 70}); // %PDF magic bytes
+    when(usuarioRepository.findAllByIdIn(any())).thenReturn(java.util.List.of());
+    when(usuarioRepository.findById(any())).thenReturn(java.util.Optional.empty());
 
     mockMvc.perform(get("/api/solicitacoes/relatorio").with(user("u"))).andExpect(status().isOk());
   }

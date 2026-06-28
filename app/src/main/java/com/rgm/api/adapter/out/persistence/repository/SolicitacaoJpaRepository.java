@@ -62,4 +62,9 @@ public interface SolicitacaoJpaRepository extends JpaRepository<SolicitacaoJpaEn
   long countByStatus(StatusSolicitacao status);
 
   List<SolicitacaoJpaEntity> findByStatus(StatusSolicitacao status);
+
+  List<SolicitacaoJpaEntity> findByCriadaEmBetween(Instant inicio, Instant fim);
+
+  List<SolicitacaoJpaEntity> findByStatusAndCriadaEmBetween(
+      StatusSolicitacao status, Instant inicio, Instant fim);
 }

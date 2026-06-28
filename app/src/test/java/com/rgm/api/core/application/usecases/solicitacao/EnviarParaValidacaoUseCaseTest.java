@@ -3,6 +3,7 @@ package com.rgm.api.core.application.usecases.solicitacao;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.times;
 
 import com.rgm.api.core.domain.exceptions.NaoAutorizadoException;
 import com.rgm.api.core.domain.exceptions.TransicaoStatusInvalidaException;
@@ -95,10 +96,10 @@ class EnviarParaValidacaoUseCaseTest {
     when(atividadeRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
     final Solicitacao resultado =
-        useCase.execute(new EnviarParaValidacaoUseCase.Input(solicitacao.getId(), gestor.getId()));
+        useCase.execute(new EnviarParaValidacaoUseCase.Input(solicitacao.getId(), gestor.getId(), "Serviço realizado com sucesso"));
 
     assertEquals(StatusSolicitacao.EM_VALIDACAO, resultado.getStatus());
-    verify(atividadeRepository).save(any());
+    verify(atividadeRepository, times(2)).save(any());
   }
 
   @Test
@@ -126,7 +127,7 @@ class EnviarParaValidacaoUseCaseTest {
 
     final Solicitacao resultado =
         useCase.execute(
-            new EnviarParaValidacaoUseCase.Input(solicitacao.getId(), operador.getId()));
+            new EnviarParaValidacaoUseCase.Input(solicitacao.getId(), operador.getId(), "Serviço concluído pelo operador"));
 
     assertEquals(StatusSolicitacao.EM_VALIDACAO, resultado.getStatus());
   }
@@ -156,7 +157,7 @@ class EnviarParaValidacaoUseCaseTest {
         NaoAutorizadoException.class,
         () ->
             useCase.execute(
-                new EnviarParaValidacaoUseCase.Input(solicitacao.getId(), operador.getId())));
+                new EnviarParaValidacaoUseCase.Input(solicitacao.getId(), operador.getId(), "Serviço concluído pelo operador")));
   }
 
   @Test
@@ -196,7 +197,7 @@ class EnviarParaValidacaoUseCaseTest {
         TransicaoStatusInvalidaException.class,
         () ->
             useCase.execute(
-                new EnviarParaValidacaoUseCase.Input(solicitacaoAFazer.getId(), gestor.getId())));
+                new EnviarParaValidacaoUseCase.Input(solicitacaoAFazer.getId(), gestor.getId(), "Comentário de teste")));
   }
 
   @Test
@@ -225,7 +226,7 @@ class EnviarParaValidacaoUseCaseTest {
             com.rgm.api.core.domain.exceptions.BusinessRuleException.class,
             () ->
                 useCase.execute(
-                    new EnviarParaValidacaoUseCase.Input(solicitacao.getId(), gestor.getId())));
+                    new EnviarParaValidacaoUseCase.Input(solicitacao.getId(), gestor.getId(), "Serviço realizado com sucesso")));
 
     assertTrue(ex.getMessage().contains("exigem o anexo de pelo menos 1 evidência"));
   }
