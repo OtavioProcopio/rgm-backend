@@ -36,13 +36,13 @@ public class ModeloRepositoryAdapter implements ModeloRepository {
   }
 
   @Override
-  public int countByMaquinaIdAndCodigo(final UUID maquinaId, final String codigo) {
-    return jpa.countByMaquinaIdAndCodigo(maquinaId, codigo);
+  public int countByMaquinaAndCodigo(final String maquina, final String codigo) {
+    return jpa.countByMaquinaAndCodigo(maquina, codigo);
   }
 
   @Override
   public PageResult<Modelo> findAll(final int page, final int size) {
-    final var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "codigo"));
+    final var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "criadoEm"));
     final var result = jpa.findAll(pageable);
     return new PageResult<>(
         result.getContent().stream().map(ModeloMapper::toDomain).toList(),
@@ -54,14 +54,24 @@ public class ModeloRepositoryAdapter implements ModeloRepository {
 
   @Override
   public PageResult<Modelo> findByFilters(
-      final Boolean ativo, final String codigo, final int page, final int size) {
-    final var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "codigo"));
-    final var result = jpa.findByFilters(ativo, codigo, pageable);
+      final Boolean ativo,
+      final String codigo,
+      final String maquina,
+      final String descricao,
+      final int page,
+      final int size) {
+    final var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "criadoEm"));
+    final var result = jpa.findByFilters(ativo, codigo, maquina, descricao, pageable);
     return new PageResult<>(
         result.getContent().stream().map(ModeloMapper::toDomain).toList(),
         result.getNumber(),
         result.getSize(),
         result.getTotalElements(),
         result.getTotalPages());
+  }
+
+  @Override
+  public long count() {
+    return jpa.count();
   }
 }

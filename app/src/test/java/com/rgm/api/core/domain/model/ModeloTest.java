@@ -4,17 +4,16 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import com.rgm.api.core.domain.model.aggregates.Modelo;
 import java.time.Instant;
-import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 class ModeloTest {
 
   private static final Instant AGORA = Instant.now();
-  private static final UUID MAQUINA_ID = UUID.randomUUID();
+  private static final String MAQUINA = "FBOX";
 
   @Test
   void deveCriarModeloComValoresCorretos() {
-    final Modelo modelo = Modelo.criar("COD-001", "Descricao", "Obs", MAQUINA_ID, 1, AGORA);
+    final Modelo modelo = Modelo.criar("COD-001", "Descricao", "Obs", MAQUINA, 1, AGORA);
 
     assertNotNull(modelo.getId());
     assertEquals("COD-001", modelo.getCodigo());
@@ -24,25 +23,25 @@ class ModeloTest {
     assertNull(modelo.getFotoUrl());
     assertTrue(modelo.isAtivo());
     assertFalse(modelo.isTemPendenciaAberta());
-    assertEquals(MAQUINA_ID, modelo.getMaquinaId());
+    assertEquals(MAQUINA, modelo.getMaquina());
   }
 
   @Test
   void deveFalharSemCodigo() {
     assertThrows(
         IllegalArgumentException.class,
-        () -> Modelo.criar("", "Descricao", null, MAQUINA_ID, 1, AGORA));
+        () -> Modelo.criar("", "Descricao", null, MAQUINA, 1, AGORA));
   }
 
   @Test
   void deveFalharSemDescricao() {
     assertThrows(
-        IllegalArgumentException.class, () -> Modelo.criar("COD", "", null, MAQUINA_ID, 1, AGORA));
+        IllegalArgumentException.class, () -> Modelo.criar("COD", "", null, MAQUINA, 1, AGORA));
   }
 
   @Test
   void deveDesativarModelo() {
-    final Modelo modelo = Modelo.criar("COD", "Desc", null, MAQUINA_ID, 1, AGORA);
+    final Modelo modelo = Modelo.criar("COD", "Desc", null, MAQUINA, 1, AGORA);
     final Modelo desativado = modelo.desativar(AGORA);
 
     assertFalse(desativado.isAtivo());
@@ -51,7 +50,7 @@ class ModeloTest {
 
   @Test
   void deveAtualizarFotoUrl() {
-    final Modelo modelo = Modelo.criar("COD", "Desc", null, MAQUINA_ID, 1, AGORA);
+    final Modelo modelo = Modelo.criar("COD", "Desc", null, MAQUINA, 1, AGORA);
     final Modelo atualizado = modelo.withFotoUrl("http://foto.jpg", AGORA);
 
     assertEquals("http://foto.jpg", atualizado.getFotoUrl());
@@ -60,17 +59,18 @@ class ModeloTest {
 
   @Test
   void deveEditarModelo() {
-    final Modelo modelo = Modelo.criar("COD", "Desc", null, MAQUINA_ID, 1, AGORA);
-    final Modelo editado = modelo.editar("COD-NEW", "Nova Desc", "Obs nova", AGORA);
+    final Modelo modelo = Modelo.criar("COD", "Desc", null, MAQUINA, 1, AGORA);
+    final Modelo editado = modelo.editar("COD-NEW", "Nova Desc", "Obs nova", "FAST-LOOP", AGORA);
 
     assertEquals("COD-NEW", editado.getCodigo());
     assertEquals("Nova Desc", editado.getDescricao());
     assertEquals("Obs nova", editado.getObservacoes());
+    assertEquals("FAST-LOOP", editado.getMaquina());
   }
 
   @Test
   void deveAtualizarPendenciaAberta() {
-    final Modelo modelo = Modelo.criar("COD", "Desc", null, MAQUINA_ID, 1, AGORA);
+    final Modelo modelo = Modelo.criar("COD", "Desc", null, MAQUINA, 1, AGORA);
     final Modelo comPendencia = modelo.withTemPendenciaAberta(true, AGORA);
 
     assertTrue(comPendencia.isTemPendenciaAberta());

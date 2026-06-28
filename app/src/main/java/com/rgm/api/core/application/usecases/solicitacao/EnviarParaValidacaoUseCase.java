@@ -1,12 +1,15 @@
 package com.rgm.api.core.application.usecases.solicitacao;
 
+import com.rgm.api.core.domain.exceptions.BusinessRuleException;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
 import com.rgm.api.core.domain.model.aggregates.Usuario;
 import com.rgm.api.core.domain.model.entities.AtividadeSolicitacao;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
+import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
 import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoAtribuicaoRepository;
+import com.rgm.api.core.domain.ports.repositories.SolicitacaoEvidenciaRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import java.time.Instant;
@@ -19,16 +22,19 @@ public final class EnviarParaValidacaoUseCase {
   private final UsuarioRepository usuarioRepository;
   private final SolicitacaoAtribuicaoRepository atribuicaoRepository;
   private final AtividadeSolicitacaoRepository atividadeRepository;
+  private final SolicitacaoEvidenciaRepository solicitacaoEvidenciaRepository;
 
   public EnviarParaValidacaoUseCase(
       final SolicitacaoRepository solicitacaoRepository,
       final UsuarioRepository usuarioRepository,
       final SolicitacaoAtribuicaoRepository atribuicaoRepository,
-      final AtividadeSolicitacaoRepository atividadeRepository) {
+      final AtividadeSolicitacaoRepository atividadeRepository,
+      final SolicitacaoEvidenciaRepository solicitacaoEvidenciaRepository) {
     this.solicitacaoRepository = solicitacaoRepository;
     this.usuarioRepository = usuarioRepository;
     this.atribuicaoRepository = atribuicaoRepository;
     this.atividadeRepository = atividadeRepository;
+    this.solicitacaoEvidenciaRepository = solicitacaoEvidenciaRepository;
   }
 
   public record Input(UUID solicitacaoId, UUID usuarioId) {}
@@ -55,6 +61,13 @@ public final class EnviarParaValidacaoUseCase {
         solicitacao.getStatus(),
         StatusSolicitacao.EM_VALIDACAO,
         estaAtribuido);
+
+    if ((solicitacao.getTipo() == TipoSolicitacao.REPARO
+            || solicitacao.getTipo() == TipoSolicitacao.INSPECAO)
+        && solicitacaoEvidenciaRepository.findBySolicitacaoId(solicitacao.getId()).isEmpty()) {
+      throw new BusinessRuleException(
+          "Solicitações de REPARO ou INSPEÇÃO exigem o anexo de pelo menos 1 evidência (foto/documento) antes de serem enviadas para validação.");
+    }
 
     final Solicitacao atualizada = solicitacao.enviarParaValidacao(agora);
     final Solicitacao salva = solicitacaoRepository.save(atualizada);

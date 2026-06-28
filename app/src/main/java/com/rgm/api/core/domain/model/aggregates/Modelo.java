@@ -21,7 +21,7 @@ public final class Modelo {
   private final String estadoAtualDescricao;
   private final Instant estadoAtualAtualizadoEm;
   private final boolean ativo;
-  private final UUID maquinaId;
+  private final String maquina;
   private final boolean temPendenciaAberta;
   private final Instant criadoEm;
   private final Instant atualizadoEm;
@@ -37,7 +37,7 @@ public final class Modelo {
       final String estadoAtualDescricao,
       final Instant estadoAtualAtualizadoEm,
       final boolean ativo,
-      final UUID maquinaId,
+      final String maquina,
       final boolean temPendenciaAberta,
       final Instant criadoEm,
       final Instant atualizadoEm) {
@@ -51,7 +51,7 @@ public final class Modelo {
     this.estadoAtualDescricao = optionalTrimToNull(estadoAtualDescricao);
     this.estadoAtualAtualizadoEm = estadoAtualAtualizadoEm;
     this.ativo = ativo;
-    this.maquinaId = requireNonNull(maquinaId, "maquinaId");
+    this.maquina = requireNonBlank(maquina, "maquina");
     this.temPendenciaAberta = temPendenciaAberta;
     this.criadoEm = requireNonNull(criadoEm, "criadoEm");
     this.atualizadoEm = requireNonNull(atualizadoEm, "atualizadoEm");
@@ -62,7 +62,7 @@ public final class Modelo {
       final String codigo,
       final String descricao,
       final String observacoes,
-      final UUID maquinaId,
+      final String maquina,
       final int versao,
       final Instant agora) {
     return new Modelo(
@@ -76,7 +76,7 @@ public final class Modelo {
         null,
         null,
         true,
-        maquinaId,
+        maquina,
         false,
         agora,
         agora);
@@ -95,7 +95,7 @@ public final class Modelo {
         estadoAtualDescricao,
         estadoAtualAtualizadoEm,
         ativo,
-        maquinaId,
+        maquina,
         novoValor,
         criadoEm,
         novoAtualizadoEm);
@@ -116,7 +116,7 @@ public final class Modelo {
         estadoAtualDescricao,
         estadoAtualAtualizadoEm,
         ativo,
-        maquinaId,
+        maquina,
         temPendenciaAberta,
         criadoEm,
         novaFotoAtualizadaEm);
@@ -135,7 +135,7 @@ public final class Modelo {
         novaDescricao,
         novoAtualizadoEm,
         ativo,
-        maquinaId,
+        maquina,
         temPendenciaAberta,
         criadoEm,
         novoAtualizadoEm);
@@ -154,7 +154,26 @@ public final class Modelo {
         estadoAtualDescricao,
         estadoAtualAtualizadoEm,
         false,
-        maquinaId,
+        maquina,
+        temPendenciaAberta,
+        criadoEm,
+        novoAtualizadoEm);
+  }
+
+  /** Ativar o modelo. */
+  public Modelo ativar(final Instant novoAtualizadoEm) {
+    return new Modelo(
+        id,
+        codigo,
+        versao,
+        descricao,
+        observacoes,
+        fotoUrl,
+        fotoAtualizadaEm,
+        estadoAtualDescricao,
+        estadoAtualAtualizadoEm,
+        true,
+        maquina,
         temPendenciaAberta,
         criadoEm,
         novoAtualizadoEm);
@@ -165,6 +184,7 @@ public final class Modelo {
       final String novoCodigo,
       final String novaDescricao,
       final String novasObservacoes,
+      final String novaMaquina,
       final Instant novoAtualizadoEm) {
     return new Modelo(
         id,
@@ -177,7 +197,7 @@ public final class Modelo {
         estadoAtualDescricao,
         estadoAtualAtualizadoEm,
         ativo,
-        maquinaId,
+        novaMaquina,
         temPendenciaAberta,
         criadoEm,
         novoAtualizadoEm);
@@ -223,8 +243,8 @@ public final class Modelo {
     return ativo;
   }
 
-  public UUID getMaquinaId() {
-    return maquinaId;
+  public String getMaquina() {
+    return maquina;
   }
 
   public boolean isTemPendenciaAberta() {

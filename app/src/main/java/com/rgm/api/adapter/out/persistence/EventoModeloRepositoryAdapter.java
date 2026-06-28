@@ -26,4 +26,9 @@ public class EventoModeloRepositoryAdapter implements EventoModeloRepository {
   public List<EventoModelo> findByModeloId(final UUID modeloId) {
     return jpa.findByModeloId(modeloId).stream().map(EventoModeloMapper::toDomain).toList();
   }
+
+  @Override
+  public boolean existsByExecutadoPorUsuarioId(final UUID usuarioId) {
+    return jpa.existsByExecutadoPorUsuarioId(usuarioId);
+  }
 }

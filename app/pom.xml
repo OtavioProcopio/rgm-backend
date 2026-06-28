@@ -126,10 +126,20 @@
 			<groupId>org.flywaydb</groupId>
 			<artifactId>flyway-database-postgresql</artifactId>
 		</dependency>
-		<!-- Actuator (health check) -->
+		<!-- Actuator (health + metrics) -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-actuator</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>io.micrometer</groupId>
+			<artifactId>micrometer-registry-prometheus</artifactId>
+		</dependency>
+		<!-- PDF Report -->
+		<dependency>
+			<groupId>com.github.librepdf</groupId>
+			<artifactId>openpdf</artifactId>
+			<version>1.3.43</version>
 		</dependency>
 		<!-- OpenAPI / Swagger -->
 		<dependency>
@@ -247,7 +257,7 @@
 										<limit>
 											<counter>LINE</counter>
 											<value>COVEREDRATIO</value>
-											<minimum>0.30</minimum>
+											<minimum>0.90</minimum>
 										</limit>
 									</limits>
 								</rule>
@@ -263,7 +273,7 @@
 								<limit>
 									<counter>LINE</counter>
 									<value>COVEREDRATIO</value>
-									<minimum>0.30</minimum>
+									<minimum>0.90</minimum>
 								</limit>
 							</limits>
 						</rule>

@@ -3,6 +3,7 @@ package com.rgm.api.adapter.config;
 import com.rgm.api.adapter.out.security.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -26,6 +27,7 @@ public class SecurityConfig {
   @Bean
   public SecurityFilterChain securityFilterChain(final HttpSecurity http) throws Exception {
     return http.csrf(AbstractHttpConfigurer::disable)
+        .cors(Customizer.withDefaults())
         .sessionManagement(
             session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(
@@ -36,6 +38,11 @@ public class SecurityConfig {
                     .permitAll()
                     .requestMatchers("/swagger-ui/**", "/api-docs/**", "/swagger-ui.html")
                     .permitAll()
+                    .requestMatchers(
+                        org.springframework.http.HttpMethod.GET,
+                        "/api/admin/usuarios",
+                        "/api/admin/usuarios/**")
+                    .hasAnyRole("ADMINISTRADOR", "GESTOR")
                     .requestMatchers("/api/admin/**")
                     .hasAnyRole("ADMINISTRADOR")
                     .anyRequest()

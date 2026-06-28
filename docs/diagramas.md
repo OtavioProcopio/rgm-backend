@@ -57,7 +57,6 @@ flowchart LR
 
         %% Administracao
         UC_GerenciarUsuarios([Gerenciar usuarios])
-        UC_GerenciarMaquinas([Gerenciar maquinas])
         UC_ExcluirQualquer([Excluir permanentemente cards/registros])
     end
 
@@ -82,7 +81,6 @@ flowchart LR
 
     %% Ligações Administrador
     Ad --> UC_GerenciarUsuarios
-    Ad --> UC_GerenciarMaquinas
     Ad --> UC_CadastrarPrestador
     Ad --> UC_ExcluirQualquer
 
@@ -107,16 +105,6 @@ classDiagram
         +datetime atualizadoEm
     }
 
-    class Maquina {
-        +UUID id
-        +string nome
-        +string codigo
-        +string descricao
-        +boolean ativa
-        +datetime criadaEm
-        +datetime atualizadaEm
-    }
-
     class Modelo {
         +UUID id
         +string codigo
@@ -128,7 +116,7 @@ classDiagram
         +string estadoAtualDescricao
         +datetime estadoAtualAtualizadoEm
         +boolean ativo
-        +UUID maquinaId
+        +string maquina
         +boolean temPendenciaAberta
         +datetime criadoEm
         +datetime atualizadoEm
@@ -254,7 +242,6 @@ classDiagram
         OUTRO
     }
 
-    Maquina "1" --> "0..*" Modelo : possui
     Modelo "1" --> "0..*" Solicitacao : tem
     Solicitacao "1" --> "0..*" SolicitacaoAtribuicao : atribuicoes
     Solicitacao "1" --> "0..*" AtividadeSolicitacao : atividades
@@ -480,13 +467,6 @@ sequenceDiagram
     API->>API: Validar perfil Administrador
     API->>DB: INSERT Usuario (perfil=EXTERNO, ativo=true)
     API-->>WEB: 201
-
-    Note over AD,API: Gerenciar Maquina
-    AD->>WEB: Preenche dados maquina
-    WEB->>API: POST /maquinas (ou PUT)
-    API->>API: Validar perfil Administrador
-    API->>DB: INSERT / UPDATE Maquina
-    API-->>WEB: 201 / 200
 
     Note over AD,API: Excluir qualquer registro (Hard Delete)
     AD->>WEB: Confirma exclusao de card/modelo/usuario

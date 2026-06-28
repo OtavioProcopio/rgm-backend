@@ -1,30 +1,31 @@
 package com.rgm.api.adapter.in.web.admin;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rgm.api.adapter.config.GlobalExceptionHandler;
 import com.rgm.api.adapter.in.web.WebMvcTestConfig;
-import com.rgm.api.adapter.in.web.dto.request.CriarMaquinaRequest;
+import com.rgm.api.adapter.in.web.dto.request.AlterarPerfilRequest;
 import com.rgm.api.adapter.in.web.dto.request.CriarUsuarioRequest;
+import com.rgm.api.adapter.in.web.dto.request.EditarUsuarioRequest;
+import com.rgm.api.adapter.in.web.dto.request.ExcluirRegistroRequest;
+import com.rgm.api.adapter.in.web.dto.request.RedefinirSenhaRequest;
 import com.rgm.api.adapter.out.security.JwtAuthenticationFilter;
 import com.rgm.api.core.application.usecases.admin.CadastrarPrestadorExternoUseCase;
 import com.rgm.api.core.application.usecases.admin.ExcluirRegistroUseCase;
-import com.rgm.api.core.application.usecases.admin.GerenciarMaquinasUseCase;
 import com.rgm.api.core.application.usecases.admin.GerenciarUsuariosUseCase;
-import com.rgm.api.core.application.usecases.admin.ListarMaquinasUseCase;
 import com.rgm.api.core.application.usecases.admin.ListarUsuariosUseCase;
-import com.rgm.api.core.domain.model.aggregates.Maquina;
 import com.rgm.api.core.domain.model.aggregates.Usuario;
 import com.rgm.api.core.domain.model.enums.PerfilUsuario;
-import com.rgm.api.core.domain.ports.repositories.MaquinaRepository;
 import com.rgm.api.core.domain.ports.repositories.PageResult;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import java.time.Instant;
@@ -53,12 +54,9 @@ class AdminControllerTest {
   @Autowired private ObjectMapper objectMapper;
   @MockitoBean private GerenciarUsuariosUseCase gerenciarUsuariosUseCase;
   @MockitoBean private CadastrarPrestadorExternoUseCase cadastrarExternoUseCase;
-  @MockitoBean private GerenciarMaquinasUseCase gerenciarMaquinasUseCase;
   @MockitoBean private ExcluirRegistroUseCase excluirRegistroUseCase;
   @MockitoBean private ListarUsuariosUseCase listarUsuariosUseCase;
-  @MockitoBean private ListarMaquinasUseCase listarMaquinasUseCase;
   @MockitoBean private UsuarioRepository usuarioRepository;
-  @MockitoBean private MaquinaRepository maquinaRepository;
 
   @Test
   void listarUsuarios() throws Exception {
@@ -81,21 +79,6 @@ class AdminControllerTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.content[0].nome").value("Admin"))
         .andExpect(jsonPath("$.totalPages").value(1));
-  }
-
-  @Test
-  void listarMaquinas() throws Exception {
-    final Instant agora = Instant.now();
-    final Maquina maq =
-        new Maquina(UUID.randomUUID(), "CNC-01", "CNC01", "Torno CNC", true, agora, agora);
-    when(listarMaquinasUseCase.execute(anyInt(), anyInt()))
-        .thenReturn(new PageResult<>(List.of(maq), 0, 20, 1, 1));
-
-    mockMvc
-        .perform(get("/api/admin/maquinas"))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.content[0].nome").value("CNC-01"))
-        .andExpect(jsonPath("$.totalElements").value(1));
   }
 
   @Test
@@ -126,21 +109,125 @@ class AdminControllerTest {
   }
 
   @Test
-  void criarMaquina() throws Exception {
+  void redefinirSenha() throws Exception {
     final Instant agora = Instant.now();
-    final Maquina maq =
-        new Maquina(UUID.randomUUID(), "CNC-02", "CNC02", "Fresadora", true, agora, agora);
-    when(gerenciarMaquinasUseCase.criar(any())).thenReturn(maq);
+    final UUID userId = UUID.randomUUID();
+    final Usuario u =
+        new Usuario(
+            userId, "Alvo", "alvo@t.com", "hashed", PerfilUsuario.OPERADOR, true, agora, agora);
+    when(gerenciarUsuariosUseCase.redefinirSenha(any())).thenReturn(u);
 
     mockMvc
         .perform(
-            post("/api/admin/maquinas")
+            org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+                    "/api/admin/usuarios/{id}/senha", userId)
+                .with(user(UUID.randomUUID().toString()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(new RedefinirSenhaRequest("senhaTemporaria"))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.nome").value("Alvo"));
+  }
+
+  @Test
+  void alterarPerfil() throws Exception {
+    final Instant agora = Instant.now();
+    final UUID userId = UUID.randomUUID();
+    final Usuario u =
+        new Usuario(
+            userId, "Alvo", "alvo@t.com", "hashed", PerfilUsuario.GESTOR, true, agora, agora);
+    when(gerenciarUsuariosUseCase.alterarPerfil(any())).thenReturn(u);
+
+    mockMvc
+        .perform(
+            patch("/api/admin/usuarios/{id}/perfil", userId)
+                .with(user(UUID.randomUUID().toString()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(new AlterarPerfilRequest("GESTOR"))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.perfil").value("GESTOR"));
+  }
+
+  @Test
+  void buscarUsuarioPorId() throws Exception {
+    final Instant agora = Instant.now();
+    final UUID userId = UUID.randomUUID();
+    final Usuario u =
+        new Usuario(userId, "Op", "op@t.com", "hash", PerfilUsuario.OPERADOR, true, agora, agora);
+    when(usuarioRepository.findById(userId)).thenReturn(java.util.Optional.of(u));
+
+    mockMvc
+        .perform(get("/api/admin/usuarios/{id}", userId))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.nome").value("Op"));
+  }
+
+  @Test
+  void editarUsuario() throws Exception {
+    final Instant agora = Instant.now();
+    final UUID userId = UUID.randomUUID();
+    final UUID adminId = UUID.randomUUID();
+    final Usuario u =
+        new Usuario(
+            userId, "Editado", "edit@t.com", "hash", PerfilUsuario.OPERADOR, true, agora, agora);
+    when(gerenciarUsuariosUseCase.editar(any())).thenReturn(u);
+
+    mockMvc
+        .perform(
+            put("/api/admin/usuarios/{id}", userId)
+                .with(user(adminId.toString()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        new EditarUsuarioRequest("Editado", "edit@t.com"))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.nome").value("Editado"));
+  }
+
+  @Test
+  void desativarUsuario() throws Exception {
+    final Instant agora = Instant.now();
+    final UUID userId = UUID.randomUUID();
+    final Usuario u =
+        new Usuario(userId, "Op", "op@t.com", "hash", PerfilUsuario.OPERADOR, false, agora, agora);
+    when(gerenciarUsuariosUseCase.desativar(any())).thenReturn(u);
+
+    mockMvc
+        .perform(
+            patch("/api/admin/usuarios/{id}/desativar", userId)
+                .with(user(UUID.randomUUID().toString())))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.ativo").value(false));
+  }
+
+  @Test
+  void ativarUsuario() throws Exception {
+    final Instant agora = Instant.now();
+    final UUID userId = UUID.randomUUID();
+    final Usuario u =
+        new Usuario(userId, "Op", "op@t.com", "hash", PerfilUsuario.OPERADOR, true, agora, agora);
+    when(gerenciarUsuariosUseCase.ativar(any())).thenReturn(u);
+
+    mockMvc
+        .perform(
+            patch("/api/admin/usuarios/{id}/ativar", userId)
+                .with(user(UUID.randomUUID().toString())))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.ativo").value(true));
+  }
+
+  @Test
+  void excluirRegistro() throws Exception {
+    org.mockito.Mockito.doNothing().when(excluirRegistroUseCase).execute(any());
+
+    mockMvc
+        .perform(
+            delete("/api/admin/registros")
                 .with(user(UUID.randomUUID().toString()))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     objectMapper.writeValueAsString(
-                        new CriarMaquinaRequest("CNC-02", "CNC02", "Fresadora"))))
-        .andExpect(status().isCreated())
-        .andExpect(jsonPath("$.nome").value("CNC-02"));
+                        new ExcluirRegistroRequest("SOLICITACAO", UUID.randomUUID()))))
+        .andExpect(status().isNoContent());
   }
 }

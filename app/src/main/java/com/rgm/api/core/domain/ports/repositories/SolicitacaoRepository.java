@@ -1,8 +1,12 @@
 package com.rgm.api.core.domain.ports.repositories;
 
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
+import com.rgm.api.core.domain.model.enums.PrioridadeSolicitacao;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
+import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
+import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -16,6 +20,10 @@ public interface SolicitacaoRepository {
 
   boolean existsByModeloIdAndStatusIn(UUID modeloId, List<StatusSolicitacao> statuses);
 
+  boolean existsByModeloId(UUID modeloId);
+
+  boolean existsByAbertaPorUsuarioId(UUID abertaPorUsuarioId);
+
   List<Solicitacao> findByModeloId(UUID modeloId);
 
   PageResult<Solicitacao> findAll(int page, int size);
@@ -23,5 +31,22 @@ public interface SolicitacaoRepository {
   PageResult<Solicitacao> findByStatus(StatusSolicitacao status, int page, int size);
 
   PageResult<Solicitacao> findByFilters(
-      StatusSolicitacao status, UUID modeloId, int page, int size);
+      StatusSolicitacao status,
+      UUID modeloId,
+      TipoSolicitacao tipo,
+      PrioridadeSolicitacao prioridade,
+      Instant criadaEmInicio,
+      Instant criadaEmFim,
+      UUID abertaPorUsuarioId,
+      UUID responsavelId,
+      int page,
+      int size);
+
+  Map<UUID, Long> countGroupByModeloId();
+
+  long count();
+
+  long countByStatus(StatusSolicitacao status);
+
+  List<Solicitacao> findByStatus(StatusSolicitacao status);
 }

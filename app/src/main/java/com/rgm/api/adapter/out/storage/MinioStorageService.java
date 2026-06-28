@@ -13,15 +13,15 @@ public class MinioStorageService implements StorageService {
 
   private final MinioClient minioClient;
   private final String bucketName;
-  private final String minioUrl;
+  private final String publicUrl;
 
   public MinioStorageService(
       final MinioClient minioClient,
       @Value("${minio.bucket.name}") final String bucketName,
-      @Value("${minio.url}") final String minioUrl) {
+      @Value("${minio.public-url:${minio.url}}") final String publicUrl) {
     this.minioClient = minioClient;
     this.bucketName = bucketName;
-    this.minioUrl = minioUrl;
+    this.publicUrl = publicUrl;
   }
 
   @Override
@@ -36,6 +36,6 @@ public class MinioStorageService implements StorageService {
     } catch (final Exception e) {
       throw new RuntimeException("Erro ao fazer upload para MinIO: " + e.getMessage(), e);
     }
-    return minioUrl + "/" + bucketName + "/" + objectName;
+    return publicUrl + "/" + bucketName + "/" + objectName;
   }
 }

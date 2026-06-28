@@ -12,9 +12,10 @@ public record AtividadeResponse(
     String paraStatus,
     String comentario,
     UUID autorUsuarioId,
+    String autorNome,
     Instant criadaEm) {
 
-  public static AtividadeResponse from(final AtividadeSolicitacao a) {
+  public static AtividadeResponse from(final AtividadeSolicitacao a, final String autorNome) {
     return new AtividadeResponse(
         a.getId(),
         a.getSolicitacaoId(),
@@ -23,6 +24,7 @@ public record AtividadeResponse(
         a.getParaStatus() != null ? a.getParaStatus().name() : null,
         a.getComentario(),
         a.getAutorUsuarioId(),
+        autorNome,
         a.getCriadaEm());
   }
 }

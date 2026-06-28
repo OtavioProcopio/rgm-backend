@@ -3,10 +3,15 @@ package com.rgm.api.adapter.out.persistence;
 import com.rgm.api.adapter.out.persistence.mapper.SolicitacaoMapper;
 import com.rgm.api.adapter.out.persistence.repository.SolicitacaoJpaRepository;
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
+import com.rgm.api.core.domain.model.enums.PrioridadeSolicitacao;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
+import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
 import com.rgm.api.core.domain.ports.repositories.PageResult;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
+import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
@@ -44,6 +49,16 @@ public class SolicitacaoRepositoryAdapter implements SolicitacaoRepository {
   }
 
   @Override
+  public boolean existsByModeloId(final UUID modeloId) {
+    return jpa.existsByModeloId(modeloId);
+  }
+
+  @Override
+  public boolean existsByAbertaPorUsuarioId(final UUID abertaPorUsuarioId) {
+    return jpa.existsByAbertaPorUsuarioId(abertaPorUsuarioId);
+  }
+
+  @Override
   public List<Solicitacao> findByModeloId(final UUID modeloId) {
     return jpa.findByModeloId(modeloId).stream().map(SolicitacaoMapper::toDomain).toList();
   }
@@ -75,14 +90,57 @@ public class SolicitacaoRepositoryAdapter implements SolicitacaoRepository {
 
   @Override
   public PageResult<Solicitacao> findByFilters(
-      final StatusSolicitacao status, final UUID modeloId, final int page, final int size) {
-    final var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "criadaEm"));
-    final var result = jpa.findByFilters(status, modeloId, pageable);
+      final StatusSolicitacao status,
+      final UUID modeloId,
+      final TipoSolicitacao tipo,
+      final PrioridadeSolicitacao prioridade,
+      final Instant criadaEmInicio,
+      final Instant criadaEmFim,
+      final UUID abertaPorUsuarioId,
+      final UUID responsavelId,
+      final int page,
+      final int size) {
+    final var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "criada_em"));
+    final var result =
+        jpa.findByFilters(
+            status != null ? status.name() : null,
+            modeloId,
+            tipo != null ? tipo.name() : null,
+            prioridade != null ? prioridade.name() : null,
+            criadaEmInicio,
+            criadaEmFim,
+            abertaPorUsuarioId,
+            responsavelId,
+            pageable);
     return new PageResult<>(
         result.getContent().stream().map(SolicitacaoMapper::toDomain).toList(),
         result.getNumber(),
         result.getSize(),
         result.getTotalElements(),
         result.getTotalPages());
+  }
+
+  @Override
+  public Map<UUID, Long> countGroupByModeloId() {
+    final Map<UUID, Long> result = new HashMap<>();
+    for (final Object[] row : jpa.countGroupByModeloId()) {
+      result.put((UUID) row[0], (Long) row[1]);
+    }
+    return result;
+  }
+
+  @Override
+  public long count() {
+    return jpa.count();
+  }
+
+  @Override
+  public long countByStatus(final StatusSolicitacao status) {
+    return jpa.countByStatus(status);
+  }
+
+  @Override
+  public List<Solicitacao> findByStatus(final StatusSolicitacao status) {
+    return jpa.findByStatus(status).stream().map(SolicitacaoMapper::toDomain).toList();
   }
 }

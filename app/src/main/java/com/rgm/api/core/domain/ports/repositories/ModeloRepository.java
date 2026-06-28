@@ -12,9 +12,12 @@ public interface ModeloRepository {
 
   void deleteById(UUID id);
 
-  int countByMaquinaIdAndCodigo(UUID maquinaId, String codigo);
+  int countByMaquinaAndCodigo(String maquina, String codigo);
 
   PageResult<Modelo> findAll(int page, int size);
 
-  PageResult<Modelo> findByFilters(Boolean ativo, String codigo, int page, int size);
+  PageResult<Modelo> findByFilters(
+      Boolean ativo, String codigo, String maquina, String descricao, int page, int size);
+
+  long count();
 }

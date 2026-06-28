@@ -84,6 +84,30 @@ public class GlobalExceptionHandler {
     return ResponseEntity.badRequest().body(ErrorResponse.of(400, "Bad Request", ex.getMessage()));
   }
 
+  @ExceptionHandler(
+      org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class)
+  public ResponseEntity<ErrorResponse> handleTypeMismatch(
+      final org.springframework.web.method.annotation.MethodArgumentTypeMismatchException ex) {
+    final String message = String.format("Parâmetro '%s' com formato inválido", ex.getName());
+    return ResponseEntity.badRequest().body(ErrorResponse.of(400, "Bad Request", message));
+  }
+
+  @ExceptionHandler(org.springframework.web.HttpRequestMethodNotSupportedException.class)
+  public ResponseEntity<ErrorResponse> handleMethodNotSupported(
+      final org.springframework.web.HttpRequestMethodNotSupportedException ex) {
+    return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED)
+        .body(
+            ErrorResponse.of(
+                405, "Method Not Allowed", "Método HTTP não suportado para este recurso"));
+  }
+
+  @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+  public ResponseEntity<ErrorResponse> handleAccessDenied(
+      final org.springframework.security.access.AccessDeniedException ex) {
+    return ResponseEntity.status(HttpStatus.FORBIDDEN)
+        .body(ErrorResponse.of(403, "Forbidden", "Acesso negado: permissões insuficientes"));
+  }
+
   @ExceptionHandler(RuntimeException.class)
   public ResponseEntity<ErrorResponse> handleRuntime(final RuntimeException ex) {
     log.error("Erro interno nao tratado", ex);

@@ -9,4 +9,6 @@ public interface EventoModeloRepository {
   EventoModelo save(EventoModelo eventoModelo);
 
   List<EventoModelo> findByModeloId(UUID modeloId);
+
+  boolean existsByExecutadoPorUsuarioId(UUID usuarioId);
 }

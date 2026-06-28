@@ -59,7 +59,7 @@ public class UsuarioRepositoryAdapter implements UsuarioRepository {
 
   @Override
   public PageResult<Usuario> findAll(final int page, final int size) {
-    final var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "nome"));
+    final var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "criadoEm"));
     final var result = jpa.findAll(pageable);
     return new PageResult<>(
         result.getContent().stream().map(UsuarioMapper::toDomain).toList(),
@@ -72,7 +72,7 @@ public class UsuarioRepositoryAdapter implements UsuarioRepository {
   @Override
   public PageResult<Usuario> findByFilters(
       final PerfilUsuario perfil, final Boolean ativo, final int page, final int size) {
-    final var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "nome"));
+    final var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "criadoEm"));
     final var result = jpa.findByFilters(perfil, ativo, pageable);
     return new PageResult<>(
         result.getContent().stream().map(UsuarioMapper::toDomain).toList(),
@@ -80,5 +80,10 @@ public class UsuarioRepositoryAdapter implements UsuarioRepository {
         result.getSize(),
         result.getTotalElements(),
         result.getTotalPages());
+  }
+
+  @Override
+  public long count() {
+    return jpa.count();
   }
 }

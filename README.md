@@ -94,7 +94,7 @@ O perfil `dev` habilita: admin seed (`admin@rgm.com` / `admin123`), SQL logging 
 | Método | Path | Descrição |
 |--------|------|-----------|
 | POST | `/` | Upload de evidência (UC-08) |
-| GET | `/{id}` | Visualizar evidência (UC-09) |
+| GET | `/` | Listar evidências da solicitação (UC-09) |
 
 ### Modelos (`/api/modelos`)
 
@@ -117,16 +117,11 @@ O perfil `dev` habilita: admin seed (`admin@rgm.com` / `admin123`), SQL logging 
 | GET | `/usuarios/{id}` | Detalhe do usuário |
 | PATCH | `/usuarios/{id}/desativar` | Desativar usuário |
 | PATCH | `/usuarios/{id}/ativar` | Ativar usuário |
-| POST | `/maquinas` | Criar máquina |
-| GET | `/maquinas` | Listar máquinas (paginado) |
-| GET | `/maquinas/{id}` | Detalhe da máquina |
-| PUT | `/maquinas/{id}` | Editar máquina |
-| PATCH | `/maquinas/{id}/desativar` | Desativar máquina |
 | DELETE | `/registros` | Exclusão hard delete (UC-15) |
 
 ## Perfis de Usuário (RBAC)
 
-| Perfil | Pode criar solicitação | Movimentar Kanban | Gerenciar modelos | Gerenciar usuários/máquinas | Ser atribuído |
+| Perfil | Pode criar solicitação | Movimentar Kanban | Gerenciar modelos | Gerenciar usuários | Ser atribuído |
 |--------|----------------------|-------------------|-------------------|---------------------------|--------------|
 | ADMINISTRADOR | — | Qualquer | — | Sim | Não |
 | GESTOR | Sim | Qualquer | Sim | — | Sim |

@@ -1,5 +1,6 @@
 package com.rgm.api.core.application.usecases.evidencia;
 
+import com.rgm.api.core.domain.exceptions.BusinessRuleException;
 import com.rgm.api.core.domain.exceptions.NaoAutorizadoException;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.exceptions.ValidationException;
@@ -83,7 +84,7 @@ public final class AnexarEvidenciaUseCase {
             .orElseThrow(() -> new RecursoNaoEncontradoException("Solicitacao nao encontrada"));
 
     if (solicitacao.getStatus().isTerminal()) {
-      throw new ValidationException("Nao e possivel anexar evidencia a solicitacao encerrada");
+      throw new BusinessRuleException("Nao e possivel anexar evidencia a solicitacao encerrada");
     }
 
     validarAcesso(input.solicitacaoId(), input.enviadaPorUsuarioId());

@@ -6,6 +6,7 @@ import static org.mockito.Mockito.*;
 
 import com.rgm.api.core.domain.exceptions.BusinessRuleException;
 import com.rgm.api.core.domain.exceptions.NaoAutorizadoException;
+import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.model.aggregates.Usuario;
 import com.rgm.api.core.domain.model.enums.PerfilUsuario;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
@@ -133,5 +134,263 @@ class GerenciarUsuariosUseCaseTest {
         useCase.desativar(new GerenciarUsuariosUseCase.DesativarInput(alvo.getId(), admin.getId()));
 
     assertFalse(resultado.isAtivo());
+  }
+
+  @Test
+  void deveFalharAoDesativarSiMesmo() {
+    final Usuario admin = criarAdmin();
+    when(usuarioRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+
+    assertThrows(
+        BusinessRuleException.class,
+        () ->
+            useCase.desativar(
+                new GerenciarUsuariosUseCase.DesativarInput(admin.getId(), admin.getId())));
+  }
+
+  @Test
+  void deveRedefinirSenhaComSucesso() {
+    final Usuario admin = criarAdmin();
+    final Instant agora = Instant.now();
+    final Usuario alvo =
+        new Usuario(
+            UUID.randomUUID(),
+            "Alvo",
+            "alvo@test.com",
+            "hash",
+            PerfilUsuario.OPERADOR,
+            true,
+            agora,
+            agora);
+
+    when(usuarioRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+    when(usuarioRepository.findById(alvo.getId())).thenReturn(Optional.of(alvo));
+    when(passwordHasher.hash("novaSenha")).thenReturn("novoHash");
+    when(usuarioRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    final Usuario resultado =
+        useCase.redefinirSenha(
+            new GerenciarUsuariosUseCase.RedefinirSenhaInput(
+                alvo.getId(), "novaSenha", admin.getId()));
+
+    assertEquals("novoHash", resultado.getSenhaHash());
+  }
+
+  @Test
+  void deveAlterarPerfilComSucesso() {
+    final Usuario admin = criarAdmin();
+    final Instant agora = Instant.now();
+    final Usuario alvo =
+        new Usuario(
+            UUID.randomUUID(),
+            "Alvo",
+            "alvo@test.com",
+            "hash",
+            PerfilUsuario.OPERADOR,
+            true,
+            agora,
+            agora);
+
+    when(usuarioRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+    when(usuarioRepository.findById(alvo.getId())).thenReturn(Optional.of(alvo));
+    when(usuarioRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    final Usuario resultado =
+        useCase.alterarPerfil(
+            new GerenciarUsuariosUseCase.AlterarPerfilInput(
+                alvo.getId(), PerfilUsuario.GESTOR, admin.getId()));
+
+    assertEquals(PerfilUsuario.GESTOR, resultado.getPerfil());
+  }
+
+  @Test
+  void deveAtivarUsuario() {
+    final Usuario admin = criarAdmin();
+    final Instant agora = Instant.now();
+    final Usuario alvo =
+        new Usuario(
+            UUID.randomUUID(),
+            "Alvo",
+            "alvo@test.com",
+            "hash",
+            PerfilUsuario.OPERADOR,
+            false,
+            agora,
+            agora);
+    when(usuarioRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+    when(usuarioRepository.findById(alvo.getId())).thenReturn(Optional.of(alvo));
+    when(usuarioRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    final Usuario resultado =
+        useCase.ativar(new GerenciarUsuariosUseCase.AtivarInput(alvo.getId(), admin.getId()));
+
+    assertTrue(resultado.isAtivo());
+  }
+
+  @Test
+  void deveEditarUsuario() {
+    final Usuario admin = criarAdmin();
+    final Instant agora = Instant.now();
+    final Usuario alvo =
+        new Usuario(
+            UUID.randomUUID(),
+            "Alvo",
+            "alvo@test.com",
+            "hash",
+            PerfilUsuario.OPERADOR,
+            true,
+            agora,
+            agora);
+    when(usuarioRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+    when(usuarioRepository.findById(alvo.getId())).thenReturn(Optional.of(alvo));
+    when(usuarioRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    final Usuario resultado =
+        useCase.editar(
+            new GerenciarUsuariosUseCase.EditarInput(
+                alvo.getId(), "Novo Nome", "novo@test.com", admin.getId()));
+
+    assertEquals("Novo Nome", resultado.getNome());
+  }
+
+  @Test
+  void deveFalharAoEditarUsuarioExterno() {
+    final Usuario admin = criarAdmin();
+    final Instant agora = Instant.now();
+    final Usuario externo =
+        new Usuario(
+            UUID.randomUUID(), "Ext", null, null, PerfilUsuario.EXTERNO, true, agora, agora);
+    when(usuarioRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+    when(usuarioRepository.findById(externo.getId())).thenReturn(Optional.of(externo));
+
+    assertThrows(
+        BusinessRuleException.class,
+        () ->
+            useCase.editar(
+                new GerenciarUsuariosUseCase.EditarInput(
+                    externo.getId(), "Nome", "e@t.com", admin.getId())));
+  }
+
+  @Test
+  void deveFalharAoAlterarProprioPerfilDeAdmin() {
+    final Usuario admin = criarAdmin();
+    when(usuarioRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+
+    assertThrows(
+        BusinessRuleException.class,
+        () ->
+            useCase.alterarPerfil(
+                new GerenciarUsuariosUseCase.AlterarPerfilInput(
+                    admin.getId(), PerfilUsuario.OPERADOR, admin.getId())));
+  }
+
+  @Test
+  void deveFalharAoEditarSeEmailJaExistirParaOutroUsuario() {
+    final Usuario admin = criarAdmin();
+    final Instant agora = Instant.now();
+    final Usuario alvo =
+        new Usuario(
+            UUID.randomUUID(),
+            "Alvo",
+            "alvo@t.com",
+            "h",
+            PerfilUsuario.OPERADOR,
+            true,
+            agora,
+            agora);
+
+    when(usuarioRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+    when(usuarioRepository.findById(alvo.getId())).thenReturn(Optional.of(alvo));
+    when(usuarioRepository.existsByEmailAndIdNot("existente@t.com", alvo.getId())).thenReturn(true);
+
+    assertThrows(
+        BusinessRuleException.class,
+        () ->
+            useCase.editar(
+                new GerenciarUsuariosUseCase.EditarInput(
+                    alvo.getId(), "Nome", "existente@t.com", admin.getId())));
+  }
+
+  @Test
+  void deveFalharAoRedefinirSenhaSeVazia() {
+    final Usuario admin = criarAdmin();
+    when(usuarioRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+
+    assertThrows(
+        BusinessRuleException.class,
+        () ->
+            useCase.redefinirSenha(
+                new GerenciarUsuariosUseCase.RedefinirSenhaInput(
+                    UUID.randomUUID(), "  ", admin.getId())));
+  }
+
+  @Test
+  void deveFalharAoRedefinirSenhaSeUsuarioForExterno() {
+    final Usuario admin = criarAdmin();
+    final Instant agora = Instant.now();
+    final Usuario externo =
+        new Usuario(
+            UUID.randomUUID(), "Ext", null, null, PerfilUsuario.EXTERNO, true, agora, agora);
+
+    when(usuarioRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+    when(usuarioRepository.findById(externo.getId())).thenReturn(Optional.of(externo));
+
+    assertThrows(
+        BusinessRuleException.class,
+        () ->
+            useCase.redefinirSenha(
+                new GerenciarUsuariosUseCase.RedefinirSenhaInput(
+                    externo.getId(), "novasenhade12", admin.getId())));
+  }
+
+  @Test
+  void deveFalharAoAlterarPerfilDeExternoParaInterno() {
+    final Usuario admin = criarAdmin();
+    final Instant agora = Instant.now();
+    final Usuario externo =
+        new Usuario(
+            UUID.randomUUID(), "Ext", null, null, PerfilUsuario.EXTERNO, true, agora, agora);
+
+    when(usuarioRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+    when(usuarioRepository.findById(externo.getId())).thenReturn(Optional.of(externo));
+
+    assertThrows(
+        BusinessRuleException.class,
+        () ->
+            useCase.alterarPerfil(
+                new GerenciarUsuariosUseCase.AlterarPerfilInput(
+                    externo.getId(), PerfilUsuario.OPERADOR, admin.getId())));
+  }
+
+  @Test
+  void deveFalharAoAlterarPerfilDeInternoParaExterno() {
+    final Usuario admin = criarAdmin();
+    final Instant agora = Instant.now();
+    final Usuario interno =
+        new Usuario(
+            UUID.randomUUID(), "Int", "i@t.com", "h", PerfilUsuario.OPERADOR, true, agora, agora);
+
+    when(usuarioRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+    when(usuarioRepository.findById(interno.getId())).thenReturn(Optional.of(interno));
+
+    assertThrows(
+        BusinessRuleException.class,
+        () ->
+            useCase.alterarPerfil(
+                new GerenciarUsuariosUseCase.AlterarPerfilInput(
+                    interno.getId(), PerfilUsuario.EXTERNO, admin.getId())));
+  }
+
+  @Test
+  void deveFalharSeUsuarioAlvoNaoExistir() {
+    final Usuario admin = criarAdmin();
+    when(usuarioRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+    when(usuarioRepository.findById(any(UUID.class))).thenReturn(Optional.empty());
+
+    assertThrows(
+        RecursoNaoEncontradoException.class,
+        () ->
+            useCase.ativar(
+                new GerenciarUsuariosUseCase.AtivarInput(UUID.randomUUID(), admin.getId())));
   }
 }

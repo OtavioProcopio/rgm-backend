@@ -9,11 +9,14 @@ import org.springframework.data.jpa.repository.Query;
 
 public interface ModeloJpaRepository extends JpaRepository<ModeloJpaEntity, UUID> {
 
-  int countByMaquinaIdAndCodigo(UUID maquinaId, String codigo);
+  int countByMaquinaAndCodigo(String maquina, String codigo);
 
   @Query(
       "SELECT m FROM ModeloJpaEntity m WHERE "
           + "(:ativo IS NULL OR m.ativo = :ativo) AND "
-          + "(:codigo IS NULL OR LOWER(m.codigo) LIKE LOWER(CONCAT('%', :codigo, '%')))")
-  Page<ModeloJpaEntity> findByFilters(Boolean ativo, String codigo, Pageable pageable);
+          + "(CAST(:codigo AS string) IS NULL OR LOWER(m.codigo) LIKE LOWER(CONCAT('%', CAST(:codigo AS string), '%'))) AND "
+          + "(CAST(:maquina AS string) IS NULL OR LOWER(m.maquina) LIKE LOWER(CONCAT('%', CAST(:maquina AS string), '%'))) AND "
+          + "(CAST(:descricao AS string) IS NULL OR LOWER(m.descricao) LIKE LOWER(CONCAT('%', CAST(:descricao AS string), '%')))")
+  Page<ModeloJpaEntity> findByFilters(
+      Boolean ativo, String codigo, String maquina, String descricao, Pageable pageable);
 }
