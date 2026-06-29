@@ -262,7 +262,7 @@ class SolicitacaoControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     objectMapper.writeValueAsString(
-                        new EditarSolicitacaoRequest("Novo Titulo", "Nova Desc"))))
+                        new EditarSolicitacaoRequest("Novo Titulo", "Nova Desc", "REPARO"))))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.titulo").value("Titulo"));
   }

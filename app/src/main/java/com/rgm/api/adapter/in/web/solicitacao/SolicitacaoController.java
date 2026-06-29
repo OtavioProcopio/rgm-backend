@@ -250,7 +250,11 @@ public class SolicitacaoController {
     final var salva =
         editarUseCase.execute(
             new EditarSolicitacaoUseCase.Input(
-                id, request.titulo(), request.descricao(), usuarioId));
+                id,
+                request.titulo(),
+                request.descricao(),
+                TipoSolicitacao.valueOf(request.tipo()),
+                usuarioId));
     return ResponseEntity.ok(SolicitacaoResponse.from(salva));
   }
 

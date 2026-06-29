@@ -132,9 +132,14 @@ public class UseCaseConfig {
       final SolicitacaoRepository solicitacaoRepository,
       final UsuarioRepository usuarioRepository,
       final AtividadeSolicitacaoRepository atividadeRepository,
+      final SolicitacaoAtribuicaoRepository atribuicaoRepository,
       final DomainEventPublisher eventPublisher) {
     return new CancelarSolicitacaoUseCase(
-        solicitacaoRepository, usuarioRepository, atividadeRepository, eventPublisher);
+        solicitacaoRepository,
+        usuarioRepository,
+        atividadeRepository,
+        atribuicaoRepository,
+        eventPublisher);
   }
 
   @Bean
@@ -150,10 +155,8 @@ public class UseCaseConfig {
   @Bean
   public EditarSolicitacaoUseCase editarSolicitacaoUseCase(
       final SolicitacaoRepository solicitacaoRepository,
-      final UsuarioRepository usuarioRepository,
-      final SolicitacaoAtribuicaoRepository atribuicaoRepository) {
-    return new EditarSolicitacaoUseCase(
-        solicitacaoRepository, usuarioRepository, atribuicaoRepository);
+      final UsuarioRepository usuarioRepository) {
+    return new EditarSolicitacaoUseCase(solicitacaoRepository, usuarioRepository);
   }
 
   @Bean
