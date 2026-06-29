@@ -9,7 +9,7 @@ public enum PerfilUsuario {
 
   /** Perfis que podem ser atribuidos como responsaveis em SolicitacaoAtribuicao. */
   public boolean isAtribuivel() {
-    return this != ADMINISTRADOR;
+    return this == OPERADOR || this == GESTOR;
   }
 
   /** Perfis com poder de controle sobre qualquer card do Kanban. */

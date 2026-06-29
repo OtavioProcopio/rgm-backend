@@ -150,9 +150,12 @@ public final class Solicitacao {
         null);
   }
 
-  /** Editar titulo e descricao (somente em status nao-terminal). */
+  /** Editar titulo, descricao e tipo (somente em status nao-terminal). */
   public Solicitacao editar(
-      final String novoTitulo, final String novaDescricao, final Instant agora) {
+      final String novoTitulo,
+      final String novaDescricao,
+      final TipoSolicitacao novoTipo,
+      final Instant agora) {
     if (!status.isNaoTerminal()) {
       throw new BusinessRuleException("Nao e possivel editar solicitacao em status terminal");
     }
@@ -160,7 +163,7 @@ public final class Solicitacao {
         id,
         requireNonBlank(novoTitulo, "titulo"),
         requireNonBlank(novaDescricao, "descricao"),
-        tipo,
+        requireNonNull(novoTipo, "tipo"),
         status,
         prioridade,
         modeloId,

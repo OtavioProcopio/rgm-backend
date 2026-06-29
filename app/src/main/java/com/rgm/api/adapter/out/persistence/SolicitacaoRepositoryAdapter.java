@@ -143,4 +143,19 @@ public class SolicitacaoRepositoryAdapter implements SolicitacaoRepository {
   public List<Solicitacao> findByStatus(final StatusSolicitacao status) {
     return jpa.findByStatus(status).stream().map(SolicitacaoMapper::toDomain).toList();
   }
+
+  @Override
+  public List<Solicitacao> findByCriadaEmBetween(final Instant inicio, final Instant fim) {
+    return jpa.findByCriadaEmBetween(inicio, fim).stream()
+        .map(SolicitacaoMapper::toDomain)
+        .toList();
+  }
+
+  @Override
+  public List<Solicitacao> findByStatusAndCriadaEmBetween(
+      final StatusSolicitacao status, final Instant inicio, final Instant fim) {
+    return jpa.findByStatusAndCriadaEmBetween(status, inicio, fim).stream()
+        .map(SolicitacaoMapper::toDomain)
+        .toList();
+  }
 }

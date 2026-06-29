@@ -16,8 +16,10 @@ import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository
 import com.rgm.api.core.domain.ports.repositories.EventoModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.ModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
+import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -52,6 +54,7 @@ public class ModeloController {
   private final SolicitacaoRepository solicitacaoRepository;
   private final AtividadeSolicitacaoRepository atividadeRepository;
   private final ModeloPdfService modeloPdfService;
+  private final UsuarioRepository usuarioRepository;
 
   public ModeloController(
       final GerenciarModelosUseCase gerenciarUseCase,
@@ -61,7 +64,8 @@ public class ModeloController {
       final EventoModeloRepository eventoModeloRepository,
       final SolicitacaoRepository solicitacaoRepository,
       final AtividadeSolicitacaoRepository atividadeRepository,
-      final ModeloPdfService modeloPdfService) {
+      final ModeloPdfService modeloPdfService,
+      final UsuarioRepository usuarioRepository) {
     this.gerenciarUseCase = gerenciarUseCase;
     this.fotoCapaUseCase = fotoCapaUseCase;
     this.listarUseCase = listarUseCase;
@@ -70,6 +74,7 @@ public class ModeloController {
     this.solicitacaoRepository = solicitacaoRepository;
     this.atividadeRepository = atividadeRepository;
     this.modeloPdfService = modeloPdfService;
+    this.usuarioRepository = usuarioRepository;
   }
 
   @GetMapping
@@ -195,11 +200,13 @@ public class ModeloController {
       @RequestParam(required = false) final Boolean ativo,
       @RequestParam(required = false) final String codigo,
       @RequestParam(required = false) final String maquina,
-      @RequestParam(required = false) final String descricao) {
+      @RequestParam(required = false) final String descricao,
+      final Authentication authentication) {
     final var result =
         listarUseCase.execute(
             new ListarModelosUseCase.Input(ativo, codigo, maquina, descricao, 0, 1000));
-    final byte[] pdf = modeloPdfService.gerarLista(result.content());
+    final String geradoPorNome = resolveNome(authentication);
+    final byte[] pdf = modeloPdfService.gerarLista(result.content(), geradoPorNome);
     final var headers = new HttpHeaders();
     headers.setContentType(MediaType.APPLICATION_PDF);
     headers.setContentDispositionFormData("attachment", "relatorio-modelos.pdf");
@@ -207,7 +214,8 @@ public class ModeloController {
   }
 
   @GetMapping("/{id}/relatorio")
-  public ResponseEntity<byte[]> gerarFichaModelo(@PathVariable final UUID id) {
+  public ResponseEntity<byte[]> gerarFichaModelo(
+      @PathVariable final UUID id, final Authentication authentication) {
     final var modelo =
         modeloRepository
             .findById(id)
@@ -219,14 +227,48 @@ public class ModeloController {
             .collect(
                 Collectors.toMap(
                     s -> s.getId(), s -> atividadeRepository.findBySolicitacaoId(s.getId())));
+
+    final var userIds =
+        solicitacoes.stream()
+            .flatMap(
+                s -> {
+                  final var ids = new java.util.ArrayList<UUID>();
+                  if (s.getAbertaPorUsuarioId() != null) ids.add(s.getAbertaPorUsuarioId());
+                  return ids.stream();
+                })
+            .distinct()
+            .collect(Collectors.toList());
+    final Map<UUID, String> nomesPorUsuario =
+        usuarioRepository.findAllByIdIn(userIds).stream()
+            .collect(Collectors.toMap(u -> u.getId(), u -> u.getNome()));
+
+    final String geradoPorNome = resolveNome(authentication);
     final byte[] pdf =
-        modeloPdfService.gerarFicha(modelo, eventos, solicitacoes, atividadesPorSolicitacao);
+        modeloPdfService.gerarFicha(
+            modelo,
+            eventos,
+            solicitacoes,
+            atividadesPorSolicitacao,
+            geradoPorNome,
+            nomesPorUsuario);
     final var headers = new HttpHeaders();
     headers.setContentType(MediaType.APPLICATION_PDF);
     final String filename =
         "ficha-modelo-" + modelo.getCodigo().replaceAll("[^a-zA-Z0-9]", "-") + ".pdf";
     headers.setContentDispositionFormData("attachment", filename);
     return new ResponseEntity<>(pdf, headers, HttpStatus.OK);
+  }
+
+  private String resolveNome(final Authentication authentication) {
+    if (authentication == null) return "Sistema";
+    try {
+      return usuarioRepository
+          .findById(UUID.fromString(authentication.getName()))
+          .map(u -> u.getNome())
+          .orElse("Sistema");
+    } catch (final IllegalArgumentException e) {
+      return "Sistema";
+    }
   }
 
   @Transactional

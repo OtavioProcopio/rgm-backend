@@ -24,6 +24,7 @@ import com.rgm.api.core.application.usecases.solicitacao.EnviarParaValidacaoUseC
 import com.rgm.api.core.application.usecases.solicitacao.GerenciarResponsaveisUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ListarAtividadesUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ListarSolicitacoesUseCase;
+import com.rgm.api.core.application.usecases.solicitacao.ObterHistoricoMetricasUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ObterMetricasSolicitacoesUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ObterSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.RegistrarComentarioUseCase;
@@ -131,9 +132,14 @@ public class UseCaseConfig {
       final SolicitacaoRepository solicitacaoRepository,
       final UsuarioRepository usuarioRepository,
       final AtividadeSolicitacaoRepository atividadeRepository,
+      final SolicitacaoAtribuicaoRepository atribuicaoRepository,
       final DomainEventPublisher eventPublisher) {
     return new CancelarSolicitacaoUseCase(
-        solicitacaoRepository, usuarioRepository, atividadeRepository, eventPublisher);
+        solicitacaoRepository,
+        usuarioRepository,
+        atividadeRepository,
+        atribuicaoRepository,
+        eventPublisher);
   }
 
   @Bean
@@ -149,10 +155,8 @@ public class UseCaseConfig {
   @Bean
   public EditarSolicitacaoUseCase editarSolicitacaoUseCase(
       final SolicitacaoRepository solicitacaoRepository,
-      final UsuarioRepository usuarioRepository,
-      final SolicitacaoAtribuicaoRepository atribuicaoRepository) {
-    return new EditarSolicitacaoUseCase(
-        solicitacaoRepository, usuarioRepository, atribuicaoRepository);
+      final UsuarioRepository usuarioRepository) {
+    return new EditarSolicitacaoUseCase(solicitacaoRepository, usuarioRepository);
   }
 
   @Bean
@@ -305,6 +309,12 @@ public class UseCaseConfig {
       final ModeloRepository modeloRepository) {
     return new ObterMetricasSolicitacoesUseCase(
         solicitacaoRepository, usuarioRepository, modeloRepository);
+  }
+
+  @Bean
+  public ObterHistoricoMetricasUseCase obterHistoricoMetricasUseCase(
+      final SolicitacaoRepository solicitacaoRepository) {
+    return new ObterHistoricoMetricasUseCase(solicitacaoRepository);
   }
 
   @Bean

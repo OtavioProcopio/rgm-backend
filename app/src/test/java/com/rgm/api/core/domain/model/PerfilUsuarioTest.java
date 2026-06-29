@@ -8,11 +8,11 @@ import org.junit.jupiter.api.Test;
 class PerfilUsuarioTest {
 
   @Test
-  void administradorNaoDeveSerAtribuivel() {
-    assertFalse(PerfilUsuario.ADMINISTRADOR.isAtribuivel());
+  void soOperadorEGestorSaoAtribuiveis() {
     assertTrue(PerfilUsuario.OPERADOR.isAtribuivel());
     assertTrue(PerfilUsuario.GESTOR.isAtribuivel());
-    assertTrue(PerfilUsuario.EXTERNO.isAtribuivel());
+    assertFalse(PerfilUsuario.ADMINISTRADOR.isAtribuivel());
+    assertFalse(PerfilUsuario.EXTERNO.isAtribuivel());
   }
 
   @Test
