@@ -53,7 +53,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
     evictExpiredEntries();
 
     final String xRealIp = request.getHeader("X-Real-IP");
-    final String clientIp = (xRealIp != null && !xRealIp.isBlank()) ? xRealIp : request.getRemoteAddr();
+    final String clientIp =
+        (xRealIp != null && !xRealIp.isBlank()) ? xRealIp : request.getRemoteAddr();
     final Instant now = Instant.now();
     final int currentCount;
     {
