@@ -6,12 +6,11 @@ FROM maven:3.9-eclipse-temurin-21-alpine AS build
 WORKDIR /app
 
 COPY app/pom.xml ./
-
-RUN mvn dependency:go-offline -q
-
 COPY app/src ./src
 
-RUN mvn package -DskipTests -q
+RUN mvn package -DskipTests -q \
+    -Dmaven.wagon.http.retryHandler.count=5 \
+    -Dmaven.wagon.httpconnectionManager.ttlSeconds=30
 
 # ========================================
 # Stage 2: Runtime
