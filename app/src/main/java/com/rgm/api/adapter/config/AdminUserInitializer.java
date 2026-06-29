@@ -13,7 +13,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 @Component
-@Profile({"dev", "test"})
+@Profile({"dev", "test", "prod"})
 public class AdminUserInitializer implements ApplicationRunner {
 
   private static final Logger log = LoggerFactory.getLogger(AdminUserInitializer.class);
