@@ -11,7 +11,6 @@ import com.rgm.api.core.domain.model.aggregates.Usuario;
 import com.rgm.api.core.domain.model.enums.PerfilUsuario;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
 import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
-import com.rgm.api.core.domain.ports.repositories.SolicitacaoAtribuicaoRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import java.time.Instant;
@@ -24,7 +23,6 @@ class EditarSolicitacaoUseCaseTest {
 
   private SolicitacaoRepository solicitacaoRepository;
   private UsuarioRepository usuarioRepository;
-  private SolicitacaoAtribuicaoRepository atribuicaoRepository;
   private EditarSolicitacaoUseCase useCase;
 
   private static final Instant NOW = Instant.now();
@@ -33,10 +31,7 @@ class EditarSolicitacaoUseCaseTest {
   void setUp() {
     solicitacaoRepository = mock(SolicitacaoRepository.class);
     usuarioRepository = mock(UsuarioRepository.class);
-    atribuicaoRepository = mock(SolicitacaoAtribuicaoRepository.class);
-    useCase =
-        new EditarSolicitacaoUseCase(
-            solicitacaoRepository, usuarioRepository, atribuicaoRepository);
+    useCase = new EditarSolicitacaoUseCase(solicitacaoRepository, usuarioRepository);
   }
 
   private Usuario criarGestor() {
@@ -70,6 +65,11 @@ class EditarSolicitacaoUseCaseTest {
         null);
   }
 
+  private EditarSolicitacaoUseCase.Input input(
+      final UUID solId, final UUID userId, final TipoSolicitacao tipo) {
+    return new EditarSolicitacaoUseCase.Input(solId, "Novo titulo", "Nova desc", tipo, userId);
+  }
+
   @Test
   void execute_gestorPodeEditarQualquerSolicitacao() {
     final Usuario gestor = criarGestor();
@@ -79,12 +79,10 @@ class EditarSolicitacaoUseCaseTest {
     when(solicitacaoRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
     final Solicitacao result =
-        useCase.execute(
-            new EditarSolicitacaoUseCase.Input(
-                sol.getId(), "Novo titulo", "Nova desc", gestor.getId()));
+        useCase.execute(input(sol.getId(), gestor.getId(), TipoSolicitacao.INSPECAO));
 
     assertEquals("Novo titulo", result.getTitulo());
-    assertEquals("Nova desc", result.getDescricao());
+    assertEquals(TipoSolicitacao.INSPECAO, result.getTipo());
   }
 
   @Test
@@ -96,44 +94,21 @@ class EditarSolicitacaoUseCaseTest {
     when(solicitacaoRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
     final Solicitacao result =
-        useCase.execute(
-            new EditarSolicitacaoUseCase.Input(sol.getId(), "T", "D", operador.getId()));
+        useCase.execute(input(sol.getId(), operador.getId(), TipoSolicitacao.REPARO));
 
-    assertEquals("T", result.getTitulo());
+    assertEquals("Novo titulo", result.getTitulo());
   }
 
   @Test
-  void execute_operadorAtribuidoPodeEditar() {
+  void execute_operadorNaoAbriuLancaException() {
     final Usuario operador = criarOperador();
-    final Solicitacao sol = criarSolicitacaoAFazer(UUID.randomUUID()); // não foi ele que abriu
+    final Solicitacao sol = criarSolicitacaoAFazer(UUID.randomUUID()); // outro usuário abriu
     when(usuarioRepository.findById(operador.getId())).thenReturn(Optional.of(operador));
     when(solicitacaoRepository.findById(sol.getId())).thenReturn(Optional.of(sol));
-    when(atribuicaoRepository.existsBySolicitacaoIdAndUsuarioIdAndRemovidoEmIsNull(
-            sol.getId(), operador.getId()))
-        .thenReturn(true);
-    when(solicitacaoRepository.save(any())).thenAnswer(i -> i.getArgument(0));
-
-    final Solicitacao result =
-        useCase.execute(
-            new EditarSolicitacaoUseCase.Input(sol.getId(), "T", "D", operador.getId()));
-
-    assertNotNull(result);
-  }
-
-  @Test
-  void execute_operadorNaoAtribuidoNaoAbriuLancaException() {
-    final Usuario operador = criarOperador();
-    final Solicitacao sol = criarSolicitacaoAFazer(UUID.randomUUID());
-    when(usuarioRepository.findById(operador.getId())).thenReturn(Optional.of(operador));
-    when(solicitacaoRepository.findById(sol.getId())).thenReturn(Optional.of(sol));
-    when(atribuicaoRepository.existsBySolicitacaoIdAndUsuarioIdAndRemovidoEmIsNull(any(), any()))
-        .thenReturn(false);
 
     assertThrows(
         NaoAutorizadoException.class,
-        () ->
-            useCase.execute(
-                new EditarSolicitacaoUseCase.Input(sol.getId(), "T", "D", operador.getId())));
+        () -> useCase.execute(input(sol.getId(), operador.getId(), TipoSolicitacao.REPARO)));
   }
 
   @Test
@@ -145,9 +120,7 @@ class EditarSolicitacaoUseCaseTest {
 
     assertThrows(
         NaoAutorizadoException.class,
-        () ->
-            useCase.execute(
-                new EditarSolicitacaoUseCase.Input(sol.getId(), "T", "D", externo.getId())));
+        () -> useCase.execute(input(sol.getId(), externo.getId(), TipoSolicitacao.REPARO)));
   }
 
   @Test
@@ -159,7 +132,8 @@ class EditarSolicitacaoUseCaseTest {
         RecursoNaoEncontradoException.class,
         () ->
             useCase.execute(
-                new EditarSolicitacaoUseCase.Input(UUID.randomUUID(), "T", "D", userId)));
+                new EditarSolicitacaoUseCase.Input(
+                    UUID.randomUUID(), "T", "D", TipoSolicitacao.REPARO, userId)));
   }
 
   @Test
@@ -171,6 +145,9 @@ class EditarSolicitacaoUseCaseTest {
 
     assertThrows(
         RecursoNaoEncontradoException.class,
-        () -> useCase.execute(new EditarSolicitacaoUseCase.Input(solId, "T", "D", gestor.getId())));
+        () ->
+            useCase.execute(
+                new EditarSolicitacaoUseCase.Input(
+                    solId, "T", "D", TipoSolicitacao.REPARO, gestor.getId())));
   }
 }

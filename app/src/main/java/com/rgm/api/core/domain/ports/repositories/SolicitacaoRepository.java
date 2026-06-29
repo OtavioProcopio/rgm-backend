@@ -49,4 +49,9 @@ public interface SolicitacaoRepository {
   long countByStatus(StatusSolicitacao status);
 
   List<Solicitacao> findByStatus(StatusSolicitacao status);
+
+  List<Solicitacao> findByCriadaEmBetween(Instant inicio, Instant fim);
+
+  List<Solicitacao> findByStatusAndCriadaEmBetween(
+      StatusSolicitacao status, Instant inicio, Instant fim);
 }

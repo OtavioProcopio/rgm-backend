@@ -10,6 +10,7 @@ import com.rgm.api.adapter.in.web.dto.request.EnviarParaValidacaoRequest;
 import com.rgm.api.adapter.in.web.dto.request.GerenciarResponsaveisRequest;
 import com.rgm.api.adapter.in.web.dto.request.TriarSolicitacaoRequest;
 import com.rgm.api.adapter.in.web.dto.response.AtividadeResponse;
+import com.rgm.api.adapter.in.web.dto.response.HistoricoMetricasResponse;
 import com.rgm.api.adapter.in.web.dto.response.MetricasSolicitacaoResponse;
 import com.rgm.api.adapter.in.web.dto.response.PageResponse;
 import com.rgm.api.adapter.in.web.dto.response.SolicitacaoResponse;
@@ -23,6 +24,7 @@ import com.rgm.api.core.application.usecases.solicitacao.EnviarParaValidacaoUseC
 import com.rgm.api.core.application.usecases.solicitacao.GerenciarResponsaveisUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ListarAtividadesUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ListarSolicitacoesUseCase;
+import com.rgm.api.core.application.usecases.solicitacao.ObterHistoricoMetricasUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ObterMetricasSolicitacoesUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ObterSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.RegistrarComentarioUseCase;
@@ -30,11 +32,13 @@ import com.rgm.api.core.application.usecases.solicitacao.TriarSolicitacaoUseCase
 import com.rgm.api.core.domain.model.enums.PrioridadeSolicitacao;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
 import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
+import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import jakarta.validation.Valid;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -66,10 +70,13 @@ public class SolicitacaoController {
   private final EditarSolicitacaoUseCase editarUseCase;
   private final ListarSolicitacoesUseCase listarUseCase;
   private final ObterMetricasSolicitacoesUseCase obterMetricasUseCase;
+  private final ObterHistoricoMetricasUseCase obterHistoricoMetricasUseCase;
   private final GerenciarResponsaveisUseCase gerenciarResponsaveisUseCase;
   private final ObterSolicitacaoUseCase obterUseCase;
   private final ListarAtividadesUseCase listarAtividadesUseCase;
   private final SolicitacaoPdfService pdfService;
+  private final UsuarioRepository usuarioRepository;
+  private final SolicitacaoEventPublisher eventPublisher;
 
   public SolicitacaoController(
       final AbrirSolicitacaoUseCase abrirUseCase,
@@ -82,10 +89,13 @@ public class SolicitacaoController {
       final EditarSolicitacaoUseCase editarUseCase,
       final ListarSolicitacoesUseCase listarUseCase,
       final ObterMetricasSolicitacoesUseCase obterMetricasUseCase,
+      final ObterHistoricoMetricasUseCase obterHistoricoMetricasUseCase,
       final GerenciarResponsaveisUseCase gerenciarResponsaveisUseCase,
       final ObterSolicitacaoUseCase obterUseCase,
       final ListarAtividadesUseCase listarAtividadesUseCase,
-      final SolicitacaoPdfService pdfService) {
+      final SolicitacaoPdfService pdfService,
+      final UsuarioRepository usuarioRepository,
+      final SolicitacaoEventPublisher eventPublisher) {
     this.abrirUseCase = abrirUseCase;
     this.triarUseCase = triarUseCase;
     this.enviarUseCase = enviarUseCase;
@@ -96,10 +106,13 @@ public class SolicitacaoController {
     this.editarUseCase = editarUseCase;
     this.listarUseCase = listarUseCase;
     this.obterMetricasUseCase = obterMetricasUseCase;
+    this.obterHistoricoMetricasUseCase = obterHistoricoMetricasUseCase;
     this.gerenciarResponsaveisUseCase = gerenciarResponsaveisUseCase;
     this.obterUseCase = obterUseCase;
     this.listarAtividadesUseCase = listarAtividadesUseCase;
     this.pdfService = pdfService;
+    this.usuarioRepository = usuarioRepository;
+    this.eventPublisher = eventPublisher;
   }
 
   @GetMapping("/metricas")
@@ -107,6 +120,17 @@ public class SolicitacaoController {
     log.info("SolicitacaoController.obterMetricas iniciado");
     final var output = obterMetricasUseCase.execute();
     return ResponseEntity.ok(MetricasSolicitacaoResponse.from(output));
+  }
+
+  @GetMapping("/metricas/historico")
+  public ResponseEntity<HistoricoMetricasResponse> obterHistorico(
+      @RequestParam(defaultValue = "30") final int dias,
+      @RequestParam(required = false) final UUID modeloId) {
+    log.info("SolicitacaoController.obterHistorico dias={} modeloId={}", dias, modeloId);
+    final var output =
+        obterHistoricoMetricasUseCase.execute(
+            new ObterHistoricoMetricasUseCase.Input(dias, modeloId));
+    return ResponseEntity.ok(HistoricoMetricasResponse.from(output));
   }
 
   @GetMapping("/relatorio")
@@ -118,7 +142,8 @@ public class SolicitacaoController {
       @RequestParam(required = false) final String criadaEmInicio,
       @RequestParam(required = false) final String criadaEmFim,
       @RequestParam(required = false) final UUID abertaPorUsuarioId,
-      @RequestParam(required = false) final UUID responsavelId) {
+      @RequestParam(required = false) final UUID responsavelId,
+      final Authentication authentication) {
     log.info("SolicitacaoController.gerarRelatorio iniciado");
     final var input =
         buildInput(
@@ -133,7 +158,20 @@ public class SolicitacaoController {
             0,
             Integer.MAX_VALUE);
     final var solicitacoes = listarUseCase.execute(input).content();
-    final byte[] pdf = pdfService.gerar(solicitacoes);
+
+    final var solicitacaoUserIds =
+        solicitacoes.stream()
+            .map(s -> s.getAbertaPorUsuarioId())
+            .filter(id -> id != null)
+            .distinct()
+            .collect(Collectors.toList());
+    final var nomesPorUsuario =
+        usuarioRepository.findAllByIdIn(solicitacaoUserIds).stream()
+            .collect(Collectors.toMap(u -> u.getId(), u -> u.getNome()));
+
+    final String geradoPorNome = resolveNome(authentication);
+
+    final byte[] pdf = pdfService.gerar(solicitacoes, geradoPorNome, nomesPorUsuario);
     final var headers = new org.springframework.http.HttpHeaders();
     headers.setContentType(org.springframework.http.MediaType.APPLICATION_PDF);
     headers.setContentDispositionFormData("attachment", "relatorio-solicitacoes.pdf");
@@ -212,7 +250,11 @@ public class SolicitacaoController {
     final var salva =
         editarUseCase.execute(
             new EditarSolicitacaoUseCase.Input(
-                id, request.titulo(), request.descricao(), usuarioId));
+                id,
+                request.titulo(),
+                request.descricao(),
+                TipoSolicitacao.valueOf(request.tipo()),
+                usuarioId));
     return ResponseEntity.ok(SolicitacaoResponse.from(salva));
   }
 
@@ -265,7 +307,7 @@ public class SolicitacaoController {
                 PrioridadeSolicitacao.valueOf(request.prioridade()),
                 request.responsavelIds(),
                 gestorId));
-    return ResponseEntity.ok(SolicitacaoResponse.from(output));
+    return ResponseEntity.ok(publicar("triada", SolicitacaoResponse.from(output)));
   }
 
   @Transactional
@@ -279,7 +321,7 @@ public class SolicitacaoController {
     final var output =
         enviarUseCase.execute(
             new EnviarParaValidacaoUseCase.Input(id, usuarioId, request.comentario()));
-    return ResponseEntity.ok(SolicitacaoResponse.from(output));
+    return ResponseEntity.ok(publicar("enviada_validacao", SolicitacaoResponse.from(output)));
   }
 
   @Transactional
@@ -295,7 +337,7 @@ public class SolicitacaoController {
     final var output =
         devolverUseCase.execute(
             new DevolverSolicitacaoUseCase.Input(id, request.motivo(), prioridade, gestorId));
-    return ResponseEntity.ok(SolicitacaoResponse.from(output));
+    return ResponseEntity.ok(publicar("devolvida", SolicitacaoResponse.from(output)));
   }
 
   @Transactional
@@ -310,7 +352,7 @@ public class SolicitacaoController {
         encerrarUseCase.execute(
             new EncerrarSolicitacaoUseCase.Input(
                 id, request.concluir(), request.comentario(), gestorId));
-    return ResponseEntity.ok(SolicitacaoResponse.from(output));
+    return ResponseEntity.ok(publicar("encerrada", SolicitacaoResponse.from(output)));
   }
 
   @Transactional
@@ -337,7 +379,7 @@ public class SolicitacaoController {
     final var output =
         cancelarUseCase.execute(
             new CancelarSolicitacaoUseCase.Input(id, request.motivo(), usuarioId));
-    return ResponseEntity.ok(SolicitacaoResponse.from(output));
+    return ResponseEntity.ok(publicar("cancelada", SolicitacaoResponse.from(output)));
   }
 
   @Transactional
@@ -352,5 +394,22 @@ public class SolicitacaoController {
         gerenciarResponsaveisUseCase.execute(
             new GerenciarResponsaveisUseCase.Input(id, request.responsavelIds(), gestorId));
     return ResponseEntity.ok(SolicitacaoResponse.from(output));
+  }
+
+  private SolicitacaoResponse publicar(final String tipo, final SolicitacaoResponse response) {
+    eventPublisher.publish("solicitacao", new SolicitacaoEvent(tipo, response));
+    return response;
+  }
+
+  private String resolveNome(final Authentication authentication) {
+    if (authentication == null) return "Sistema";
+    try {
+      return usuarioRepository
+          .findById(UUID.fromString(authentication.getName()))
+          .map(u -> u.getNome())
+          .orElse("Sistema");
+    } catch (final IllegalArgumentException e) {
+      return "Sistema";
+    }
   }
 }

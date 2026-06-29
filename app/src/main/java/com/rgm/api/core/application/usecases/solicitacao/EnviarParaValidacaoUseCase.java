@@ -44,8 +44,7 @@ public final class EnviarParaValidacaoUseCase {
     final Instant agora = Instant.now();
 
     if (input.comentario() == null || input.comentario().isBlank()) {
-      throw new ValidationException(
-          "Comentário é obrigatório ao enviar para validação");
+      throw new ValidationException("Comentário é obrigatório ao enviar para validação");
     }
 
     final Usuario usuario =
@@ -69,10 +68,11 @@ public final class EnviarParaValidacaoUseCase {
         estaAtribuido);
 
     if ((solicitacao.getTipo() == TipoSolicitacao.REPARO
-            || solicitacao.getTipo() == TipoSolicitacao.INSPECAO)
+            || solicitacao.getTipo() == TipoSolicitacao.INSPECAO
+            || solicitacao.getTipo() == TipoSolicitacao.REENGENHARIA)
         && solicitacaoEvidenciaRepository.findBySolicitacaoId(solicitacao.getId()).isEmpty()) {
       throw new BusinessRuleException(
-          "Solicitações de REPARO ou INSPEÇÃO exigem o anexo de pelo menos 1 evidência do serviço realizado antes de serem enviadas para validação.");
+          "Solicitações de REPARO, INSPEÇÃO ou REENGENHARIA exigem o anexo de pelo menos 1 evidência do serviço realizado antes de serem enviadas para validação.");
     }
 
     final Solicitacao atualizada = solicitacao.enviarParaValidacao(agora);
