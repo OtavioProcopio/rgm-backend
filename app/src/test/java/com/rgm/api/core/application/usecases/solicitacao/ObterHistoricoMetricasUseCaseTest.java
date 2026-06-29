@@ -59,8 +59,7 @@ class ObterHistoricoMetricasUseCaseTest {
   void deveRetornarSerieComBucketsDiarios() {
     final Instant agora = Instant.now();
     final Solicitacao concluida =
-        criarSolicitacao(
-            StatusSolicitacao.CONCLUIDA, agora.minus(2, ChronoUnit.DAYS), agora, null);
+        criarSolicitacao(StatusSolicitacao.CONCLUIDA, agora.minus(2, ChronoUnit.DAYS), agora, null);
     when(solicitacaoRepository.findByCriadaEmBetween(any(), any())).thenReturn(List.of(concluida));
 
     final var output = useCase.execute(new ObterHistoricoMetricasUseCase.Input(7, null));

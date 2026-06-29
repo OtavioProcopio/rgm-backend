@@ -78,7 +78,8 @@ class EditarSolicitacaoUseCaseTest {
     when(solicitacaoRepository.findById(sol.getId())).thenReturn(Optional.of(sol));
     when(solicitacaoRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
-    final Solicitacao result = useCase.execute(input(sol.getId(), gestor.getId(), TipoSolicitacao.INSPECAO));
+    final Solicitacao result =
+        useCase.execute(input(sol.getId(), gestor.getId(), TipoSolicitacao.INSPECAO));
 
     assertEquals("Novo titulo", result.getTitulo());
     assertEquals(TipoSolicitacao.INSPECAO, result.getTipo());
@@ -92,7 +93,8 @@ class EditarSolicitacaoUseCaseTest {
     when(solicitacaoRepository.findById(sol.getId())).thenReturn(Optional.of(sol));
     when(solicitacaoRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
-    final Solicitacao result = useCase.execute(input(sol.getId(), operador.getId(), TipoSolicitacao.REPARO));
+    final Solicitacao result =
+        useCase.execute(input(sol.getId(), operador.getId(), TipoSolicitacao.REPARO));
 
     assertEquals("Novo titulo", result.getTitulo());
   }

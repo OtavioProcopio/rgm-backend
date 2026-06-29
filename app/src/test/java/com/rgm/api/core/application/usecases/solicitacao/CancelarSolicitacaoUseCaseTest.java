@@ -80,7 +80,8 @@ class CancelarSolicitacaoUseCaseTest {
   @Test
   void deveCancelarSolicitacaoComSucesso() {
     final Usuario gestor = criarUsuario(PerfilUsuario.GESTOR);
-    final Solicitacao solicitacao = criarSolicitacao(StatusSolicitacao.EM_ANDAMENTO, UUID.randomUUID());
+    final Solicitacao solicitacao =
+        criarSolicitacao(StatusSolicitacao.EM_ANDAMENTO, UUID.randomUUID());
 
     when(usuarioRepository.findById(gestor.getId())).thenReturn(Optional.of(gestor));
     when(solicitacaoRepository.findById(solicitacao.getId())).thenReturn(Optional.of(solicitacao));
@@ -105,7 +106,8 @@ class CancelarSolicitacaoUseCaseTest {
   @Test
   void deveFalharSeMotivoForEmBranco() {
     final Usuario gestor = criarUsuario(PerfilUsuario.GESTOR);
-    final Solicitacao solicitacao = criarSolicitacao(StatusSolicitacao.EM_ANDAMENTO, UUID.randomUUID());
+    final Solicitacao solicitacao =
+        criarSolicitacao(StatusSolicitacao.EM_ANDAMENTO, UUID.randomUUID());
 
     when(usuarioRepository.findById(gestor.getId())).thenReturn(Optional.of(gestor));
 
