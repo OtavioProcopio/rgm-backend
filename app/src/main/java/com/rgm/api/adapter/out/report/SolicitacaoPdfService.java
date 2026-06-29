@@ -117,7 +117,8 @@ public class SolicitacaoPdfService {
       final List<Solicitacao> solicitacoes,
       final Map<UUID, String> nomesPorUsuario) {
     try {
-      // Colunas: Título | Tipo | Status | Prioridade | Aberto por | Abertura | Encerramento | SLA | Comentário final
+      // Colunas: Título | Tipo | Status | Prioridade | Aberto por | Abertura | Encerramento | SLA |
+      // Comentário final
       final float[] widths = {5.5f, 2.5f, 3.5f, 2.5f, 4f, 4f, 4f, 2f, 5f};
       final var table = new PdfPTable(widths.length);
       table.setWidthPercentage(100);
@@ -148,13 +149,8 @@ public class SolicitacaoPdfService {
             s.getPrioridade() != null ? prioridadeLabel(s.getPrioridade().name()) : "—",
             bg,
             CELL_FONT);
-        addCell(
-            table,
-            nomesPorUsuario.getOrDefault(s.getAbertaPorUsuarioId(), "—"),
-            bg,
-            CELL_FONT);
-        addCell(
-            table, s.getCriadaEm() != null ? FMT.format(s.getCriadaEm()) : "—", bg, CELL_FONT);
+        addCell(table, nomesPorUsuario.getOrDefault(s.getAbertaPorUsuarioId(), "—"), bg, CELL_FONT);
+        addCell(table, s.getCriadaEm() != null ? FMT.format(s.getCriadaEm()) : "—", bg, CELL_FONT);
 
         // Encerramento: concluída ou cancelada
         final String encerramentoData =

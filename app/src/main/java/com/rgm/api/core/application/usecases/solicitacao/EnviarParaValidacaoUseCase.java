@@ -44,8 +44,7 @@ public final class EnviarParaValidacaoUseCase {
     final Instant agora = Instant.now();
 
     if (input.comentario() == null || input.comentario().isBlank()) {
-      throw new ValidationException(
-          "Comentário é obrigatório ao enviar para validação");
+      throw new ValidationException("Comentário é obrigatório ao enviar para validação");
     }
 
     final Usuario usuario =

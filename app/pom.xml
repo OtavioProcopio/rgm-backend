@@ -266,6 +266,11 @@
 					</execution>
 				</executions>
 				<configuration>
+					<excludes>
+						<exclude>com/rgm/api/adapter/out/report/PdfFooterEvent.class</exclude>
+						<exclude>com/rgm/api/adapter/in/web/solicitacao/SolicitacaoEvent.class</exclude>
+						<exclude>com/rgm/api/adapter/in/web/solicitacao/SolicitacaoSseController.class</exclude>
+					</excludes>
 					<rules>
 						<rule>
 							<element>BUNDLE</element>

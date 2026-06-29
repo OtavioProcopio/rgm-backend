@@ -245,7 +245,12 @@ public class ModeloController {
     final String geradoPorNome = resolveNome(authentication);
     final byte[] pdf =
         modeloPdfService.gerarFicha(
-            modelo, eventos, solicitacoes, atividadesPorSolicitacao, geradoPorNome, nomesPorUsuario);
+            modelo,
+            eventos,
+            solicitacoes,
+            atividadesPorSolicitacao,
+            geradoPorNome,
+            nomesPorUsuario);
     final var headers = new HttpHeaders();
     headers.setContentType(MediaType.APPLICATION_PDF);
     final String filename =

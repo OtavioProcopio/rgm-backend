@@ -14,8 +14,7 @@ public record HistoricoMetricasResponse(
       long canceladas,
       long slaMediaHoras) {}
 
-  public static HistoricoMetricasResponse from(
-      final ObterHistoricoMetricasUseCase.Output output) {
+  public static HistoricoMetricasResponse from(final ObterHistoricoMetricasUseCase.Output output) {
     final List<PontoDeSerieResponse> series =
         output.series().stream()
             .map(

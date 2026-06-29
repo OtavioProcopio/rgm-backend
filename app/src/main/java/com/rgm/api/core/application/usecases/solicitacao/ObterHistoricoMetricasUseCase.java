@@ -61,7 +61,8 @@ public final class ObterHistoricoMetricasUseCase {
       if (status == StatusSolicitacao.CONCLUIDA) {
         bucket.concluidas++;
         if (s.getCriadaEm() != null && s.getConcluidaEm() != null) {
-          bucket.slaTotalSegundos += Duration.between(s.getCriadaEm(), s.getConcluidaEm()).toSeconds();
+          bucket.slaTotalSegundos +=
+              Duration.between(s.getCriadaEm(), s.getConcluidaEm()).toSeconds();
           bucket.slaContagem++;
         }
       } else if (status == StatusSolicitacao.CANCELADA) {
@@ -78,8 +79,7 @@ public final class ObterHistoricoMetricasUseCase {
       final long slaMediaHoras =
           b.slaContagem == 0 ? 0 : (b.slaTotalSegundos / b.slaContagem) / 3600;
       series.add(
-          new PontoDeSerie(
-              b.label, b.total, b.abertas, b.concluidas, b.canceladas, slaMediaHoras));
+          new PontoDeSerie(b.label, b.total, b.abertas, b.concluidas, b.canceladas, slaMediaHoras));
       slaGlobalSegundos += b.slaTotalSegundos;
       slaGlobalContagem += b.slaContagem;
     }
@@ -91,7 +91,8 @@ public final class ObterHistoricoMetricasUseCase {
     return new Output(series, slaGlobalMediaHoras, periodoLabel);
   }
 
-  private List<Bucket> montarBuckets(final Instant inicio, final Instant fim, final boolean semanal) {
+  private List<Bucket> montarBuckets(
+      final Instant inicio, final Instant fim, final boolean semanal) {
     final List<Bucket> buckets = new ArrayList<>();
     final LocalDate inicioDia = inicio.atZone(ZoneOffset.UTC).toLocalDate();
     final LocalDate fimDia = fim.atZone(ZoneOffset.UTC).toLocalDate();
@@ -101,8 +102,7 @@ public final class ObterHistoricoMetricasUseCase {
       while (!cursor.isAfter(fimDia)) {
         final LocalDate inicioSemana = cursor;
         final LocalDate fimSemana = cursor.plusDays(6);
-        final String label =
-            "Sem " + inicioSemana.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR);
+        final String label = "Sem " + inicioSemana.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR);
         buckets.add(
             new Bucket(
                 label,

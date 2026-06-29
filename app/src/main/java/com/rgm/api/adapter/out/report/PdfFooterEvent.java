@@ -3,7 +3,6 @@ package com.rgm.api.adapter.out.report;
 import com.lowagie.text.Document;
 import com.lowagie.text.Font;
 import com.lowagie.text.FontFactory;
-import com.lowagie.text.Phrase;
 import com.lowagie.text.Rectangle;
 import com.lowagie.text.pdf.PdfContentByte;
 import com.lowagie.text.pdf.PdfPageEventHelper;
@@ -47,8 +46,7 @@ public class PdfFooterEvent extends PdfPageEventHelper {
     // Esquerda: empresa + gerado por
     final String leftText = "RGM Auto Parts  ·  Gerado por: " + geradoPor;
     cb.beginText();
-    cb.setFontAndSize(
-        FontFactory.getFont(FontFactory.HELVETICA, 7).getBaseFont(), 7);
+    cb.setFontAndSize(FontFactory.getFont(FontFactory.HELVETICA, 7).getBaseFont(), 7);
     cb.setColorFill(new Color(120, 120, 120));
     cb.setTextMatrix(left, bottom);
     cb.showText(leftText);
@@ -56,8 +54,7 @@ public class PdfFooterEvent extends PdfPageEventHelper {
 
     // Direita: Página X de Y
     cb.beginText();
-    cb.setFontAndSize(
-        FontFactory.getFont(FontFactory.HELVETICA, 7).getBaseFont(), 7);
+    cb.setFontAndSize(FontFactory.getFont(FontFactory.HELVETICA, 7).getBaseFont(), 7);
     cb.setColorFill(new Color(120, 120, 120));
     final String pageText = "Página " + writer.getPageNumber() + " de ";
     final float pageTextWidth =

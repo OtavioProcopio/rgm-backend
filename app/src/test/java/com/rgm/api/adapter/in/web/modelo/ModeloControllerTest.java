@@ -61,7 +61,9 @@ class ModeloControllerTest {
   @MockitoBean private SolicitacaoRepository solicitacaoRepository;
   @MockitoBean private AtividadeSolicitacaoRepository atividadeRepository;
   @MockitoBean private ModeloPdfService modeloPdfService;
-  @MockitoBean private com.rgm.api.core.domain.ports.repositories.UsuarioRepository usuarioRepository;
+
+  @MockitoBean
+  private com.rgm.api.core.domain.ports.repositories.UsuarioRepository usuarioRepository;
 
   private Modelo criarModelo() {
     final Instant agora = Instant.now();

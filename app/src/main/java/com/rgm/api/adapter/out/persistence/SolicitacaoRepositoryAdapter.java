@@ -146,7 +146,9 @@ public class SolicitacaoRepositoryAdapter implements SolicitacaoRepository {
 
   @Override
   public List<Solicitacao> findByCriadaEmBetween(final Instant inicio, final Instant fim) {
-    return jpa.findByCriadaEmBetween(inicio, fim).stream().map(SolicitacaoMapper::toDomain).toList();
+    return jpa.findByCriadaEmBetween(inicio, fim).stream()
+        .map(SolicitacaoMapper::toDomain)
+        .toList();
   }
 
   @Override

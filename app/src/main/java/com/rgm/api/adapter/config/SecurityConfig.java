@@ -58,8 +58,7 @@ public class SecurityConfig {
                                 HttpServletResponse.SC_UNAUTHORIZED, "Não autenticado"))
                     .accessDeniedHandler(
                         (request, response, accessDeniedException) ->
-                            response.sendError(
-                                HttpServletResponse.SC_FORBIDDEN, "Acesso negado")))
+                            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Acesso negado")))
         .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
         .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
         .build();

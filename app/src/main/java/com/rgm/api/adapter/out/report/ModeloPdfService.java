@@ -55,9 +55,7 @@ public class ModeloPdfService {
   // ── API pública ───────────────────────────────────────────────────────────
 
   /** Relatório de lista de modelos. */
-  public byte[] gerarLista(
-      final List<Modelo> modelos,
-      final String geradoPorNome) {
+  public byte[] gerarLista(final List<Modelo> modelos, final String geradoPorNome) {
     final var out = new ByteArrayOutputStream();
     final var doc = new Document(PageSize.A4.rotate(), 40, 40, 55, 45);
     final PdfWriter writer = PdfWriter.getInstance(doc, out);
@@ -97,10 +95,7 @@ public class ModeloPdfService {
       addSecao(doc, "Histórico de Solicitações");
       for (final Solicitacao s : solicitacoes) {
         addSolicitacaoComHistorico(
-            doc,
-            s,
-            atividadesPorSolicitacao.getOrDefault(s.getId(), List.of()),
-            nomesPorUsuario);
+            doc, s, atividadesPorSolicitacao.getOrDefault(s.getId(), List.of()), nomesPorUsuario);
       }
     }
     doc.close();
@@ -125,8 +120,7 @@ public class ModeloPdfService {
       banner.setSpacingAfter(8);
       final PdfPCell cell =
           new PdfPCell(
-              new Phrase(
-                  titulo, FontFactory.getFont(FontFactory.HELVETICA_BOLD, 14, Color.WHITE)));
+              new Phrase(titulo, FontFactory.getFont(FontFactory.HELVETICA_BOLD, 14, Color.WHITE)));
       cell.setBackgroundColor(HEADER_BG);
       cell.setPadding(10);
       cell.setBorder(Rectangle.NO_BORDER);
@@ -172,7 +166,8 @@ public class ModeloPdfService {
       final List<Solicitacao> solicitacoes,
       final String geradoPorNome) {
     try {
-      addBanner(doc, modelo.getCodigo() + "  v" + modelo.getVersao() + "  —  " + modelo.getDescricao());
+      addBanner(
+          doc, modelo.getCodigo() + "  v" + modelo.getVersao() + "  —  " + modelo.getDescricao());
 
       final var meta =
           new Paragraph(
@@ -216,9 +211,15 @@ public class ModeloPdfService {
       kpi.setWidthPercentage(100);
       kpi.setWidths(kpiWidths);
       kpi.setSpacingAfter(10);
-      addKpiCell(kpi, "Status", modelo.isAtivo() ? "Ativo" : "Inativo",
+      addKpiCell(
+          kpi,
+          "Status",
+          modelo.isAtivo() ? "Ativo" : "Inativo",
           modelo.isAtivo() ? GREEN_BG : RED_BG);
-      addKpiCell(kpi, "Pendência", modelo.isTemPendenciaAberta() ? "⚠ Sim" : "Não",
+      addKpiCell(
+          kpi,
+          "Pendência",
+          modelo.isTemPendenciaAberta() ? "⚠ Sim" : "Não",
           modelo.isTemPendenciaAberta() ? AMBER_BG : new Color(100, 100, 100));
       addKpiCell(kpi, "Total solicitações", String.valueOf(solicitacoes.size()), HEADER_BG);
       addKpiCell(kpi, "Em aberto", String.valueOf(abertas), new Color(29, 78, 216));
@@ -282,10 +283,7 @@ public class ModeloPdfService {
         addCell(table, m.isAtivo() ? "Ativo" : "Inativo", bg, CELL_FONT);
         addCell(table, m.isTemPendenciaAberta() ? "⚠ Sim" : "Não", bg, CELL_FONT);
         addCell(
-            table,
-            m.getCriadoEm() != null ? DATE_FMT.format(m.getCriadoEm()) : "—",
-            bg,
-            CELL_FONT);
+            table, m.getCriadoEm() != null ? DATE_FMT.format(m.getCriadoEm()) : "—", bg, CELL_FONT);
         isEven = !isEven;
       }
       doc.add(table);
@@ -318,10 +316,7 @@ public class ModeloPdfService {
         addCell(table, e.getTitulo(), bg, CELL_BOLD);
         addCell(table, e.getDescricao() != null ? e.getDescricao() : "—", bg, CELL_FONT);
         addCell(
-            table,
-            nomesPorUsuario.getOrDefault(e.getExecutadoPorUsuarioId(), "—"),
-            bg,
-            CELL_FONT);
+            table, nomesPorUsuario.getOrDefault(e.getExecutadoPorUsuarioId(), "—"), bg, CELL_FONT);
         isEven = !isEven;
       }
       doc.add(table);
@@ -350,9 +345,14 @@ public class ModeloPdfService {
               + (s.getCriadaEm() != null ? FMT.format(s.getCriadaEm()) : "—")
               + "   Aberto por: "
               + nomesPorUsuario.getOrDefault(s.getAbertaPorUsuarioId(), "—")
-              + (s.getConcluidaEm() != null ? "   Concluída: " + FMT.format(s.getConcluidaEm()) : "")
-              + (s.getCanceladaEm() != null ? "   Cancelada: " + FMT.format(s.getCanceladaEm()) : "");
-      header.add(new Chunk(meta, FontFactory.getFont(FontFactory.HELVETICA, 7, new Color(80, 80, 80))));
+              + (s.getConcluidaEm() != null
+                  ? "   Concluída: " + FMT.format(s.getConcluidaEm())
+                  : "")
+              + (s.getCanceladaEm() != null
+                  ? "   Cancelada: " + FMT.format(s.getCanceladaEm())
+                  : "");
+      header.add(
+          new Chunk(meta, FontFactory.getFont(FontFactory.HELVETICA, 7, new Color(80, 80, 80))));
       doc.add(header);
 
       if (s.getDescricao() != null && !s.getDescricao().isBlank()) {
@@ -387,21 +387,20 @@ public class ModeloPdfService {
       table.setWidthPercentage(100);
       table.setWidths(widths);
       table.setHeaderRows(1);
-      addHeaderRow(table, "Data", "Tipo", "Responsável", "Mudança de status", "Comentário / Detalhe");
+      addHeaderRow(
+          table, "Data", "Tipo", "Responsável", "Mudança de status", "Comentário / Detalhe");
 
       boolean isEven = false;
       for (final AtividadeSolicitacao a : atividades) {
         final Color bg = isEven ? ROW_ALT : Color.WHITE;
         addCell(table, a.getCriadaEm() != null ? FMT.format(a.getCriadaEm()) : "—", bg, CELL_FONT);
         addCell(table, tipoAtividadeLabel(a.getTipo().name()), bg, CELL_FONT);
-        addCell(
-            table,
-            nomesPorUsuario.getOrDefault(a.getAutorUsuarioId(), "—"),
-            bg,
-            CELL_FONT);
+        addCell(table, nomesPorUsuario.getOrDefault(a.getAutorUsuarioId(), "—"), bg, CELL_FONT);
         final String mudanca =
             (a.getDeStatus() != null && a.getParaStatus() != null)
-                ? statusLabel(a.getDeStatus().name()) + " → " + statusLabel(a.getParaStatus().name())
+                ? statusLabel(a.getDeStatus().name())
+                    + " → "
+                    + statusLabel(a.getParaStatus().name())
                 : "—";
         addCell(table, mudanca, bg, CELL_FONT);
         addCell(table, a.getComentario() != null ? a.getComentario() : "—", bg, CELL_FONT);
