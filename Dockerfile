@@ -1,18 +1,16 @@
 # ========================================
 # Stage 1: Build
 # ========================================
-FROM eclipse-temurin:21-jdk-alpine AS build
+FROM maven:3.9-eclipse-temurin-21-alpine AS build
 
 WORKDIR /app
 
-COPY app/pom.xml app/mvnw ./
-COPY app/.mvn .mvn
-
-RUN chmod +x mvnw && ./mvnw dependency:go-offline -q
-
+COPY app/pom.xml ./
 COPY app/src ./src
 
-RUN ./mvnw package -DskipTests -q
+RUN mvn package -DskipTests -q \
+    -Dmaven.wagon.http.retryHandler.count=5 \
+    -Dmaven.wagon.httpconnectionManager.ttlSeconds=30
 
 # ========================================
 # Stage 2: Runtime
@@ -30,8 +28,5 @@ RUN chown -R app:app /app
 USER app
 
 EXPOSE 8080
-
-HEALTHCHECK --interval=30s --timeout=3s --start-period=30s --retries=3 \
-  CMD wget -qO- http://localhost:8080/actuator/health || exit 1
 
 ENTRYPOINT ["java", "-jar", "app.jar"]
