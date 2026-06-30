@@ -3,13 +3,6 @@ package com.rgm.api.adapter.out.persistence.mapper;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
-import com.rgm.api.adapter.out.persistence.entity.AtividadeSolicitacaoJpaEntity;
-import com.rgm.api.adapter.out.persistence.entity.EventoModeloJpaEntity;
-import com.rgm.api.adapter.out.persistence.entity.EvidenciaJpaEntity;
-import com.rgm.api.adapter.out.persistence.entity.ModeloJpaEntity;
-import com.rgm.api.adapter.out.persistence.entity.SolicitacaoAtribuicaoJpaEntity;
-import com.rgm.api.adapter.out.persistence.entity.SolicitacaoJpaEntity;
-import com.rgm.api.adapter.out.persistence.entity.UsuarioJpaEntity;
 import com.rgm.api.core.domain.model.aggregates.EventoModelo;
 import com.rgm.api.core.domain.model.aggregates.Evidencia;
 import com.rgm.api.core.domain.model.aggregates.Modelo;
@@ -45,8 +38,8 @@ class MapperRoundtripTest {
   void usuarioMapper_fullRoundtrip() {
     final UUID id = UUID.randomUUID();
     final Usuario original =
-        new Usuario(id, "Carol", "carol@x.com", "hashXYZ", PerfilUsuario.ADMINISTRADOR, true, T1,
-            T2);
+        new Usuario(
+            id, "Carol", "carol@x.com", "hashXYZ", PerfilUsuario.ADMINISTRADOR, true, T1, T2);
 
     final Usuario result = UsuarioMapper.toDomain(UsuarioMapper.toJpa(original));
 
@@ -316,8 +309,7 @@ class MapperRoundtripTest {
             solRelacionada,
             T1);
 
-    final EventoModelo result =
-        EventoModeloMapper.toDomain(EventoModeloMapper.toJpa(original));
+    final EventoModelo result = EventoModeloMapper.toDomain(EventoModeloMapper.toJpa(original));
 
     assertEquals(id, result.getId());
     assertEquals(modeloId, result.getModeloId());

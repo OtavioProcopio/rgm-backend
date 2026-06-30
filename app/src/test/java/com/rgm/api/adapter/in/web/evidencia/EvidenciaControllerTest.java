@@ -151,9 +151,7 @@ class EvidenciaControllerTest {
   void excluirEvidenciaNaoAutorizadoRetorna403() throws Exception {
     final UUID solId = UUID.randomUUID();
     final UUID evId = UUID.randomUUID();
-    doThrow(new NaoAutorizadoException("sem permissao"))
-        .when(excluirUseCase)
-        .execute(any());
+    doThrow(new NaoAutorizadoException("sem permissao")).when(excluirUseCase).execute(any());
 
     mockMvc
         .perform(
@@ -166,9 +164,7 @@ class EvidenciaControllerTest {
   void excluirEvidenciaTerminalRetorna422() throws Exception {
     final UUID solId = UUID.randomUUID();
     final UUID evId = UUID.randomUUID();
-    doThrow(new BusinessRuleException("solicitacao encerrada"))
-        .when(excluirUseCase)
-        .execute(any());
+    doThrow(new BusinessRuleException("solicitacao encerrada")).when(excluirUseCase).execute(any());
 
     mockMvc
         .perform(
