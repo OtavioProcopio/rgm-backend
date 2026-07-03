@@ -3,6 +3,7 @@ package com.rgm.api.core.application.usecases.admin;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+import com.rgm.api.core.application.usecases.modelo.RecalcularPendenciaUseCase;
 import com.rgm.api.core.domain.exceptions.BusinessRuleException;
 import com.rgm.api.core.domain.exceptions.NaoAutorizadoException;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
@@ -10,6 +11,7 @@ import com.rgm.api.core.domain.model.aggregates.Modelo;
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
 import com.rgm.api.core.domain.model.aggregates.Usuario;
 import com.rgm.api.core.domain.model.enums.PerfilUsuario;
+import com.rgm.api.core.domain.model.enums.PrioridadeSolicitacao;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
 import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
 import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository;
@@ -34,6 +36,7 @@ class ExcluirRegistroUseCaseTest {
   private AtividadeSolicitacaoRepository atividadeRepository;
   private SolicitacaoEvidenciaRepository solicitacaoEvidenciaRepository;
   private EventoModeloRepository eventoModeloRepository;
+  private RecalcularPendenciaUseCase recalcularPendenciaUseCase;
   private ExcluirRegistroUseCase useCase;
 
   @BeforeEach
@@ -45,6 +48,7 @@ class ExcluirRegistroUseCaseTest {
     atividadeRepository = mock(AtividadeSolicitacaoRepository.class);
     solicitacaoEvidenciaRepository = mock(SolicitacaoEvidenciaRepository.class);
     eventoModeloRepository = mock(EventoModeloRepository.class);
+    recalcularPendenciaUseCase = mock(RecalcularPendenciaUseCase.class);
     useCase =
         new ExcluirRegistroUseCase(
             usuarioRepository,
@@ -53,7 +57,8 @@ class ExcluirRegistroUseCaseTest {
             atribuicaoRepository,
             atividadeRepository,
             solicitacaoEvidenciaRepository,
-            eventoModeloRepository);
+            eventoModeloRepository,
+            recalcularPendenciaUseCase);
   }
 
   private Usuario criarAdmin() {
@@ -101,6 +106,42 @@ class ExcluirRegistroUseCaseTest {
     verify(atividadeRepository).deleteBySolicitacaoId(solId);
     verify(solicitacaoEvidenciaRepository).deleteBySolicitacaoId(solId);
     verify(solicitacaoRepository).deleteById(solId);
+    verify(recalcularPendenciaUseCase).execute(sol.getModeloId());
+  }
+
+  @Test
+  void deveExcluirSolicitacaoTerminalSemRecalcularPendencia() {
+    final Usuario admin = criarAdmin();
+    final Instant agora = Instant.now();
+    final UUID solId = UUID.randomUUID();
+    final Solicitacao sol =
+        new Solicitacao(
+            solId,
+            "T",
+            "D",
+            TipoSolicitacao.REPARO,
+            StatusSolicitacao.CONCLUIDA,
+            PrioridadeSolicitacao.MEDIA,
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            "Feito",
+            agora,
+            agora,
+            agora,
+            null);
+
+    when(usuarioRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+    when(solicitacaoRepository.findById(solId)).thenReturn(Optional.of(sol));
+
+    useCase.execute(
+        new ExcluirRegistroUseCase.Input(
+            ExcluirRegistroUseCase.TipoRecurso.SOLICITACAO, solId, admin.getId()));
+
+    verify(atribuicaoRepository).deleteBySolicitacaoId(solId);
+    verify(atividadeRepository).deleteBySolicitacaoId(solId);
+    verify(solicitacaoEvidenciaRepository).deleteBySolicitacaoId(solId);
+    verify(solicitacaoRepository).deleteById(solId);
+    verifyNoInteractions(recalcularPendenciaUseCase);
   }
 
   @Test

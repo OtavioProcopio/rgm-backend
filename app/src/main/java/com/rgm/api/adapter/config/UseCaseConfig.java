@@ -275,7 +275,8 @@ public class UseCaseConfig {
       final SolicitacaoAtribuicaoRepository atribuicaoRepository,
       final AtividadeSolicitacaoRepository atividadeRepository,
       final SolicitacaoEvidenciaRepository solicitacaoEvidenciaRepository,
-      final EventoModeloRepository eventoModeloRepository) {
+      final EventoModeloRepository eventoModeloRepository,
+      final RecalcularPendenciaUseCase recalcularPendenciaUseCase) {
     return new ExcluirRegistroUseCase(
         usuarioRepository,
         solicitacaoRepository,
@@ -283,7 +284,8 @@ public class UseCaseConfig {
         atribuicaoRepository,
         atividadeRepository,
         solicitacaoEvidenciaRepository,
-        eventoModeloRepository);
+        eventoModeloRepository,
+        recalcularPendenciaUseCase);
   }
 
   @Bean
