@@ -1,8 +1,10 @@
 package com.rgm.api.core.application.usecases.admin;
 
+import com.rgm.api.core.application.usecases.modelo.RecalcularPendenciaUseCase;
 import com.rgm.api.core.domain.exceptions.BusinessRuleException;
 import com.rgm.api.core.domain.exceptions.NaoAutorizadoException;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
+import com.rgm.api.core.domain.model.aggregates.Solicitacao;
 import com.rgm.api.core.domain.model.aggregates.Usuario;
 import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.EventoModeloRepository;
@@ -23,6 +25,7 @@ public final class ExcluirRegistroUseCase {
   private final AtividadeSolicitacaoRepository atividadeRepository;
   private final SolicitacaoEvidenciaRepository solicitacaoEvidenciaRepository;
   private final EventoModeloRepository eventoModeloRepository;
+  private final RecalcularPendenciaUseCase recalcularPendenciaUseCase;
 
   public ExcluirRegistroUseCase(
       final UsuarioRepository usuarioRepository,
@@ -31,7 +34,8 @@ public final class ExcluirRegistroUseCase {
       final SolicitacaoAtribuicaoRepository atribuicaoRepository,
       final AtividadeSolicitacaoRepository atividadeRepository,
       final SolicitacaoEvidenciaRepository solicitacaoEvidenciaRepository,
-      final EventoModeloRepository eventoModeloRepository) {
+      final EventoModeloRepository eventoModeloRepository,
+      final RecalcularPendenciaUseCase recalcularPendenciaUseCase) {
     this.usuarioRepository = usuarioRepository;
     this.solicitacaoRepository = solicitacaoRepository;
     this.modeloRepository = modeloRepository;
@@ -39,6 +43,7 @@ public final class ExcluirRegistroUseCase {
     this.atividadeRepository = atividadeRepository;
     this.solicitacaoEvidenciaRepository = solicitacaoEvidenciaRepository;
     this.eventoModeloRepository = eventoModeloRepository;
+    this.recalcularPendenciaUseCase = recalcularPendenciaUseCase;
   }
 
   public enum TipoRecurso {
@@ -64,14 +69,19 @@ public final class ExcluirRegistroUseCase {
   }
 
   private void excluirSolicitacao(final UUID solicitacaoId) {
-    solicitacaoRepository
-        .findById(solicitacaoId)
-        .orElseThrow(() -> new RecursoNaoEncontradoException("Solicitacao nao encontrada"));
+    final Solicitacao solicitacao =
+        solicitacaoRepository
+            .findById(solicitacaoId)
+            .orElseThrow(() -> new RecursoNaoEncontradoException("Solicitacao nao encontrada"));
 
     atribuicaoRepository.deleteBySolicitacaoId(solicitacaoId);
     atividadeRepository.deleteBySolicitacaoId(solicitacaoId);
     solicitacaoEvidenciaRepository.deleteBySolicitacaoId(solicitacaoId);
     solicitacaoRepository.deleteById(solicitacaoId);
+
+    if (solicitacao.getStatus().isNaoTerminal() && solicitacao.getModeloId() != null) {
+      recalcularPendenciaUseCase.execute(solicitacao.getModeloId());
+    }
   }
 
   private void excluirModelo(final UUID modeloId) {
