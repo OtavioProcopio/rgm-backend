@@ -31,6 +31,8 @@ public interface SolicitacaoJpaRepository extends JpaRepository<SolicitacaoJpaEn
               + "(CAST(:prioridade AS text) IS NULL OR s.prioridade = :prioridade) AND "
               + "(CAST(:criadaEmInicio AS timestamptz) IS NULL OR s.criada_em >= :criadaEmInicio) AND "
               + "(CAST(:criadaEmFim AS timestamptz) IS NULL OR s.criada_em <= :criadaEmFim) AND "
+              + "(CAST(:concluidaEmInicio AS timestamptz) IS NULL OR s.concluida_em >= :concluidaEmInicio) AND "
+              + "(CAST(:concluidaEmFim AS timestamptz) IS NULL OR s.concluida_em <= :concluidaEmFim) AND "
               + "(CAST(:abertaPorUsuarioId AS uuid) IS NULL OR s.aberta_por_usuario_id = :abertaPorUsuarioId) AND "
               + "(CAST(:responsavelId AS uuid) IS NULL OR EXISTS (SELECT 1 FROM solicitacao_atribuicoes a WHERE a.solicitacao_id = s.id AND a.usuario_id = :responsavelId AND a.removido_em IS NULL))",
       countQuery =
@@ -41,6 +43,8 @@ public interface SolicitacaoJpaRepository extends JpaRepository<SolicitacaoJpaEn
               + "(CAST(:prioridade AS text) IS NULL OR s.prioridade = :prioridade) AND "
               + "(CAST(:criadaEmInicio AS timestamptz) IS NULL OR s.criada_em >= :criadaEmInicio) AND "
               + "(CAST(:criadaEmFim AS timestamptz) IS NULL OR s.criada_em <= :criadaEmFim) AND "
+              + "(CAST(:concluidaEmInicio AS timestamptz) IS NULL OR s.concluida_em >= :concluidaEmInicio) AND "
+              + "(CAST(:concluidaEmFim AS timestamptz) IS NULL OR s.concluida_em <= :concluidaEmFim) AND "
               + "(CAST(:abertaPorUsuarioId AS uuid) IS NULL OR s.aberta_por_usuario_id = :abertaPorUsuarioId) AND "
               + "(CAST(:responsavelId AS uuid) IS NULL OR EXISTS (SELECT 1 FROM solicitacao_atribuicoes a WHERE a.solicitacao_id = s.id AND a.usuario_id = :responsavelId AND a.removido_em IS NULL))",
       nativeQuery = true)
@@ -51,6 +55,9 @@ public interface SolicitacaoJpaRepository extends JpaRepository<SolicitacaoJpaEn
       @org.springframework.data.repository.query.Param("prioridade") String prioridade,
       @org.springframework.data.repository.query.Param("criadaEmInicio") Instant criadaEmInicio,
       @org.springframework.data.repository.query.Param("criadaEmFim") Instant criadaEmFim,
+      @org.springframework.data.repository.query.Param("concluidaEmInicio")
+          Instant concluidaEmInicio,
+      @org.springframework.data.repository.query.Param("concluidaEmFim") Instant concluidaEmFim,
       @org.springframework.data.repository.query.Param("abertaPorUsuarioId")
           UUID abertaPorUsuarioId,
       @org.springframework.data.repository.query.Param("responsavelId") UUID responsavelId,
@@ -67,4 +74,10 @@ public interface SolicitacaoJpaRepository extends JpaRepository<SolicitacaoJpaEn
 
   List<SolicitacaoJpaEntity> findByStatusAndCriadaEmBetween(
       StatusSolicitacao status, Instant inicio, Instant fim);
+
+  @Query(
+      value =
+          "SELECT COALESCE(AVG(EXTRACT(EPOCH FROM (s.concluida_em - s.criada_em))), 0) FROM solicitacoes s WHERE s.status = 'CONCLUIDA'",
+      nativeQuery = true)
+  double getTempoMedioResolucaoSegundos();
 }

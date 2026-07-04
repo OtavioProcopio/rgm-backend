@@ -37,6 +37,8 @@ public interface SolicitacaoRepository {
       PrioridadeSolicitacao prioridade,
       Instant criadaEmInicio,
       Instant criadaEmFim,
+      Instant concluidaEmInicio,
+      Instant concluidaEmFim,
       UUID abertaPorUsuarioId,
       UUID responsavelId,
       int page,
@@ -54,4 +56,6 @@ public interface SolicitacaoRepository {
 
   List<Solicitacao> findByStatusAndCriadaEmBetween(
       StatusSolicitacao status, Instant inicio, Instant fim);
+
+  long getTempoMedioResolucaoSegundos();
 }

@@ -4,12 +4,17 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
+import com.rgm.api.core.domain.model.aggregates.Usuario;
+import com.rgm.api.core.domain.model.enums.PerfilUsuario;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
+import com.rgm.api.core.domain.model.enums.TipoFiltroData;
 import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
 import com.rgm.api.core.domain.ports.repositories.PageResult;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
+import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,12 +22,44 @@ import org.junit.jupiter.api.Test;
 class ListarSolicitacoesUseCaseTest {
 
   private SolicitacaoRepository solicitacaoRepository;
+  private UsuarioRepository usuarioRepository;
   private ListarSolicitacoesUseCase useCase;
 
   @BeforeEach
   void setUp() {
     solicitacaoRepository = mock(SolicitacaoRepository.class);
-    useCase = new ListarSolicitacoesUseCase(solicitacaoRepository);
+    usuarioRepository = mock(UsuarioRepository.class);
+    useCase = new ListarSolicitacoesUseCase(solicitacaoRepository, usuarioRepository);
+  }
+
+  private ListarSolicitacoesUseCase.Input input(
+      final StatusSolicitacao status,
+      final TipoFiltroData tipoData,
+      final Instant dataInicio,
+      final Instant dataFim,
+      final UUID abertaPorUsuarioId,
+      final UUID responsavelId,
+      final UUID usuarioAutenticadoId) {
+    return new ListarSolicitacoesUseCase.Input(
+        status,
+        null,
+        null,
+        null,
+        tipoData,
+        dataInicio,
+        dataFim,
+        abertaPorUsuarioId,
+        responsavelId,
+        usuarioAutenticadoId,
+        0,
+        20);
+  }
+
+  private Usuario usuarioComPerfil(final UUID id, final PerfilUsuario perfil) {
+    final Usuario usuario = mock(Usuario.class);
+    when(usuario.getPerfil()).thenReturn(perfil);
+    when(usuarioRepository.findById(id)).thenReturn(Optional.of(usuario));
+    return usuario;
   }
 
   @Test
@@ -34,50 +71,163 @@ class ListarSolicitacoesUseCaseTest {
         .thenReturn(new PageResult<>(List.of(sol), 0, 20, 1, 1));
 
     final PageResult<Solicitacao> result =
-        useCase.execute(
-            new ListarSolicitacoesUseCase.Input(
-                null, null, null, null, null, null, null, null, 0, 20));
+        useCase.execute(input(null, null, null, null, null, null, null));
 
     assertEquals(1, result.totalElements());
     verify(solicitacaoRepository).findAll(0, 20);
-    verify(solicitacaoRepository, never()).findByStatus(any(), anyInt(), anyInt());
   }
 
   @Test
   void deveListarPorStatus() {
     when(solicitacaoRepository.findByFilters(
-            StatusSolicitacao.EM_ANDAMENTO, null, null, null, null, null, null, null, 0, 10))
-        .thenReturn(new PageResult<>(List.of(), 0, 10, 0, 0));
+            eq(StatusSolicitacao.EM_ANDAMENTO),
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            eq(0),
+            eq(20)))
+        .thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
 
     final PageResult<Solicitacao> result =
-        useCase.execute(
-            new ListarSolicitacoesUseCase.Input(
-                StatusSolicitacao.EM_ANDAMENTO, null, null, null, null, null, null, null, 0, 10));
+        useCase.execute(input(StatusSolicitacao.EM_ANDAMENTO, null, null, null, null, null, null));
 
     assertEquals(0, result.totalElements());
-    verify(solicitacaoRepository)
-        .findByFilters(
-            StatusSolicitacao.EM_ANDAMENTO, null, null, null, null, null, null, null, 0, 10);
     verify(solicitacaoRepository, never()).findAll(anyInt(), anyInt());
   }
 
   @Test
-  void deveListarPorAutorEResponsavel() {
-    final UUID autorId = UUID.randomUUID();
-    final UUID responsavelId = UUID.randomUUID();
-
+  void operadorSoVeAsSuas() {
+    final UUID operadorId = UUID.randomUUID();
+    final UUID outroResponsavel = UUID.randomUUID();
+    usuarioComPerfil(operadorId, PerfilUsuario.OPERADOR);
     when(solicitacaoRepository.findByFilters(
-            null, null, null, null, null, null, autorId, responsavelId, 0, 10))
-        .thenReturn(new PageResult<>(List.of(), 0, 10, 0, 0));
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            eq(operadorId),
+            anyInt(),
+            anyInt()))
+        .thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
 
-    final PageResult<Solicitacao> result =
-        useCase.execute(
-            new ListarSolicitacoesUseCase.Input(
-                null, null, null, null, null, null, autorId, responsavelId, 0, 10));
+    useCase.execute(input(null, null, null, null, null, outroResponsavel, operadorId));
 
-    assertEquals(0, result.totalElements());
     verify(solicitacaoRepository)
-        .findByFilters(null, null, null, null, null, null, autorId, responsavelId, 0, 10);
-    verify(solicitacaoRepository, never()).findAll(anyInt(), anyInt());
+        .findByFilters(
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            eq(operadorId),
+            eq(0),
+            eq(20));
+  }
+
+  @Test
+  void gestorMantemResponsavelDoClient() {
+    final UUID gestorId = UUID.randomUUID();
+    final UUID responsavelFiltrado = UUID.randomUUID();
+    usuarioComPerfil(gestorId, PerfilUsuario.GESTOR);
+    when(solicitacaoRepository.findByFilters(
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            eq(responsavelFiltrado),
+            anyInt(),
+            anyInt()))
+        .thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
+
+    useCase.execute(input(null, null, null, null, null, responsavelFiltrado, gestorId));
+
+    verify(solicitacaoRepository)
+        .findByFilters(
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            eq(responsavelFiltrado),
+            eq(0),
+            eq(20));
+  }
+
+  @Test
+  void filtroPorConclusaoRoteiaParaConcluidaEm() {
+    final Instant inicio = Instant.parse("2026-01-01T00:00:00Z");
+    final Instant fim = Instant.parse("2026-02-01T00:00:00Z");
+    when(solicitacaoRepository.findByFilters(
+            any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), anyInt(),
+            anyInt()))
+        .thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
+
+    useCase.execute(input(null, TipoFiltroData.CONCLUSAO, inicio, fim, null, null, null));
+
+    verify(solicitacaoRepository)
+        .findByFilters(
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            eq(inicio),
+            eq(fim),
+            isNull(),
+            isNull(),
+            eq(0),
+            eq(20));
+  }
+
+  @Test
+  void filtroPorCriacaoRoteiaParaCriadaEm() {
+    final Instant inicio = Instant.parse("2026-01-01T00:00:00Z");
+    final Instant fim = Instant.parse("2026-02-01T00:00:00Z");
+    when(solicitacaoRepository.findByFilters(
+            any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), anyInt(),
+            anyInt()))
+        .thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
+
+    useCase.execute(input(null, TipoFiltroData.CRIACAO, inicio, fim, null, null, null));
+
+    verify(solicitacaoRepository)
+        .findByFilters(
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            eq(inicio),
+            eq(fim),
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            eq(0),
+            eq(20));
   }
 }
