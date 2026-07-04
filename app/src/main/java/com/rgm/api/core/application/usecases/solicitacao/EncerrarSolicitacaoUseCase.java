@@ -18,9 +18,11 @@ import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import com.rgm.api.core.domain.ports.services.DomainEventPublisher;
 import java.time.Instant;
 import java.util.UUID;
+import org.springframework.transaction.annotation.Transactional;
 
 /** UC-07: Encerrar solicitacao (EM_VALIDACAO -> CONCLUIDA ou CANCELADA). */
-public final class EncerrarSolicitacaoUseCase {
+@Transactional
+public class EncerrarSolicitacaoUseCase {
 
   private final SolicitacaoRepository solicitacaoRepository;
   private final UsuarioRepository usuarioRepository;

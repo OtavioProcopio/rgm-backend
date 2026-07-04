@@ -16,9 +16,11 @@ import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import com.rgm.api.core.domain.ports.services.DomainEventPublisher;
 import java.time.Instant;
 import java.util.UUID;
+import org.springframework.transaction.annotation.Transactional;
 
 /** UC-07: Cancelar solicitacao (A_FAZER/EM_ANDAMENTO/EM_VALIDACAO -> CANCELADA). */
-public final class CancelarSolicitacaoUseCase {
+@Transactional
+public class CancelarSolicitacaoUseCase {
 
   private final SolicitacaoRepository solicitacaoRepository;
   private final UsuarioRepository usuarioRepository;

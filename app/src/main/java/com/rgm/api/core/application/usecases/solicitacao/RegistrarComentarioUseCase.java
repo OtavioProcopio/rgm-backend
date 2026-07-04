@@ -13,9 +13,11 @@ import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import java.time.Instant;
 import java.util.UUID;
+import org.springframework.transaction.annotation.Transactional;
 
 /** UC-12 (parcial): Registrar comentario em solicitacao (Gestor como procurador do externo). */
-public final class RegistrarComentarioUseCase {
+@Transactional
+public class RegistrarComentarioUseCase {
 
   private final SolicitacaoRepository solicitacaoRepository;
   private final AtividadeSolicitacaoRepository atividadeRepository;

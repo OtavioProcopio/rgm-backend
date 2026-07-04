@@ -15,9 +15,11 @@ import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import java.time.Instant;
 import java.util.UUID;
+import org.springframework.transaction.annotation.Transactional;
 
 /** UC-04/UC-05: Enviar para validacao (EM_ANDAMENTO -> EM_VALIDACAO) com autorizacao central. */
-public final class EnviarParaValidacaoUseCase {
+@Transactional
+public class EnviarParaValidacaoUseCase {
 
   private final SolicitacaoRepository solicitacaoRepository;
   private final UsuarioRepository usuarioRepository;

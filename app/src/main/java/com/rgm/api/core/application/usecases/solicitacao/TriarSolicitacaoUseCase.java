@@ -16,9 +16,11 @@ import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.transaction.annotation.Transactional;
 
 /** UC-03: Triar e atribuir (A_FAZER -> EM_ANDAMENTO). */
-public final class TriarSolicitacaoUseCase {
+@Transactional
+public class TriarSolicitacaoUseCase {
 
   private final SolicitacaoRepository solicitacaoRepository;
   private final UsuarioRepository usuarioRepository;

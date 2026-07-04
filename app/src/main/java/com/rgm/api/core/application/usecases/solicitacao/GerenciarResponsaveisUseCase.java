@@ -14,9 +14,11 @@ import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.transaction.annotation.Transactional;
 
 /** Caso de uso para gerenciar responsaveis de uma solicitacao (adicionar/remover). */
-public final class GerenciarResponsaveisUseCase {
+@Transactional
+public class GerenciarResponsaveisUseCase {
 
   private final SolicitacaoRepository solicitacaoRepository;
   private final UsuarioRepository usuarioRepository;
