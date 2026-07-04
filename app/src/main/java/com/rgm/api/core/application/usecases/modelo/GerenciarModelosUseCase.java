@@ -2,8 +2,10 @@ package com.rgm.api.core.application.usecases.modelo;
 
 import com.rgm.api.core.domain.exceptions.NaoAutorizadoException;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
+import com.rgm.api.core.domain.exceptions.ValidationException;
 import com.rgm.api.core.domain.model.aggregates.Modelo;
 import com.rgm.api.core.domain.model.aggregates.Usuario;
+import com.rgm.api.core.domain.ports.repositories.MaquinaRepository;
 import com.rgm.api.core.domain.ports.repositories.ModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import java.time.Instant;
@@ -14,11 +16,15 @@ public final class GerenciarModelosUseCase {
 
   private final ModeloRepository modeloRepository;
   private final UsuarioRepository usuarioRepository;
+  private final MaquinaRepository maquinaRepository;
 
   public GerenciarModelosUseCase(
-      final ModeloRepository modeloRepository, final UsuarioRepository usuarioRepository) {
+      final ModeloRepository modeloRepository,
+      final UsuarioRepository usuarioRepository,
+      final MaquinaRepository maquinaRepository) {
     this.modeloRepository = modeloRepository;
     this.usuarioRepository = usuarioRepository;
+    this.maquinaRepository = maquinaRepository;
   }
 
   public record CriarInput(
@@ -39,6 +45,7 @@ public final class GerenciarModelosUseCase {
   public Modelo criar(final CriarInput input) {
     final Instant agora = Instant.now();
     validarPermissaoModelo(input.gestorId());
+    validarMaquina(input.maquina());
 
     final int versao =
         modeloRepository.countByMaquinaAndCodigo(input.maquina(), input.codigo()) + 1;
@@ -53,6 +60,7 @@ public final class GerenciarModelosUseCase {
   public Modelo editar(final EditarInput input) {
     final Instant agora = Instant.now();
     validarPermissaoModelo(input.gestorId());
+    validarMaquina(input.maquina());
 
     final Modelo modelo =
         modeloRepository
@@ -90,6 +98,12 @@ public final class GerenciarModelosUseCase {
 
     final Modelo ativado = modelo.ativar(agora);
     return modeloRepository.save(ativado);
+  }
+
+  private void validarMaquina(final String maquina) {
+    if (maquina == null || !maquinaRepository.existsByNomeAndAtivoTrue(maquina.trim())) {
+      throw new ValidationException("Maquina invalida ou inativa: " + maquina);
+    }
   }
 
   private void validarPermissaoModelo(final UUID gestorId) {
