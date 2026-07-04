@@ -12,7 +12,6 @@ import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -88,8 +87,7 @@ class ObterMetricasSolicitacoesUseCaseTest {
             agora,
             null);
 
-    when(solicitacaoRepository.findByStatus(StatusSolicitacao.CONCLUIDA))
-        .thenReturn(List.of(sol1, sol2));
+    when(solicitacaoRepository.getTempoMedioResolucaoSegundos()).thenReturn(5400L);
     when(solicitacaoRepository.countGroupByModeloId()).thenReturn(Map.of(modeloId, 2L));
 
     // WHEN
@@ -119,12 +117,12 @@ class ObterMetricasSolicitacoesUseCaseTest {
     verify(usuarioRepository).count();
     verify(modeloRepository).count();
     verify(solicitacaoRepository).count();
-    verify(solicitacaoRepository).findByStatus(StatusSolicitacao.CONCLUIDA);
+    verify(solicitacaoRepository).getTempoMedioResolucaoSegundos();
   }
 
   @Test
   void deveRetornarSlaZeroSeNaoHouverSolicitacoesConcluidas() {
-    when(solicitacaoRepository.findByStatus(StatusSolicitacao.CONCLUIDA)).thenReturn(List.of());
+    when(solicitacaoRepository.getTempoMedioResolucaoSegundos()).thenReturn(0L);
     when(solicitacaoRepository.countGroupByModeloId()).thenReturn(Map.of());
 
     final ObterMetricasSolicitacoesUseCase.Output metricas = useCase.execute();

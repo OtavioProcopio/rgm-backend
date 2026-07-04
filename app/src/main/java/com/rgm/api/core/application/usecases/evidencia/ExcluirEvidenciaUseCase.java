@@ -11,6 +11,7 @@ import com.rgm.api.core.domain.ports.repositories.SolicitacaoAtribuicaoRepositor
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoEvidenciaRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
+import com.rgm.api.core.domain.ports.services.StorageService;
 import java.util.UUID;
 
 public final class ExcluirEvidenciaUseCase {
@@ -20,18 +21,21 @@ public final class ExcluirEvidenciaUseCase {
   private final SolicitacaoEvidenciaRepository solicitacaoEvidenciaRepository;
   private final UsuarioRepository usuarioRepository;
   private final SolicitacaoAtribuicaoRepository atribuicaoRepository;
+  private final StorageService storageService;
 
   public ExcluirEvidenciaUseCase(
       final SolicitacaoRepository solicitacaoRepository,
       final EvidenciaRepository evidenciaRepository,
       final SolicitacaoEvidenciaRepository solicitacaoEvidenciaRepository,
       final UsuarioRepository usuarioRepository,
-      final SolicitacaoAtribuicaoRepository atribuicaoRepository) {
+      final SolicitacaoAtribuicaoRepository atribuicaoRepository,
+      final StorageService storageService) {
     this.solicitacaoRepository = solicitacaoRepository;
     this.evidenciaRepository = evidenciaRepository;
     this.solicitacaoEvidenciaRepository = solicitacaoEvidenciaRepository;
     this.usuarioRepository = usuarioRepository;
     this.atribuicaoRepository = atribuicaoRepository;
+    this.storageService = storageService;
   }
 
   public record Input(UUID solicitacaoId, UUID evidenciaId, UUID usuarioId) {}
@@ -60,6 +64,7 @@ public final class ExcluirEvidenciaUseCase {
 
     solicitacaoEvidenciaRepository.deleteByEvidenciaId(input.evidenciaId());
     evidenciaRepository.deleteById(input.evidenciaId());
+    storageService.delete(evidencia.getPublicUrl());
   }
 
   private void validarAcesso(

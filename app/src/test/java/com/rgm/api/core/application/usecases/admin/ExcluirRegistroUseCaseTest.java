@@ -7,21 +7,26 @@ import com.rgm.api.core.application.usecases.modelo.RecalcularPendenciaUseCase;
 import com.rgm.api.core.domain.exceptions.BusinessRuleException;
 import com.rgm.api.core.domain.exceptions.NaoAutorizadoException;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
+import com.rgm.api.core.domain.model.aggregates.Evidencia;
 import com.rgm.api.core.domain.model.aggregates.Modelo;
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
 import com.rgm.api.core.domain.model.aggregates.Usuario;
+import com.rgm.api.core.domain.model.entities.SolicitacaoEvidencia;
 import com.rgm.api.core.domain.model.enums.PerfilUsuario;
 import com.rgm.api.core.domain.model.enums.PrioridadeSolicitacao;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
 import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
 import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.EventoModeloRepository;
+import com.rgm.api.core.domain.ports.repositories.EvidenciaRepository;
 import com.rgm.api.core.domain.ports.repositories.ModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoAtribuicaoRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoEvidenciaRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
+import com.rgm.api.core.domain.ports.services.StorageService;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,6 +42,8 @@ class ExcluirRegistroUseCaseTest {
   private SolicitacaoEvidenciaRepository solicitacaoEvidenciaRepository;
   private EventoModeloRepository eventoModeloRepository;
   private RecalcularPendenciaUseCase recalcularPendenciaUseCase;
+  private EvidenciaRepository evidenciaRepository;
+  private StorageService storageService;
   private ExcluirRegistroUseCase useCase;
 
   @BeforeEach
@@ -49,6 +56,8 @@ class ExcluirRegistroUseCaseTest {
     solicitacaoEvidenciaRepository = mock(SolicitacaoEvidenciaRepository.class);
     eventoModeloRepository = mock(EventoModeloRepository.class);
     recalcularPendenciaUseCase = mock(RecalcularPendenciaUseCase.class);
+    evidenciaRepository = mock(EvidenciaRepository.class);
+    storageService = mock(StorageService.class);
     useCase =
         new ExcluirRegistroUseCase(
             usuarioRepository,
@@ -58,7 +67,9 @@ class ExcluirRegistroUseCaseTest {
             atividadeRepository,
             solicitacaoEvidenciaRepository,
             eventoModeloRepository,
-            recalcularPendenciaUseCase);
+            recalcularPendenciaUseCase,
+            evidenciaRepository,
+            storageService);
   }
 
   private Usuario criarAdmin() {
@@ -95,13 +106,23 @@ class ExcluirRegistroUseCaseTest {
             null,
             null);
 
+    final UUID evidenciaId = UUID.randomUUID();
+    final SolicitacaoEvidencia rel = new SolicitacaoEvidencia(solId, evidenciaId);
+    final Evidencia ev =
+        new Evidencia(
+            evidenciaId, "http://file", "image/png", "foto.png", 1024, UUID.randomUUID(), agora);
+
     when(usuarioRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
     when(solicitacaoRepository.findById(solId)).thenReturn(Optional.of(sol));
+    when(solicitacaoEvidenciaRepository.findBySolicitacaoId(solId)).thenReturn(List.of(rel));
+    when(evidenciaRepository.findById(evidenciaId)).thenReturn(Optional.of(ev));
 
     useCase.execute(
         new ExcluirRegistroUseCase.Input(
             ExcluirRegistroUseCase.TipoRecurso.SOLICITACAO, solId, admin.getId()));
 
+    verify(storageService).delete("http://file");
+    verify(evidenciaRepository).deleteById(evidenciaId);
     verify(atribuicaoRepository).deleteBySolicitacaoId(solId);
     verify(atividadeRepository).deleteBySolicitacaoId(solId);
     verify(solicitacaoEvidenciaRepository).deleteBySolicitacaoId(solId);

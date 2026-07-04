@@ -17,6 +17,7 @@ import com.rgm.api.core.domain.ports.repositories.SolicitacaoAtribuicaoRepositor
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoEvidenciaRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
+import com.rgm.api.core.domain.ports.services.StorageService;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
@@ -34,6 +35,7 @@ class ExcluirEvidenciaUseCaseTest {
   @Mock private SolicitacaoEvidenciaRepository solicitacaoEvidenciaRepository;
   @Mock private UsuarioRepository usuarioRepository;
   @Mock private SolicitacaoAtribuicaoRepository atribuicaoRepository;
+  @Mock private StorageService storageService;
   @InjectMocks private ExcluirEvidenciaUseCase useCase;
 
   private Solicitacao solicitacaoAberta() {
@@ -81,6 +83,7 @@ class ExcluirEvidenciaUseCaseTest {
 
     verify(solicitacaoEvidenciaRepository).deleteByEvidenciaId(evId);
     verify(evidenciaRepository).deleteById(evId);
+    verify(storageService).delete(ev.getPublicUrl());
   }
 
   @Test
@@ -100,6 +103,7 @@ class ExcluirEvidenciaUseCaseTest {
     useCase.execute(new ExcluirEvidenciaUseCase.Input(solId, evId, operadorId));
 
     verify(evidenciaRepository).deleteById(evId);
+    verify(storageService).delete(ev.getPublicUrl());
   }
 
   @Test

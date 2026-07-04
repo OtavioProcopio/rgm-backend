@@ -3,13 +3,18 @@ package com.rgm.api.adapter.out.storage;
 import com.rgm.api.core.domain.ports.services.StorageService;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
+import io.minio.RemoveObjectArgs;
 import java.io.InputStream;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Service
 public class MinioStorageService implements StorageService {
+
+  private static final Logger log = LoggerFactory.getLogger(MinioStorageService.class);
 
   private final MinioClient minioClient;
   private final String bucketName;
@@ -37,5 +42,24 @@ public class MinioStorageService implements StorageService {
       throw new RuntimeException("Erro ao fazer upload para MinIO: " + e.getMessage(), e);
     }
     return publicUrl + "/" + bucketName + "/" + objectName;
+  }
+
+  @Override
+  public void delete(final String fileUrl) {
+    if (fileUrl == null || fileUrl.isBlank()) {
+      return;
+    }
+    final String prefix = "/" + bucketName + "/";
+    final int idx = fileUrl.indexOf(prefix);
+    if (idx == -1) {
+      return;
+    }
+    final String objectName = fileUrl.substring(idx + prefix.length());
+    try {
+      minioClient.removeObject(
+          RemoveObjectArgs.builder().bucket(bucketName).object(objectName).build());
+    } catch (final Exception e) {
+      log.error("Erro ao deletar objeto no MinIO: {}", objectName, e);
+    }
   }
 }
