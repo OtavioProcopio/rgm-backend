@@ -1,13 +1,10 @@
 package com.rgm.api.core.application.usecases.solicitacao;
 
-import com.rgm.api.core.domain.model.aggregates.Solicitacao;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
 import com.rgm.api.core.domain.ports.repositories.ModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
-import java.time.Duration;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -63,18 +60,7 @@ public final class ObterMetricasSolicitacoesUseCase {
       }
     }
 
-    // Calcular tempo médio de resolução (lead time) em segundos para maior precisão
-    final List<Solicitacao> concluidas =
-        solicitacaoRepository.findByStatus(StatusSolicitacao.CONCLUIDA);
-    long totalSegundos = 0;
-    int comTimestamp = 0;
-    for (final Solicitacao s : concluidas) {
-      if (s.getCriadaEm() != null && s.getConcluidaEm() != null) {
-        totalSegundos += Duration.between(s.getCriadaEm(), s.getConcluidaEm()).toSeconds();
-        comTimestamp++;
-      }
-    }
-    final long tempoMedioResolucaoSegundos = comTimestamp == 0 ? 0 : (totalSegundos / comTimestamp);
+    final long tempoMedioResolucaoSegundos = solicitacaoRepository.getTempoMedioResolucaoSegundos();
 
     final Map<UUID, Long> solicitacoesPorModelo = solicitacaoRepository.countGroupByModeloId();
 

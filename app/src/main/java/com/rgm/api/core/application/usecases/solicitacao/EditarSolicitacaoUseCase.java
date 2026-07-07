@@ -10,9 +10,11 @@ import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import java.time.Instant;
 import java.util.UUID;
+import org.springframework.transaction.annotation.Transactional;
 
 /** Editar titulo, descricao e tipo de uma solicitacao. */
-public final class EditarSolicitacaoUseCase {
+@Transactional
+public class EditarSolicitacaoUseCase {
 
   private final SolicitacaoRepository solicitacaoRepository;
   private final UsuarioRepository usuarioRepository;

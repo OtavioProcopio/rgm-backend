@@ -15,9 +15,11 @@ import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import java.time.Instant;
 import java.util.UUID;
+import org.springframework.transaction.annotation.Transactional;
 
 /** UC-02: Abrir solicitacao (A_FAZER). */
-public final class AbrirSolicitacaoUseCase {
+@Transactional
+public class AbrirSolicitacaoUseCase {
 
   private final SolicitacaoRepository solicitacaoRepository;
   private final ModeloRepository modeloRepository;

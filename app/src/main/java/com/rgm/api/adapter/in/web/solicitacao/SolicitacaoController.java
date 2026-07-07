@@ -31,6 +31,7 @@ import com.rgm.api.core.application.usecases.solicitacao.RegistrarComentarioUseC
 import com.rgm.api.core.application.usecases.solicitacao.TriarSolicitacaoUseCase;
 import com.rgm.api.core.domain.model.enums.PrioridadeSolicitacao;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
+import com.rgm.api.core.domain.model.enums.TipoFiltroData;
 import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import jakarta.validation.Valid;
@@ -44,7 +45,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -141,6 +141,9 @@ public class SolicitacaoController {
       @RequestParam(required = false) final String prioridade,
       @RequestParam(required = false) final String criadaEmInicio,
       @RequestParam(required = false) final String criadaEmFim,
+      @RequestParam(required = false) final String tipoData,
+      @RequestParam(required = false) final String dataInicio,
+      @RequestParam(required = false) final String dataFim,
       @RequestParam(required = false) final UUID abertaPorUsuarioId,
       @RequestParam(required = false) final UUID responsavelId,
       final Authentication authentication) {
@@ -153,8 +156,12 @@ public class SolicitacaoController {
             prioridade,
             criadaEmInicio,
             criadaEmFim,
+            tipoData,
+            dataInicio,
+            dataFim,
             abertaPorUsuarioId,
             responsavelId,
+            usuarioAutenticadoId(authentication),
             0,
             Integer.MAX_VALUE);
     final var solicitacoes = listarUseCase.execute(input).content();
@@ -188,8 +195,12 @@ public class SolicitacaoController {
       @RequestParam(required = false) final String prioridade,
       @RequestParam(required = false) final String criadaEmInicio,
       @RequestParam(required = false) final String criadaEmFim,
+      @RequestParam(required = false) final String tipoData,
+      @RequestParam(required = false) final String dataInicio,
+      @RequestParam(required = false) final String dataFim,
       @RequestParam(required = false) final UUID abertaPorUsuarioId,
-      @RequestParam(required = false) final UUID responsavelId) {
+      @RequestParam(required = false) final UUID responsavelId,
+      final Authentication authentication) {
     final var result =
         listarUseCase.execute(
             buildInput(
@@ -199,8 +210,12 @@ public class SolicitacaoController {
                 prioridade,
                 criadaEmInicio,
                 criadaEmFim,
+                tipoData,
+                dataInicio,
+                dataFim,
                 abertaPorUsuarioId,
                 responsavelId,
+                usuarioAutenticadoId(authentication),
                 page,
                 size));
 
@@ -222,24 +237,44 @@ public class SolicitacaoController {
       final String prioridade,
       final String criadaEmInicio,
       final String criadaEmFim,
+      final String tipoData,
+      final String dataInicio,
+      final String dataFim,
       final UUID abertaPorUsuarioId,
       final UUID responsavelId,
+      final UUID usuarioAutenticadoId,
       final int page,
       final int size) {
+    final TipoFiltroData tipo0 =
+        tipoData != null ? TipoFiltroData.valueOf(tipoData) : TipoFiltroData.CRIACAO;
+    final String inicioRaw = dataInicio != null ? dataInicio : criadaEmInicio;
+    final String fimRaw = dataFim != null ? dataFim : criadaEmFim;
     return new ListarSolicitacoesUseCase.Input(
         status != null ? StatusSolicitacao.valueOf(status) : null,
         modeloId,
         tipo != null ? TipoSolicitacao.valueOf(tipo) : null,
         prioridade != null ? PrioridadeSolicitacao.valueOf(prioridade) : null,
-        criadaEmInicio != null ? Instant.parse(criadaEmInicio) : null,
-        criadaEmFim != null ? Instant.parse(criadaEmFim) : null,
+        tipo0,
+        inicioRaw != null ? Instant.parse(inicioRaw) : null,
+        fimRaw != null ? Instant.parse(fimRaw) : null,
         abertaPorUsuarioId,
         responsavelId,
+        usuarioAutenticadoId,
         page,
         size);
   }
 
-  @Transactional
+  private UUID usuarioAutenticadoId(final Authentication authentication) {
+    if (authentication == null) {
+      return null;
+    }
+    try {
+      return UUID.fromString(authentication.getName());
+    } catch (final IllegalArgumentException e) {
+      return null;
+    }
+  }
+
   @PutMapping("/{id}")
   public ResponseEntity<SolicitacaoResponse> editar(
       @PathVariable final UUID id,
@@ -274,7 +309,6 @@ public class SolicitacaoController {
         result.stream().map(a -> AtividadeResponse.from(a.atividade(), a.autorNome())).toList());
   }
 
-  @Transactional
   @PostMapping
   public ResponseEntity<SolicitacaoResponse> abrir(
       @Valid @RequestBody final AbrirSolicitacaoRequest request,
@@ -292,7 +326,6 @@ public class SolicitacaoController {
     return ResponseEntity.status(HttpStatus.CREATED).body(SolicitacaoResponse.from(output));
   }
 
-  @Transactional
   @PatchMapping("/{id}/triar")
   public ResponseEntity<SolicitacaoResponse> triar(
       @PathVariable final UUID id,
@@ -310,7 +343,6 @@ public class SolicitacaoController {
     return ResponseEntity.ok(publicar("triada", SolicitacaoResponse.from(output)));
   }
 
-  @Transactional
   @PatchMapping("/{id}/enviar-validacao")
   public ResponseEntity<SolicitacaoResponse> enviarParaValidacao(
       @PathVariable final UUID id,
@@ -324,7 +356,6 @@ public class SolicitacaoController {
     return ResponseEntity.ok(publicar("enviada_validacao", SolicitacaoResponse.from(output)));
   }
 
-  @Transactional
   @PatchMapping("/{id}/devolver")
   public ResponseEntity<SolicitacaoResponse> devolver(
       @PathVariable final UUID id,
@@ -340,7 +371,6 @@ public class SolicitacaoController {
     return ResponseEntity.ok(publicar("devolvida", SolicitacaoResponse.from(output)));
   }
 
-  @Transactional
   @PatchMapping("/{id}/encerrar")
   public ResponseEntity<SolicitacaoResponse> encerrar(
       @PathVariable final UUID id,
@@ -355,7 +385,6 @@ public class SolicitacaoController {
     return ResponseEntity.ok(publicar("encerrada", SolicitacaoResponse.from(output)));
   }
 
-  @Transactional
   @PostMapping("/{id}/comentarios")
   public ResponseEntity<Void> comentar(
       @PathVariable final UUID id,
@@ -368,7 +397,6 @@ public class SolicitacaoController {
     return ResponseEntity.status(HttpStatus.CREATED).build();
   }
 
-  @Transactional
   @PatchMapping("/{id}/cancelar")
   public ResponseEntity<SolicitacaoResponse> cancelar(
       @PathVariable final UUID id,
@@ -382,7 +410,6 @@ public class SolicitacaoController {
     return ResponseEntity.ok(publicar("cancelada", SolicitacaoResponse.from(output)));
   }
 
-  @Transactional
   @PatchMapping("/{id}/responsaveis")
   public ResponseEntity<SolicitacaoResponse> gerenciarResponsaveis(
       @PathVariable final UUID id,

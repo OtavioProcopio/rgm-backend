@@ -13,9 +13,11 @@ import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import java.time.Instant;
 import java.util.UUID;
+import org.springframework.transaction.annotation.Transactional;
 
 /** UC-06: Devolver para correcao (EM_VALIDACAO -> EM_ANDAMENTO). */
-public final class DevolverSolicitacaoUseCase {
+@Transactional
+public class DevolverSolicitacaoUseCase {
 
   private final SolicitacaoRepository solicitacaoRepository;
   private final UsuarioRepository usuarioRepository;

@@ -7,4 +7,7 @@ public interface StorageService {
 
   /** Faz upload do arquivo e retorna a publicUrl persistente (sem expiracao). */
   String upload(String fileName, String contentType, InputStream content, long size);
+
+  /** Deleta o arquivo físico correspondente à URL pública. */
+  void delete(String fileUrl);
 }

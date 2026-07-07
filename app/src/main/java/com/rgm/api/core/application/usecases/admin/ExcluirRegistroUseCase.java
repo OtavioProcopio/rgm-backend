@@ -6,13 +6,17 @@ import com.rgm.api.core.domain.exceptions.NaoAutorizadoException;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
 import com.rgm.api.core.domain.model.aggregates.Usuario;
+import com.rgm.api.core.domain.model.entities.SolicitacaoEvidencia;
 import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.EventoModeloRepository;
+import com.rgm.api.core.domain.ports.repositories.EvidenciaRepository;
 import com.rgm.api.core.domain.ports.repositories.ModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoAtribuicaoRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoEvidenciaRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
+import com.rgm.api.core.domain.ports.services.StorageService;
+import java.util.List;
 import java.util.UUID;
 
 /** UC-15: Exclusao permanente (hard delete) de registros. Ator: Administrador. */
@@ -26,6 +30,8 @@ public final class ExcluirRegistroUseCase {
   private final SolicitacaoEvidenciaRepository solicitacaoEvidenciaRepository;
   private final EventoModeloRepository eventoModeloRepository;
   private final RecalcularPendenciaUseCase recalcularPendenciaUseCase;
+  private final EvidenciaRepository evidenciaRepository;
+  private final StorageService storageService;
 
   public ExcluirRegistroUseCase(
       final UsuarioRepository usuarioRepository,
@@ -35,7 +41,9 @@ public final class ExcluirRegistroUseCase {
       final AtividadeSolicitacaoRepository atividadeRepository,
       final SolicitacaoEvidenciaRepository solicitacaoEvidenciaRepository,
       final EventoModeloRepository eventoModeloRepository,
-      final RecalcularPendenciaUseCase recalcularPendenciaUseCase) {
+      final RecalcularPendenciaUseCase recalcularPendenciaUseCase,
+      final EvidenciaRepository evidenciaRepository,
+      final StorageService storageService) {
     this.usuarioRepository = usuarioRepository;
     this.solicitacaoRepository = solicitacaoRepository;
     this.modeloRepository = modeloRepository;
@@ -44,6 +52,8 @@ public final class ExcluirRegistroUseCase {
     this.solicitacaoEvidenciaRepository = solicitacaoEvidenciaRepository;
     this.eventoModeloRepository = eventoModeloRepository;
     this.recalcularPendenciaUseCase = recalcularPendenciaUseCase;
+    this.evidenciaRepository = evidenciaRepository;
+    this.storageService = storageService;
   }
 
   public enum TipoRecurso {
@@ -73,6 +83,19 @@ public final class ExcluirRegistroUseCase {
         solicitacaoRepository
             .findById(solicitacaoId)
             .orElseThrow(() -> new RecursoNaoEncontradoException("Solicitacao nao encontrada"));
+
+    // Excluir fisicamente e logicamente as evidências associadas
+    final List<SolicitacaoEvidencia> evidencias =
+        solicitacaoEvidenciaRepository.findBySolicitacaoId(solicitacaoId);
+    for (final SolicitacaoEvidencia rel : evidencias) {
+      evidenciaRepository
+          .findById(rel.getEvidenciaId())
+          .ifPresent(
+              ev -> {
+                storageService.delete(ev.getPublicUrl());
+                evidenciaRepository.deleteById(ev.getId());
+              });
+    }
 
     atribuicaoRepository.deleteBySolicitacaoId(solicitacaoId);
     atividadeRepository.deleteBySolicitacaoId(solicitacaoId);

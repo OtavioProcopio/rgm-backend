@@ -56,4 +56,27 @@ class MinioStorageServiceTest {
 
     assertTrue(url.contains("documento.pdf"));
   }
+
+  @Test
+  void delete_comUrlInvalidaNaoFazNada() throws Exception {
+    service.delete(null);
+    service.delete(" ");
+    service.delete("http://localhost:9000/wrong-bucket/file.jpg");
+    verifyNoInteractions(minioClient);
+  }
+
+  @Test
+  void delete_comUrlValidaChamaRemoveObject() throws Exception {
+    service.delete("http://localhost:9000/test-bucket/uuid-123/foto.jpg");
+    verify(minioClient).removeObject(any(io.minio.RemoveObjectArgs.class));
+  }
+
+  @Test
+  void delete_quandoMinioFalhaCapturaExcecao() throws Exception {
+    doThrow(new RuntimeException("minio error"))
+        .when(minioClient)
+        .removeObject(any(io.minio.RemoveObjectArgs.class));
+
+    assertDoesNotThrow(() -> service.delete("http://localhost:9000/test-bucket/uuid-123/foto.jpg"));
+  }
 }

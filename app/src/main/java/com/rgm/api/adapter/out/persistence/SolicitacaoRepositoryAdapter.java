@@ -65,7 +65,7 @@ public class SolicitacaoRepositoryAdapter implements SolicitacaoRepository {
 
   @Override
   public PageResult<Solicitacao> findAll(final int page, final int size) {
-    final var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "criadaEm"));
+    final var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "criadaEm"));
     final var result = jpa.findAll(pageable);
     return new PageResult<>(
         result.getContent().stream().map(SolicitacaoMapper::toDomain).toList(),
@@ -78,7 +78,7 @@ public class SolicitacaoRepositoryAdapter implements SolicitacaoRepository {
   @Override
   public PageResult<Solicitacao> findByStatus(
       final StatusSolicitacao status, final int page, final int size) {
-    final var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "criadaEm"));
+    final var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "criadaEm"));
     final var result = jpa.findByStatus(status, pageable);
     return new PageResult<>(
         result.getContent().stream().map(SolicitacaoMapper::toDomain).toList(),
@@ -96,11 +96,13 @@ public class SolicitacaoRepositoryAdapter implements SolicitacaoRepository {
       final PrioridadeSolicitacao prioridade,
       final Instant criadaEmInicio,
       final Instant criadaEmFim,
+      final Instant concluidaEmInicio,
+      final Instant concluidaEmFim,
       final UUID abertaPorUsuarioId,
       final UUID responsavelId,
       final int page,
       final int size) {
-    final var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "criada_em"));
+    final var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "criada_em"));
     final var result =
         jpa.findByFilters(
             status != null ? status.name() : null,
@@ -109,6 +111,8 @@ public class SolicitacaoRepositoryAdapter implements SolicitacaoRepository {
             prioridade != null ? prioridade.name() : null,
             criadaEmInicio,
             criadaEmFim,
+            concluidaEmInicio,
+            concluidaEmFim,
             abertaPorUsuarioId,
             responsavelId,
             pageable);
@@ -157,5 +161,10 @@ public class SolicitacaoRepositoryAdapter implements SolicitacaoRepository {
     return jpa.findByStatusAndCriadaEmBetween(status, inicio, fim).stream()
         .map(SolicitacaoMapper::toDomain)
         .toList();
+  }
+
+  @Override
+  public long getTempoMedioResolucaoSegundos() {
+    return (long) jpa.getTempoMedioResolucaoSegundos();
   }
 }

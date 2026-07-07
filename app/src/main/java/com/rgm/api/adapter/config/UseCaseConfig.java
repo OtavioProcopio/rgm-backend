@@ -2,6 +2,7 @@ package com.rgm.api.adapter.config;
 
 import com.rgm.api.core.application.usecases.admin.CadastrarPrestadorExternoUseCase;
 import com.rgm.api.core.application.usecases.admin.ExcluirRegistroUseCase;
+import com.rgm.api.core.application.usecases.admin.GerenciarMaquinasUseCase;
 import com.rgm.api.core.application.usecases.admin.GerenciarUsuariosUseCase;
 import com.rgm.api.core.application.usecases.admin.ListarUsuariosUseCase;
 import com.rgm.api.core.application.usecases.auth.AlterarSenhaPropriaUseCase;
@@ -10,6 +11,7 @@ import com.rgm.api.core.application.usecases.auth.RefreshTokenUseCase;
 import com.rgm.api.core.application.usecases.evidencia.AnexarEvidenciaUseCase;
 import com.rgm.api.core.application.usecases.evidencia.ExcluirEvidenciaUseCase;
 import com.rgm.api.core.application.usecases.evidencia.VisualizarEvidenciaUseCase;
+import com.rgm.api.core.application.usecases.maquina.ListarMaquinasUseCase;
 import com.rgm.api.core.application.usecases.modelo.AtualizarFotoCapaUseCase;
 import com.rgm.api.core.application.usecases.modelo.GerenciarModelosUseCase;
 import com.rgm.api.core.application.usecases.modelo.ListarModelosUseCase;
@@ -33,6 +35,7 @@ import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository
 import com.rgm.api.core.domain.ports.repositories.EventoModeloEvidenciaRepository;
 import com.rgm.api.core.domain.ports.repositories.EventoModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.EvidenciaRepository;
+import com.rgm.api.core.domain.ports.repositories.MaquinaRepository;
 import com.rgm.api.core.domain.ports.repositories.ModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoAtribuicaoRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoEvidenciaRepository;
@@ -194,13 +197,15 @@ public class UseCaseConfig {
       final EvidenciaRepository evidenciaRepository,
       final SolicitacaoEvidenciaRepository solicitacaoEvidenciaRepository,
       final UsuarioRepository usuarioRepository,
-      final SolicitacaoAtribuicaoRepository atribuicaoRepository) {
+      final SolicitacaoAtribuicaoRepository atribuicaoRepository,
+      final StorageService storageService) {
     return new ExcluirEvidenciaUseCase(
         solicitacaoRepository,
         evidenciaRepository,
         solicitacaoEvidenciaRepository,
         usuarioRepository,
-        atribuicaoRepository);
+        atribuicaoRepository,
+        storageService);
   }
 
   @Bean
@@ -251,8 +256,21 @@ public class UseCaseConfig {
 
   @Bean
   public GerenciarModelosUseCase gerenciarModelosUseCase(
-      final ModeloRepository modeloRepository, final UsuarioRepository usuarioRepository) {
-    return new GerenciarModelosUseCase(modeloRepository, usuarioRepository);
+      final ModeloRepository modeloRepository,
+      final UsuarioRepository usuarioRepository,
+      final MaquinaRepository maquinaRepository) {
+    return new GerenciarModelosUseCase(modeloRepository, usuarioRepository, maquinaRepository);
+  }
+
+  @Bean
+  public GerenciarMaquinasUseCase gerenciarMaquinasUseCase(
+      final MaquinaRepository maquinaRepository, final UsuarioRepository usuarioRepository) {
+    return new GerenciarMaquinasUseCase(maquinaRepository, usuarioRepository);
+  }
+
+  @Bean
+  public ListarMaquinasUseCase listarMaquinasUseCase(final MaquinaRepository maquinaRepository) {
+    return new ListarMaquinasUseCase(maquinaRepository);
   }
 
   @Bean
@@ -276,7 +294,9 @@ public class UseCaseConfig {
       final AtividadeSolicitacaoRepository atividadeRepository,
       final SolicitacaoEvidenciaRepository solicitacaoEvidenciaRepository,
       final EventoModeloRepository eventoModeloRepository,
-      final RecalcularPendenciaUseCase recalcularPendenciaUseCase) {
+      final RecalcularPendenciaUseCase recalcularPendenciaUseCase,
+      final EvidenciaRepository evidenciaRepository,
+      final StorageService storageService) {
     return new ExcluirRegistroUseCase(
         usuarioRepository,
         solicitacaoRepository,
@@ -285,13 +305,16 @@ public class UseCaseConfig {
         atividadeRepository,
         solicitacaoEvidenciaRepository,
         eventoModeloRepository,
-        recalcularPendenciaUseCase);
+        recalcularPendenciaUseCase,
+        evidenciaRepository,
+        storageService);
   }
 
   @Bean
   public ListarSolicitacoesUseCase listarSolicitacoesUseCase(
-      final SolicitacaoRepository solicitacaoRepository) {
-    return new ListarSolicitacoesUseCase(solicitacaoRepository);
+      final SolicitacaoRepository solicitacaoRepository,
+      final UsuarioRepository usuarioRepository) {
+    return new ListarSolicitacoesUseCase(solicitacaoRepository, usuarioRepository);
   }
 
   @Bean

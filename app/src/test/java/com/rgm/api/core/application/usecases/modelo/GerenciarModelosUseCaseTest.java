@@ -6,9 +6,11 @@ import static org.mockito.Mockito.*;
 
 import com.rgm.api.core.domain.exceptions.NaoAutorizadoException;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
+import com.rgm.api.core.domain.exceptions.ValidationException;
 import com.rgm.api.core.domain.model.aggregates.Modelo;
 import com.rgm.api.core.domain.model.aggregates.Usuario;
 import com.rgm.api.core.domain.model.enums.PerfilUsuario;
+import com.rgm.api.core.domain.ports.repositories.MaquinaRepository;
 import com.rgm.api.core.domain.ports.repositories.ModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import java.time.Instant;
@@ -21,13 +23,16 @@ class GerenciarModelosUseCaseTest {
 
   private ModeloRepository modeloRepository;
   private UsuarioRepository usuarioRepository;
+  private MaquinaRepository maquinaRepository;
   private GerenciarModelosUseCase useCase;
 
   @BeforeEach
   void setUp() {
     modeloRepository = mock(ModeloRepository.class);
     usuarioRepository = mock(UsuarioRepository.class);
-    useCase = new GerenciarModelosUseCase(modeloRepository, usuarioRepository);
+    maquinaRepository = mock(MaquinaRepository.class);
+    when(maquinaRepository.existsByNomeAndAtivoTrue(any())).thenReturn(true);
+    useCase = new GerenciarModelosUseCase(modeloRepository, usuarioRepository, maquinaRepository);
   }
 
   private Usuario criarGestor() {
@@ -60,6 +65,20 @@ class GerenciarModelosUseCaseTest {
     assertEquals("MOD-01", resultado.getCodigo());
     assertEquals("FBOX", resultado.getMaquina());
     assertTrue(resultado.isAtivo());
+  }
+
+  @Test
+  void deveFalharSeMaquinaInexistenteOuInativa() {
+    final Usuario gestor = criarGestor();
+    when(usuarioRepository.findById(gestor.getId())).thenReturn(Optional.of(gestor));
+    when(maquinaRepository.existsByNomeAndAtivoTrue("INEXISTENTE")).thenReturn(false);
+
+    assertThrows(
+        ValidationException.class,
+        () ->
+            useCase.criar(
+                new GerenciarModelosUseCase.CriarInput(
+                    "MOD-01", "Descricao", null, "INEXISTENTE", gestor.getId())));
   }
 
   @Test
