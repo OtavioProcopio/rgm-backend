@@ -5,6 +5,9 @@ import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
 import io.minio.RemoveObjectArgs;
 import java.io.InputStream;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,7 +35,8 @@ public class MinioStorageService implements StorageService {
   @Override
   public String upload(
       final String fileName, final String contentType, final InputStream content, final long size) {
-    final String objectName = UUID.randomUUID() + "/" + fileName;
+    final String uuid = UUID.randomUUID().toString();
+    final String objectName = uuid + "/" + fileName;
     try {
       minioClient.putObject(
           PutObjectArgs.builder().bucket(bucketName).object(objectName).stream(content, size, -1)
@@ -41,7 +45,21 @@ public class MinioStorageService implements StorageService {
     } catch (final Exception e) {
       throw new RuntimeException("Erro ao fazer upload para MinIO: " + e.getMessage(), e);
     }
-    return publicUrl + "/" + bucketName + "/" + objectName;
+    return publicUrl + "/" + bucketName + "/" + uuid + "/" + encodeSegment(fileName);
+  }
+
+  private String encodeSegment(final String segment) {
+    return URLEncoder.encode(segment, StandardCharsets.UTF_8).replace("+", "%20");
+  }
+
+  private String decodeFileNameSegment(final String objectName) {
+    final int sepIdx = objectName.indexOf('/');
+    if (sepIdx == -1) {
+      return URLDecoder.decode(objectName, StandardCharsets.UTF_8);
+    }
+    final String uuidPart = objectName.substring(0, sepIdx);
+    final String fileNamePart = URLDecoder.decode(objectName.substring(sepIdx + 1), StandardCharsets.UTF_8);
+    return uuidPart + "/" + fileNamePart;
   }
 
   @Override
@@ -54,7 +72,8 @@ public class MinioStorageService implements StorageService {
     if (idx == -1) {
       return;
     }
-    final String objectName = fileUrl.substring(idx + prefix.length());
+    final String encodedObjectName = fileUrl.substring(idx + prefix.length());
+    final String objectName = decodeFileNameSegment(encodedObjectName);
     try {
       minioClient.removeObject(
           RemoveObjectArgs.builder().bucket(bucketName).object(objectName).build());

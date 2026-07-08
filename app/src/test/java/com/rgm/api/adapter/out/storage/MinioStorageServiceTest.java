@@ -2,10 +2,12 @@ package com.rgm.api.adapter.out.storage;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.*;
 
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
+import io.minio.RemoveObjectArgs;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -69,6 +71,17 @@ class MinioStorageServiceTest {
   void delete_comUrlValidaChamaRemoveObject() throws Exception {
     service.delete("http://localhost:9000/test-bucket/uuid-123/foto.jpg");
     verify(minioClient).removeObject(any(io.minio.RemoveObjectArgs.class));
+  }
+
+  @Test
+  void delete_decodificaNomeDeArquivoComEspacosECaracteresEspeciais() throws Exception {
+    service.delete("http://localhost:9000/test-bucket/uuid-123/foto%20de%20teste%20%C3%A9.jpg");
+
+    verify(minioClient)
+        .removeObject(
+            argThat(
+                (RemoveObjectArgs args) ->
+                    args.object().equals("uuid-123/foto de teste é.jpg")));
   }
 
   @Test
