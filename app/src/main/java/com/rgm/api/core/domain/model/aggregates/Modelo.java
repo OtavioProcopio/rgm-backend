@@ -16,8 +16,6 @@ public final class Modelo {
   private final int versao;
   private final String descricao;
   private final String observacoes;
-  private final String fotoUrl;
-  private final Instant fotoAtualizadaEm;
   private final String estadoAtualDescricao;
   private final Instant estadoAtualAtualizadoEm;
   private final boolean ativo;
@@ -32,8 +30,6 @@ public final class Modelo {
       final int versao,
       final String descricao,
       final String observacoes,
-      final String fotoUrl,
-      final Instant fotoAtualizadaEm,
       final String estadoAtualDescricao,
       final Instant estadoAtualAtualizadoEm,
       final boolean ativo,
@@ -46,8 +42,6 @@ public final class Modelo {
     this.versao = requirePositiveOrZero(versao, "versao");
     this.descricao = requireNonBlank(descricao, "descricao");
     this.observacoes = optionalTrimToNull(observacoes);
-    this.fotoUrl = optionalTrimToNull(fotoUrl);
-    this.fotoAtualizadaEm = fotoAtualizadaEm;
     this.estadoAtualDescricao = optionalTrimToNull(estadoAtualDescricao);
     this.estadoAtualAtualizadoEm = estadoAtualAtualizadoEm;
     this.ativo = ativo;
@@ -73,8 +67,6 @@ public final class Modelo {
         observacoes,
         null,
         null,
-        null,
-        null,
         true,
         maquina,
         false,
@@ -90,8 +82,6 @@ public final class Modelo {
         versao,
         descricao,
         observacoes,
-        fotoUrl,
-        fotoAtualizadaEm,
         estadoAtualDescricao,
         estadoAtualAtualizadoEm,
         ativo,
@@ -99,27 +89,6 @@ public final class Modelo {
         novoValor,
         criadoEm,
         novoAtualizadoEm);
-  }
-
-  /** Atualiza a foto capa do Modelo (URL persistente do bucket). */
-  public Modelo withFotoUrl(final String novaFotoUrl, final Instant novaFotoAtualizadaEm) {
-    requireNonBlank(novaFotoUrl, "fotoUrl");
-    requireNonNull(novaFotoAtualizadaEm, "fotoAtualizadaEm");
-    return new Modelo(
-        id,
-        codigo,
-        versao,
-        descricao,
-        observacoes,
-        novaFotoUrl,
-        novaFotoAtualizadaEm,
-        estadoAtualDescricao,
-        estadoAtualAtualizadoEm,
-        ativo,
-        maquina,
-        temPendenciaAberta,
-        criadoEm,
-        novaFotoAtualizadaEm);
   }
 
   /** Atualiza o estado atual (descricao textual da condicao do modelo). */
@@ -130,8 +99,6 @@ public final class Modelo {
         versao,
         descricao,
         observacoes,
-        fotoUrl,
-        fotoAtualizadaEm,
         novaDescricao,
         novoAtualizadoEm,
         ativo,
@@ -149,8 +116,6 @@ public final class Modelo {
         versao,
         descricao,
         observacoes,
-        fotoUrl,
-        fotoAtualizadaEm,
         estadoAtualDescricao,
         estadoAtualAtualizadoEm,
         false,
@@ -168,8 +133,6 @@ public final class Modelo {
         versao,
         descricao,
         observacoes,
-        fotoUrl,
-        fotoAtualizadaEm,
         estadoAtualDescricao,
         estadoAtualAtualizadoEm,
         true,
@@ -192,8 +155,6 @@ public final class Modelo {
         versao,
         novaDescricao,
         novasObservacoes,
-        fotoUrl,
-        fotoAtualizadaEm,
         estadoAtualDescricao,
         estadoAtualAtualizadoEm,
         ativo,
@@ -221,14 +182,6 @@ public final class Modelo {
 
   public String getObservacoes() {
     return observacoes;
-  }
-
-  public String getFotoUrl() {
-    return fotoUrl;
-  }
-
-  public Instant getFotoAtualizadaEm() {
-    return fotoAtualizadaEm;
   }
 
   public String getEstadoAtualDescricao() {

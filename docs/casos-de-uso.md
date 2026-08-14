@@ -92,11 +92,15 @@ Referência de todos os casos de uso implementados no sistema.
   - `PUT /api/modelos/{id}` — editar modelo (Gestor)
 - **Regras**: ADMIN gerencia usuários; GESTOR gerencia modelos
 
-## UC-14 — Atualizar foto capa do modelo
+## UC-14 — Galeria de fotos do modelo
 - **Ator**: Gestor, Administrador
-- **Classe**: `AtualizarFotoCapaUseCase`
-- **Endpoints**: `POST /api/modelos/{id}/foto-capa` (upload), `PATCH /api/modelos/{id}/foto-capa` (usar evidência)
-- **Regras**: Evidência deve pertencer ao mesmo modelo; upload fora da transação DB
+- **Classes**: `AdicionarFotoGaleriaUseCase`, `ListarGaleriaModeloUseCase`, `EditarFotoGaleriaUseCase`, `RemoverFotoGaleriaUseCase`
+- **Endpoints**:
+  - `GET /api/modelos/{id}/galeria` — listar fotos da galeria
+  - `POST /api/modelos/{id}/galeria` (multipart: `file`, `identificacao`) — adicionar foto
+  - `PATCH /api/modelos/{id}/galeria/{fotoId}` — editar `identificacao` e/ou marcar como `principal` (capa)
+  - `DELETE /api/modelos/{id}/galeria/{fotoId}` — remover foto
+- **Regras**: Galeria é independente do histórico de evidências — fotos de evidência (anexadas a Solicitação/EventoModelo) nunca são promovidas automaticamente à galeria; cada foto da galeria tem uma `identificacao` livre (ex.: qual parte do ferramental ela retrata); no máximo uma foto por modelo é `principal` (capa), imposto por índice único parcial; a primeira foto adicionada a um modelo vira `principal` automaticamente; upload fora da transação DB; ao excluir um modelo (UC-15), os objetos da galeria são removidos do storage
 
 ## UC-15 — Exclusão (hard delete)
 - **Ator**: Administrador

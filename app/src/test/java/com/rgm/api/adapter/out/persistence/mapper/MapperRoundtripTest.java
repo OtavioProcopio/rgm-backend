@@ -157,8 +157,6 @@ class MapperRoundtripTest {
             3,
             "Descricao modelo",
             "Observacoes",
-            "http://foto.url/x.jpg",
-            T1,
             "Estado atual",
             T2,
             true,
@@ -174,8 +172,6 @@ class MapperRoundtripTest {
     assertEquals(3, result.getVersao());
     assertEquals("Descricao modelo", result.getDescricao());
     assertEquals("Observacoes", result.getObservacoes());
-    assertEquals("http://foto.url/x.jpg", result.getFotoUrl());
-    assertEquals(T1, result.getFotoAtualizadaEm());
     assertEquals("Estado atual", result.getEstadoAtualDescricao());
     assertEquals(T2, result.getEstadoAtualAtualizadoEm());
     assertEquals(true, result.isAtivo());
@@ -196,8 +192,6 @@ class MapperRoundtripTest {
             null,
             null,
             null,
-            null,
-            null,
             false,
             "CNC-00",
             false,
@@ -207,8 +201,6 @@ class MapperRoundtripTest {
     final Modelo result = ModeloMapper.toDomain(ModeloMapper.toJpa(original));
 
     assertNull(result.getObservacoes());
-    assertNull(result.getFotoUrl());
-    assertNull(result.getFotoAtualizadaEm());
     assertNull(result.getEstadoAtualDescricao());
     assertNull(result.getEstadoAtualAtualizadoEm());
     assertEquals(false, result.isAtivo());
@@ -304,7 +296,6 @@ class MapperRoundtripTest {
             "Titulo evento",
             "Descricao evento",
             "Estado descricao",
-            true,
             executadoPor,
             solRelacionada,
             T1);
@@ -317,7 +308,6 @@ class MapperRoundtripTest {
     assertEquals("Titulo evento", result.getTitulo());
     assertEquals("Descricao evento", result.getDescricao());
     assertEquals("Estado descricao", result.getEstadoModeloDescricao());
-    assertEquals(true, result.isDefineFotoCapa());
     assertEquals(executadoPor, result.getExecutadoPorUsuarioId());
     assertEquals(solRelacionada, result.getSolicitacaoRelacionadaId());
     assertEquals(T1, result.getCriadoEm());

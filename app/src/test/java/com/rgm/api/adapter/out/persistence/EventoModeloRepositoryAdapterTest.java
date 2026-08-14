@@ -38,7 +38,6 @@ class EventoModeloRepositoryAdapterTest {
     e.setTitulo("Manutenção preventiva");
     e.setDescricao("Desc");
     e.setEstadoModeloDescricao("Operacional");
-    e.setDefineFotoCapa(false);
     e.setExecutadoPorUsuarioId(UUID.randomUUID());
     e.setCriadoEm(Instant.now());
     return e;
@@ -52,7 +51,6 @@ class EventoModeloRepositoryAdapterTest {
         "Manutenção preventiva",
         "Desc",
         "Operacional",
-        false,
         UUID.randomUUID(),
         null,
         Instant.now());

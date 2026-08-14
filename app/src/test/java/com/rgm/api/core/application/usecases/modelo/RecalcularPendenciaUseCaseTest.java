@@ -36,8 +36,6 @@ class RecalcularPendenciaUseCaseTest {
         null,
         null,
         null,
-        null,
-        null,
         true,
         "FBOX",
         temPendencia,

@@ -116,8 +116,6 @@ class MapperTest {
             1,
             "Desc modelo",
             null,
-            "http://foto.url",
-            NOW,
             "Bom estado",
             NOW,
             true,
@@ -130,7 +128,6 @@ class MapperTest {
     assertEquals(id, jpa.getId());
     assertEquals("MDL-001", jpa.getCodigo());
     assertEquals(1, jpa.getVersao());
-    assertEquals("http://foto.url", jpa.getFotoUrl());
     assertTrue(jpa.isAtivo());
     assertFalse(jpa.isTemPendenciaAberta());
   }
@@ -140,13 +137,11 @@ class MapperTest {
     final UUID id = UUID.randomUUID();
     final ModeloJpaEntity e =
         new ModeloJpaEntity(
-            id, "MDL-002", 2, "Desc", "Obs", null, null, null, null, false, "CNC-02", true, NOW,
-            NOW);
+            id, "MDL-002", 2, "Desc", "Obs", null, null, false, "CNC-02", true, NOW, NOW);
     final Modelo m = ModeloMapper.toDomain(e);
 
     assertEquals(id, m.getId());
     assertEquals(2, m.getVersao());
-    assertNull(m.getFotoUrl());
     assertFalse(m.isAtivo());
     assertTrue(m.isTemPendenciaAberta());
   }
@@ -274,7 +269,6 @@ class MapperTest {
             "Titulo",
             "Desc",
             "OK",
-            true,
             UUID.randomUUID(),
             null,
             NOW);
@@ -283,7 +277,6 @@ class MapperTest {
     assertEquals(id, jpa.getId());
     assertEquals(modeloId, jpa.getModeloId());
     assertEquals(TipoEventoModelo.MANUTENCAO, jpa.getTipo());
-    assertTrue(jpa.isDefineFotoCapa());
     assertNull(jpa.getSolicitacaoRelacionadaId());
   }
 
@@ -299,14 +292,12 @@ class MapperTest {
             "T",
             "D",
             "Estado",
-            false,
             UUID.randomUUID(),
             solId,
             NOW);
     final EventoModelo ev = EventoModeloMapper.toDomain(e);
 
     assertEquals(TipoEventoModelo.INSPECAO, ev.getTipo());
-    assertFalse(ev.isDefineFotoCapa());
     assertEquals(solId, ev.getSolicitacaoRelacionadaId());
   }
 }

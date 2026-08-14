@@ -92,7 +92,6 @@ public class EncerrarSolicitacaoUseCase {
               salva.getTitulo(),
               input.comentarioFinal(),
               null,
-              false,
               input.gestorId(),
               salva.getId(),
               agora));

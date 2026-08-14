@@ -11,7 +11,6 @@ public record EventoModeloResponse(
     String titulo,
     String descricao,
     String estadoModeloDescricao,
-    boolean defineFotoCapa,
     UUID executadoPorUsuarioId,
     UUID solicitacaoRelacionadaId,
     Instant criadoEm) {
@@ -24,7 +23,6 @@ public record EventoModeloResponse(
         e.getTitulo(),
         e.getDescricao(),
         e.getEstadoModeloDescricao(),
-        e.isDefineFotoCapa(),
         e.getExecutadoPorUsuarioId(),
         e.getSolicitacaoRelacionadaId(),
         e.getCriadoEm());

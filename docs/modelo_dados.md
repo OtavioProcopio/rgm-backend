@@ -39,8 +39,6 @@ Este documento descreve as entidades, enums e relacionamentos de alto nível.
 - `versao: int` (controle de versão por máquina/encaixe + código)
 - `descricao: string`
 - `observacoes: string` (opcional; texto livre para anotações técnicas/operacionais — ex.: cavidades, particularidades, avisos)
-- `fotoUrl: string` (opcional; URL persistente/sem expiração do objeto no bucket público para a foto capa/estado atual; não usar presigned URLs)
-- `fotoAtualizadaEm: datetime` (opcional)
 - `estadoAtualDescricao: string` (opcional; texto livre do estado/condição atual)
 - `estadoAtualAtualizadoEm: datetime` (opcional)
 - `ativo: boolean`
@@ -51,6 +49,7 @@ Este documento descreve as entidades, enums e relacionamentos de alto nível.
 
 Relação (conceitual):
 - `historico: EventoModelo[]` (lista/timeline de eventos do modelo)
+- `galeria: FotoGaleriaModelo[]` (fotos de apresentação/estado atual do modelo)
 
 ### Solicitacao
 
@@ -115,6 +114,20 @@ Anexos de fotos/documentos.
 - `solicitacaoId: UUID`
 - `evidenciaId: UUID`
 
+### FotoGaleriaModelo
+
+Fotos de apresentação/estado atual do modelo (galeria), independentes do histórico de evidências.
+
+- `id: UUID`
+- `modeloId: UUID`
+- `publicUrl: string` (URL persistente/sem expiração do objeto no bucket público; não usar presigned URLs)
+- `identificacao: string` (rótulo livre — ex.: qual parte do ferramental a foto retrata)
+- `principal: boolean` (no máximo uma foto por modelo é `principal`; é a foto capa exibida em listagens)
+- `enviadaPorUsuarioId: UUID` (opcional; nulo para fotos migradas de `Modelo.fotoUrl` antes da existência da galeria)
+- `criadoEm: datetime`
+
+> Importante: evidências (`Evidencia`, anexadas a `Solicitacao`/`EventoModelo`) nunca são promovidas automaticamente para a galeria — são conceitos independentes. A galeria é a "apresentação" do modelo; o histórico de evidências é o registro cronológico de cada evento.
+
 ### EventoModelo
 
 Timeline / prontuário do modelo.
@@ -128,7 +141,6 @@ Se vocês quiserem **obrigar** que todo evento tenha pelo menos 1 evidência, is
 - `titulo: string` (resumo curto)
 - `descricao: string`
 - `estadoModeloDescricao: string` (opcional; estado/condição resultante)
-- `defineFotoCapa: boolean` (quando verdadeiro, uma evidência do evento vira a foto capa)
 - `executadoPorUsuarioId: UUID`
 - `criadoEm: datetime`
 - `solicitacaoRelacionadaId: UUID` (opcional)

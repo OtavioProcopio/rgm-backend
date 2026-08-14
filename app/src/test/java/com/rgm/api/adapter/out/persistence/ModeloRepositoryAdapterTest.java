@@ -59,8 +59,6 @@ class ModeloRepositoryAdapterTest {
         "Obs",
         null,
         null,
-        null,
-        null,
         true,
         "MANUAL",
         false,

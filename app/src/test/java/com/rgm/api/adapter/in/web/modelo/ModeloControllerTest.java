@@ -15,10 +15,8 @@ import com.rgm.api.adapter.config.GlobalExceptionHandler;
 import com.rgm.api.adapter.in.web.WebMvcTestConfig;
 import com.rgm.api.adapter.in.web.dto.request.CriarModeloRequest;
 import com.rgm.api.adapter.in.web.dto.request.EditarModeloRequest;
-import com.rgm.api.adapter.in.web.dto.request.FotoCapaUploadRequest;
 import com.rgm.api.adapter.out.report.ModeloPdfService;
 import com.rgm.api.adapter.out.security.JwtAuthenticationFilter;
-import com.rgm.api.core.application.usecases.modelo.AtualizarFotoCapaUseCase;
 import com.rgm.api.core.application.usecases.modelo.GerenciarModelosUseCase;
 import com.rgm.api.core.application.usecases.modelo.ListarModelosUseCase;
 import com.rgm.api.core.domain.model.aggregates.EventoModelo;
@@ -26,6 +24,7 @@ import com.rgm.api.core.domain.model.aggregates.Modelo;
 import com.rgm.api.core.domain.model.enums.TipoEventoModelo;
 import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.EventoModeloRepository;
+import com.rgm.api.core.domain.ports.repositories.FotoGaleriaModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.ModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.PageResult;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
@@ -54,13 +53,13 @@ class ModeloControllerTest {
   @Autowired private MockMvc mockMvc;
   @Autowired private ObjectMapper objectMapper;
   @MockitoBean private GerenciarModelosUseCase gerenciarUseCase;
-  @MockitoBean private AtualizarFotoCapaUseCase fotoCapaUseCase;
   @MockitoBean private ListarModelosUseCase listarUseCase;
   @MockitoBean private ModeloRepository modeloRepository;
   @MockitoBean private EventoModeloRepository eventoModeloRepository;
   @MockitoBean private SolicitacaoRepository solicitacaoRepository;
   @MockitoBean private AtividadeSolicitacaoRepository atividadeRepository;
   @MockitoBean private ModeloPdfService modeloPdfService;
+  @MockitoBean private FotoGaleriaModeloRepository fotoGaleriaModeloRepository;
 
   @MockitoBean
   private com.rgm.api.core.domain.ports.repositories.UsuarioRepository usuarioRepository;
@@ -73,8 +72,6 @@ class ModeloControllerTest {
         1,
         "Desc",
         "Obs",
-        null,
-        null,
         null,
         null,
         true,
@@ -190,7 +187,6 @@ class ModeloControllerTest {
             "Inspeção",
             "Tudo ok",
             "Bom",
-            false,
             UUID.randomUUID(),
             null,
             java.time.Instant.now());
@@ -221,26 +217,6 @@ class ModeloControllerTest {
   }
 
   @Test
-  void uploadFotoCapa() throws Exception {
-    final Modelo modelo = criarModelo();
-    when(fotoCapaUseCase.uploadFile(any())).thenReturn("http://s3/file.png");
-    when(fotoCapaUseCase.persistUpload(any(), any())).thenReturn(modelo);
-
-    final org.springframework.mock.web.MockMultipartFile mockFile =
-        new org.springframework.mock.web.MockMultipartFile(
-            "file", "avatar.png", "image/png", "some image".getBytes());
-
-    mockMvc
-        .perform(
-            org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart(
-                    "/api/modelos/{id}/foto-capa", modelo.getId())
-                .file(mockFile)
-                .with(user(UUID.randomUUID().toString())))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.codigo").value("MOD-001"));
-  }
-
-  @Test
   void exportarRelatorioLista() throws Exception {
     when(listarUseCase.execute(any())).thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
     when(modeloPdfService.gerarLista(any())).thenReturn(new byte[] {1, 2, 3});
@@ -266,18 +242,15 @@ class ModeloControllerTest {
   }
 
   @Test
-  void usarEvidenciaComoFotoCapa() throws Exception {
+  void listarModelos_incluiFotoCapaDaGaleria() throws Exception {
     final Modelo modelo = criarModelo();
-    when(fotoCapaUseCase.executeEvidenciaExistente(any())).thenReturn(modelo);
+    when(listarUseCase.execute(any())).thenReturn(new PageResult<>(List.of(modelo), 0, 20, 1, 1));
+    when(fotoGaleriaModeloRepository.findPrincipalUrlsByModeloIds(any()))
+        .thenReturn(java.util.Map.of(modelo.getId(), "http://minio/capa.jpg"));
 
     mockMvc
-        .perform(
-            patch("/api/modelos/{id}/foto-capa", modelo.getId())
-                .with(user(UUID.randomUUID().toString()))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(
-                    objectMapper.writeValueAsString(new FotoCapaUploadRequest(UUID.randomUUID()))))
+        .perform(get("/api/modelos"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.codigo").value("MOD-001"));
+        .andExpect(jsonPath("$.content[0].fotoCapaUrl").value("http://minio/capa.jpg"));
   }
 }

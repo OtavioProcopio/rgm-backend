@@ -31,8 +31,6 @@ class ModeloPdfServiceTest {
         null,
         null,
         null,
-        null,
-        null,
         ativo,
         "Injetora A",
         temPendencia,
@@ -48,7 +46,6 @@ class ModeloPdfServiceTest {
         "Troca de peça",
         "Substituição do rolamento",
         null,
-        false,
         UUID.randomUUID(),
         null,
         Instant.now());

@@ -32,10 +32,6 @@ public class ModeloJpaEntity {
 
   private String observacoes;
 
-  private String fotoUrl;
-
-  private Instant fotoAtualizadaEm;
-
   private String estadoAtualDescricao;
 
   private Instant estadoAtualAtualizadoEm;

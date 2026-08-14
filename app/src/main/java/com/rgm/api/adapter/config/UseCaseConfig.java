@@ -12,10 +12,13 @@ import com.rgm.api.core.application.usecases.evidencia.AnexarEvidenciaUseCase;
 import com.rgm.api.core.application.usecases.evidencia.ExcluirEvidenciaUseCase;
 import com.rgm.api.core.application.usecases.evidencia.VisualizarEvidenciaUseCase;
 import com.rgm.api.core.application.usecases.maquina.ListarMaquinasUseCase;
-import com.rgm.api.core.application.usecases.modelo.AtualizarFotoCapaUseCase;
+import com.rgm.api.core.application.usecases.modelo.AdicionarFotoGaleriaUseCase;
+import com.rgm.api.core.application.usecases.modelo.EditarFotoGaleriaUseCase;
 import com.rgm.api.core.application.usecases.modelo.GerenciarModelosUseCase;
+import com.rgm.api.core.application.usecases.modelo.ListarGaleriaModeloUseCase;
 import com.rgm.api.core.application.usecases.modelo.ListarModelosUseCase;
 import com.rgm.api.core.application.usecases.modelo.RecalcularPendenciaUseCase;
+import com.rgm.api.core.application.usecases.modelo.RemoverFotoGaleriaUseCase;
 import com.rgm.api.core.application.usecases.modelo.SolicitacaoFinalizadaListener;
 import com.rgm.api.core.application.usecases.solicitacao.AbrirSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.CancelarSolicitacaoUseCase;
@@ -32,9 +35,9 @@ import com.rgm.api.core.application.usecases.solicitacao.ObterSolicitacaoUseCase
 import com.rgm.api.core.application.usecases.solicitacao.RegistrarComentarioUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.TriarSolicitacaoUseCase;
 import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository;
-import com.rgm.api.core.domain.ports.repositories.EventoModeloEvidenciaRepository;
 import com.rgm.api.core.domain.ports.repositories.EventoModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.EvidenciaRepository;
+import com.rgm.api.core.domain.ports.repositories.FotoGaleriaModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.MaquinaRepository;
 import com.rgm.api.core.domain.ports.repositories.ModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoAtribuicaoRepository;
@@ -236,22 +239,36 @@ public class UseCaseConfig {
   }
 
   @Bean
-  public AtualizarFotoCapaUseCase atualizarFotoCapaUseCase(
+  public AdicionarFotoGaleriaUseCase adicionarFotoGaleriaUseCase(
       final ModeloRepository modeloRepository,
       final UsuarioRepository usuarioRepository,
-      final EvidenciaRepository evidenciaRepository,
-      final EventoModeloRepository eventoModeloRepository,
-      final EventoModeloEvidenciaRepository eventoModeloEvidenciaRepository,
-      final SolicitacaoEvidenciaRepository solicitacaoEvidenciaRepository,
+      final FotoGaleriaModeloRepository fotoGaleriaModeloRepository,
       final StorageService storageService) {
-    return new AtualizarFotoCapaUseCase(
-        modeloRepository,
-        usuarioRepository,
-        evidenciaRepository,
-        eventoModeloRepository,
-        eventoModeloEvidenciaRepository,
-        solicitacaoEvidenciaRepository,
-        storageService);
+    return new AdicionarFotoGaleriaUseCase(
+        modeloRepository, usuarioRepository, fotoGaleriaModeloRepository, storageService);
+  }
+
+  @Bean
+  public ListarGaleriaModeloUseCase listarGaleriaModeloUseCase(
+      final ModeloRepository modeloRepository,
+      final FotoGaleriaModeloRepository fotoGaleriaModeloRepository) {
+    return new ListarGaleriaModeloUseCase(modeloRepository, fotoGaleriaModeloRepository);
+  }
+
+  @Bean
+  public EditarFotoGaleriaUseCase editarFotoGaleriaUseCase(
+      final FotoGaleriaModeloRepository fotoGaleriaModeloRepository,
+      final UsuarioRepository usuarioRepository) {
+    return new EditarFotoGaleriaUseCase(fotoGaleriaModeloRepository, usuarioRepository);
+  }
+
+  @Bean
+  public RemoverFotoGaleriaUseCase removerFotoGaleriaUseCase(
+      final FotoGaleriaModeloRepository fotoGaleriaModeloRepository,
+      final UsuarioRepository usuarioRepository,
+      final StorageService storageService) {
+    return new RemoverFotoGaleriaUseCase(
+        fotoGaleriaModeloRepository, usuarioRepository, storageService);
   }
 
   @Bean
@@ -296,6 +313,7 @@ public class UseCaseConfig {
       final EventoModeloRepository eventoModeloRepository,
       final RecalcularPendenciaUseCase recalcularPendenciaUseCase,
       final EvidenciaRepository evidenciaRepository,
+      final FotoGaleriaModeloRepository fotoGaleriaModeloRepository,
       final StorageService storageService) {
     return new ExcluirRegistroUseCase(
         usuarioRepository,
@@ -307,6 +325,7 @@ public class UseCaseConfig {
         eventoModeloRepository,
         recalcularPendenciaUseCase,
         evidenciaRepository,
+        fotoGaleriaModeloRepository,
         storageService);
   }
 
