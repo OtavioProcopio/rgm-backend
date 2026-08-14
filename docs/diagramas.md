@@ -6,7 +6,7 @@ Este arquivo reúne os diagramas principais (casos de uso, classes e sequência)
 - Perfil **EXTERNO** para prestadores de serviço (apenas para atribuição e histórico)
 - Evidências em bucket público (MinIO/S3) usando URLs persistentes (sem expiração)
 - Recalculo de `Modelo.temPendenciaAberta` via evento/listener ao atingir estado terminal
-- Foto capa do Modelo (`fotoUrl`) atualizável por Gestor (e Administrador por herança) (upload novo ou reaproveitar evidência existente)
+- Galeria de fotos do Modelo (`FotoGaleriaModelo`, N fotos com `identificacao` livre e no máximo uma `principal`/capa) gerenciada por Gestor (e Administrador por herança); independente do histórico de evidências, que nunca é promovido automaticamente à galeria
 - Prestador externo representado como um Usuário no sistema (Gestor atua como seu procurador para movimentações)
 
 ## Casos de uso (completo)
@@ -46,7 +46,7 @@ flowchart LR
         %% Modelos
         UC_VerModelos([Ver lista e detalhes de Modelos])
         UC_GerenciarModelos([Gerenciar Modelos cadastrar editar desativar])
-        UC_AtualizarFotoCapa([Atualizar foto capa do Modelo])
+        UC_GerenciarGaleria([Gerenciar galeria de fotos do Modelo])
 
         %% Prestador externo
         UC_CadastrarPrestador([Cadastrar prestador externo])
@@ -76,7 +76,7 @@ flowchart LR
     Ge --> UC_Devolver
     Ge --> UC_Encerrar
     Ge --> UC_GerenciarModelos
-    Ge --> UC_AtualizarFotoCapa
+    Ge --> UC_GerenciarGaleria
     Ge --> UC_Terceirizar
 
     %% Ligações Administrador
@@ -111,8 +111,6 @@ classDiagram
         +int versao
         +string descricao
         +string observacoes
-        +string fotoUrl
-        +datetime fotoAtualizadaEm
         +string estadoAtualDescricao
         +datetime estadoAtualAtualizadoEm
         +boolean ativo
@@ -173,6 +171,16 @@ classDiagram
         +UUID evidenciaId
     }
 
+    class FotoGaleriaModelo {
+        +UUID id
+        +UUID modeloId
+        +string publicUrl
+        +string identificacao
+        +boolean principal
+        +UUID enviadaPorUsuarioId
+        +datetime criadoEm
+    }
+
     class EventoModelo {
         +UUID id
         +UUID modeloId
@@ -180,7 +188,6 @@ classDiagram
         +string titulo
         +string descricao
         +string estadoModeloDescricao
-        +boolean defineFotoCapa
         +UUID executadoPorUsuarioId
         +UUID solicitacaoRelacionadaId
         +datetime criadoEm
@@ -254,6 +261,8 @@ classDiagram
     Modelo "1" --> "0..*" EventoModelo : timeline
     EventoModelo "1" --> "0..*" EventoModeloEvidencia : anexos
     Evidencia "1" --> "0..*" EventoModeloEvidencia : emEventos
+
+    Modelo "1" --> "0..*" FotoGaleriaModelo : galeria
 ```
 
 ## Sequencia 1: Solicitacao e evidencias (MinIO) com consistencia de pendencia
@@ -348,7 +357,7 @@ sequenceDiagram
     end
 ```
 
-## Sequencia 2: Atualizar foto capa do Modelo (upload ou evidencias existentes)
+## Sequencia 2: Galeria de fotos do Modelo (adicionar, editar, remover, definir capa)
 
 ```mermaid
 sequenceDiagram
@@ -357,46 +366,45 @@ sequenceDiagram
     participant WEB as Frontend
     participant API as BackendAPI
     participant DB as PostgreSQL
-    participant EV as DomainEvents
-    participant EV as DomainEvents
     participant S3 as MinIO_S3
 
-    Note over GE,API: Carregar contexto do Modelo
-    WEB->>API: Buscar detalhes do Modelo
-    API->>API: Validar perfil Gestor
-    API->>DB: SELECT Modelo e historico
+    Note over GE,API: Carregar galeria do Modelo
+    WEB->>API: GET /modelos/{id}/galeria
+    API->>DB: SELECT FotoGaleriaModelo WHERE modeloId
+    API-->>WEB: 200 (lista ordenada por criadoEm)
+
+    Note over GE,API: Adicionar foto a galeria
+    GE->>WEB: Seleciona arquivo e informa identificacao
+    WEB->>API: POST /modelos/{id}/galeria (multipart: file, identificacao)
+    API->>API: Validar perfil Gestor, mimeType e tamanho
+    API->>S3: PUT objeto
+    alt S3 indisponivel
+        API-->>WEB: 503
+    else OK
+        API->>DB: SELECT galeria do Modelo (para saber se e a primeira foto)
+        API->>DB: INSERT FotoGaleriaModelo (principal=true se for a primeira, senao false)
+        API-->>WEB: 201
+    end
+
+    Note over GE,API: Editar identificacao ou definir como capa
+    GE->>WEB: Edita identificacao ou marca "definir como capa"
+    WEB->>API: PATCH /modelos/{id}/galeria/{fotoId}
+    API->>API: Validar perfil Gestor e que a foto pertence ao Modelo
+    alt principal=true
+        API->>DB: UPDATE FotoGaleriaModelo SET principal=false WHERE modeloId
+        API->>DB: UPDATE FotoGaleriaModelo SET principal=true WHERE id
+    else somente identificacao
+        API->>DB: UPDATE FotoGaleriaModelo SET identificacao
+    end
     API-->>WEB: 200
 
-    Note over GE,API: Atualizar foto capa
-    alt Opcao A - Upload de nova foto
-        GE->>WEB: Seleciona arquivo
-        WEB->>API: Upload foto capa
-        API->>API: Validar perfil Gestor
-        API->>API: Gerar publicUrl de capa
-        API->>S3: PUT objeto
-        alt S3 indisponivel
-            API-->>WEB: 503
-        else OK
-            API->>DB: INSERT Evidencia publicUrl
-            API->>DB: UPDATE Modelo fotoUrl e fotoAtualizadaEm
-            API->>DB: INSERT EventoModelo (defineFotoCapa=true)
-            API->>DB: INSERT EventoModeloEvidencia
-            API-->>WEB: 200
-        end
-    else Opcao B - Usar evidencia existente
-        GE->>WEB: Seleciona evidencia existente
-        WEB->>API: Definir capa por evidenciaId
-        API->>API: Validar perfil Gestor
-        API->>DB: Verificar evidencia pertence ao Modelo
-        alt Evidencia nao pertence ao Modelo
-            API-->>WEB: 400 Regra de negocio
-        else OK
-            API->>DB: UPDATE Modelo fotoUrl e fotoAtualizadaEm
-            API->>DB: INSERT EventoModelo (defineFotoCapa=true)
-            API->>DB: INSERT EventoModeloEvidencia
-            API-->>WEB: 200
-        end
-    end
+    Note over GE,API: Remover foto da galeria
+    GE->>WEB: Confirma remocao
+    WEB->>API: DELETE /modelos/{id}/galeria/{fotoId}
+    API->>API: Validar perfil Gestor e que a foto pertence ao Modelo
+    API->>S3: DELETE objeto
+    API->>DB: DELETE FotoGaleriaModelo WHERE id
+    API-->>WEB: 204
 ```
 
 ## Sequencia 3: Terceirizar servico (prestador externo) e gestor como procurador

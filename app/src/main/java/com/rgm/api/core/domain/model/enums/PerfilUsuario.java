@@ -42,8 +42,8 @@ public enum PerfilUsuario {
     return this == GESTOR || this == ADMINISTRADOR;
   }
 
-  /** Perfis que podem atualizar a foto capa do Modelo. */
-  public boolean podeAtualizarFotoCapa() {
+  /** Perfis que podem gerenciar a galeria de fotos do Modelo. */
+  public boolean podeGerenciarGaleriaModelo() {
     return this == GESTOR || this == ADMINISTRADOR;
   }
 

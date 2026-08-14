@@ -19,6 +19,7 @@ import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
 import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.EventoModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.EvidenciaRepository;
+import com.rgm.api.core.domain.ports.repositories.FotoGaleriaModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.ModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoAtribuicaoRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoEvidenciaRepository;
@@ -43,6 +44,7 @@ class ExcluirRegistroUseCaseTest {
   private EventoModeloRepository eventoModeloRepository;
   private RecalcularPendenciaUseCase recalcularPendenciaUseCase;
   private EvidenciaRepository evidenciaRepository;
+  private FotoGaleriaModeloRepository fotoGaleriaModeloRepository;
   private StorageService storageService;
   private ExcluirRegistroUseCase useCase;
 
@@ -57,7 +59,9 @@ class ExcluirRegistroUseCaseTest {
     eventoModeloRepository = mock(EventoModeloRepository.class);
     recalcularPendenciaUseCase = mock(RecalcularPendenciaUseCase.class);
     evidenciaRepository = mock(EvidenciaRepository.class);
+    fotoGaleriaModeloRepository = mock(FotoGaleriaModeloRepository.class);
     storageService = mock(StorageService.class);
+    when(fotoGaleriaModeloRepository.findByModeloId(any())).thenReturn(List.of());
     useCase =
         new ExcluirRegistroUseCase(
             usuarioRepository,
@@ -69,6 +73,7 @@ class ExcluirRegistroUseCaseTest {
             eventoModeloRepository,
             recalcularPendenciaUseCase,
             evidenciaRepository,
+            fotoGaleriaModeloRepository,
             storageService);
   }
 
@@ -172,20 +177,7 @@ class ExcluirRegistroUseCaseTest {
     final Instant agora = Instant.now();
     final Modelo modelo =
         new Modelo(
-            modeloId,
-            "M1",
-            1,
-            "Modelo 1",
-            null,
-            null,
-            null,
-            null,
-            null,
-            true,
-            "FBOX",
-            false,
-            agora,
-            agora);
+            modeloId, "M1", 1, "Modelo 1", null, null, null, true, "FBOX", false, agora, agora);
 
     when(usuarioRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
     when(modeloRepository.findById(modeloId)).thenReturn(Optional.of(modelo));
@@ -195,6 +187,31 @@ class ExcluirRegistroUseCaseTest {
         new ExcluirRegistroUseCase.Input(
             ExcluirRegistroUseCase.TipoRecurso.MODELO, modeloId, admin.getId()));
 
+    verify(modeloRepository).deleteById(modeloId);
+  }
+
+  @Test
+  void deveLimparFotosDaGaleriaAoExcluirModelo() {
+    final Usuario admin = criarAdmin();
+    final UUID modeloId = UUID.randomUUID();
+    final Instant agora = Instant.now();
+    final Modelo modelo =
+        new Modelo(
+            modeloId, "M1", 1, "Modelo 1", null, null, null, true, "FBOX", false, agora, agora);
+    final com.rgm.api.core.domain.model.aggregates.FotoGaleriaModelo foto =
+        com.rgm.api.core.domain.model.aggregates.FotoGaleriaModelo.criar(
+            modeloId, "http://minio/foto.jpg", "Parte 1", true, admin.getId(), agora);
+
+    when(usuarioRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+    when(modeloRepository.findById(modeloId)).thenReturn(Optional.of(modelo));
+    when(solicitacaoRepository.existsByModeloId(modeloId)).thenReturn(false);
+    when(fotoGaleriaModeloRepository.findByModeloId(modeloId)).thenReturn(List.of(foto));
+
+    useCase.execute(
+        new ExcluirRegistroUseCase.Input(
+            ExcluirRegistroUseCase.TipoRecurso.MODELO, modeloId, admin.getId()));
+
+    verify(storageService).delete("http://minio/foto.jpg");
     verify(modeloRepository).deleteById(modeloId);
   }
 
@@ -269,9 +286,7 @@ class ExcluirRegistroUseCaseTest {
     final UUID modeloId = UUID.randomUUID();
     final Instant agora = Instant.now();
     final Modelo modelo =
-        new Modelo(
-            modeloId, "M1", 1, "Mod1", null, null, null, null, null, true, "FBOX", false, agora,
-            agora);
+        new Modelo(modeloId, "M1", 1, "Mod1", null, null, null, true, "FBOX", false, agora, agora);
 
     when(usuarioRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
     when(modeloRepository.findById(modeloId)).thenReturn(Optional.of(modelo));

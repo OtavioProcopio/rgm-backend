@@ -2,18 +2,17 @@ package com.rgm.api.adapter.in.web.modelo;
 
 import com.rgm.api.adapter.in.web.dto.request.CriarModeloRequest;
 import com.rgm.api.adapter.in.web.dto.request.EditarModeloRequest;
-import com.rgm.api.adapter.in.web.dto.request.FotoCapaUploadRequest;
 import com.rgm.api.adapter.in.web.dto.response.EventoModeloResponse;
 import com.rgm.api.adapter.in.web.dto.response.ModeloResponse;
 import com.rgm.api.adapter.in.web.dto.response.PageResponse;
 import com.rgm.api.adapter.out.report.ModeloPdfService;
-import com.rgm.api.core.application.usecases.modelo.AtualizarFotoCapaUseCase;
 import com.rgm.api.core.application.usecases.modelo.GerenciarModelosUseCase;
 import com.rgm.api.core.application.usecases.modelo.ListarModelosUseCase;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.model.aggregates.Modelo;
 import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.EventoModeloRepository;
+import com.rgm.api.core.domain.ports.repositories.FotoGaleriaModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.ModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
@@ -39,7 +38,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/modelos")
@@ -47,7 +45,6 @@ public class ModeloController {
   private static final Logger log = LoggerFactory.getLogger(ModeloController.class);
 
   private final GerenciarModelosUseCase gerenciarUseCase;
-  private final AtualizarFotoCapaUseCase fotoCapaUseCase;
   private final ListarModelosUseCase listarUseCase;
   private final ModeloRepository modeloRepository;
   private final EventoModeloRepository eventoModeloRepository;
@@ -55,19 +52,19 @@ public class ModeloController {
   private final AtividadeSolicitacaoRepository atividadeRepository;
   private final ModeloPdfService modeloPdfService;
   private final UsuarioRepository usuarioRepository;
+  private final FotoGaleriaModeloRepository fotoGaleriaModeloRepository;
 
   public ModeloController(
       final GerenciarModelosUseCase gerenciarUseCase,
-      final AtualizarFotoCapaUseCase fotoCapaUseCase,
       final ListarModelosUseCase listarUseCase,
       final ModeloRepository modeloRepository,
       final EventoModeloRepository eventoModeloRepository,
       final SolicitacaoRepository solicitacaoRepository,
       final AtividadeSolicitacaoRepository atividadeRepository,
       final ModeloPdfService modeloPdfService,
-      final UsuarioRepository usuarioRepository) {
+      final UsuarioRepository usuarioRepository,
+      final FotoGaleriaModeloRepository fotoGaleriaModeloRepository) {
     this.gerenciarUseCase = gerenciarUseCase;
-    this.fotoCapaUseCase = fotoCapaUseCase;
     this.listarUseCase = listarUseCase;
     this.modeloRepository = modeloRepository;
     this.eventoModeloRepository = eventoModeloRepository;
@@ -75,6 +72,7 @@ public class ModeloController {
     this.atividadeRepository = atividadeRepository;
     this.modeloPdfService = modeloPdfService;
     this.usuarioRepository = usuarioRepository;
+    this.fotoGaleriaModeloRepository = fotoGaleriaModeloRepository;
   }
 
   @GetMapping
@@ -88,7 +86,11 @@ public class ModeloController {
     final var result =
         listarUseCase.execute(
             new ListarModelosUseCase.Input(ativo, codigo, maquina, descricao, page, size));
-    return ResponseEntity.ok(PageResponse.from(result, ModeloResponse::from));
+    final Map<UUID, String> fotosCapa =
+        fotoGaleriaModeloRepository.findPrincipalUrlsByModeloIds(
+            result.content().stream().map(Modelo::getId).toList());
+    return ResponseEntity.ok(
+        PageResponse.from(result, m -> ModeloResponse.from(m, fotosCapa.get(m.getId()))));
   }
 
   @GetMapping("/{id}")
@@ -98,7 +100,9 @@ public class ModeloController {
         modeloRepository
             .findById(id)
             .orElseThrow(() -> new RecursoNaoEncontradoException("Modelo nao encontrado"));
-    return ResponseEntity.ok(ModeloResponse.from(modelo));
+    final Map<UUID, String> fotosCapa =
+        fotoGaleriaModeloRepository.findPrincipalUrlsByModeloIds(List.of(id));
+    return ResponseEntity.ok(ModeloResponse.from(modelo, fotosCapa.get(id)));
   }
 
   @GetMapping("/{id}/eventos")
@@ -169,30 +173,6 @@ public class ModeloController {
     final Modelo modelo =
         gerenciarUseCase.reativar(new GerenciarModelosUseCase.ReativarInput(id, gestorId));
     return ResponseEntity.ok(ModeloResponse.from(modelo));
-  }
-
-  @PostMapping(value = "/{id}/foto-capa", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-  public ResponseEntity<ModeloResponse> uploadFotoCapa(
-      @PathVariable final UUID id,
-      @RequestParam("file") final MultipartFile file,
-      final Authentication authentication) {
-    try {
-      final UUID gestorId = UUID.fromString(authentication.getName());
-      final var input =
-          new AtualizarFotoCapaUseCase.UploadInput(
-              id,
-              file.getOriginalFilename() != null ? file.getOriginalFilename() : "unknown",
-              file.getContentType() != null ? file.getContentType() : "application/octet-stream",
-              file.getSize(),
-              file.getInputStream(),
-              gestorId);
-
-      final String publicUrl = fotoCapaUseCase.uploadFile(input);
-      final Modelo modelo = fotoCapaUseCase.persistUpload(input, publicUrl);
-      return ResponseEntity.ok(ModeloResponse.from(modelo));
-    } catch (final java.io.IOException e) {
-      throw new RuntimeException("Erro ao ler arquivo: " + e.getMessage(), e);
-    }
   }
 
   @GetMapping("/relatorio")
@@ -269,20 +249,5 @@ public class ModeloController {
     } catch (final IllegalArgumentException e) {
       return "Sistema";
     }
-  }
-
-  @Transactional
-  @PatchMapping("/{id}/foto-capa")
-  public ResponseEntity<ModeloResponse> usarEvidenciaComoFotoCapa(
-      @PathVariable final UUID id,
-      @RequestBody final FotoCapaUploadRequest request,
-      final Authentication authentication) {
-    log.info("ModeloController.usarEvidenciaComoFotoCapa iniciado");
-    final UUID gestorId = UUID.fromString(authentication.getName());
-    final Modelo modelo =
-        fotoCapaUseCase.executeEvidenciaExistente(
-            new AtualizarFotoCapaUseCase.EvidenciaExistenteInput(
-                id, request.evidenciaId(), gestorId));
-    return ResponseEntity.ok(ModeloResponse.from(modelo));
   }
 }

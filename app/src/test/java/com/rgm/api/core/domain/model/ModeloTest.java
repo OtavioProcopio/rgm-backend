@@ -20,7 +20,6 @@ class ModeloTest {
     assertEquals(1, modelo.getVersao());
     assertEquals("Descricao", modelo.getDescricao());
     assertEquals("Obs", modelo.getObservacoes());
-    assertNull(modelo.getFotoUrl());
     assertTrue(modelo.isAtivo());
     assertFalse(modelo.isTemPendenciaAberta());
     assertEquals(MAQUINA, modelo.getMaquina());
@@ -46,15 +45,6 @@ class ModeloTest {
 
     assertFalse(desativado.isAtivo());
     assertEquals(modelo.getId(), desativado.getId());
-  }
-
-  @Test
-  void deveAtualizarFotoUrl() {
-    final Modelo modelo = Modelo.criar("COD", "Desc", null, MAQUINA, 1, AGORA);
-    final Modelo atualizado = modelo.withFotoUrl("http://foto.jpg", AGORA);
-
-    assertEquals("http://foto.jpg", atualizado.getFotoUrl());
-    assertEquals(AGORA, atualizado.getFotoAtualizadaEm());
   }
 
   @Test

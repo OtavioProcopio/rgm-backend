@@ -56,8 +56,6 @@ class AbrirSolicitacaoUseCaseTest {
         null,
         null,
         null,
-        null,
-        null,
         ativo,
         maquina,
         temPendencia,

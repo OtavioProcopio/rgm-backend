@@ -17,7 +17,6 @@ public final class EventoModelo {
   private final String titulo;
   private final String descricao;
   private final String estadoModeloDescricao;
-  private final boolean defineFotoCapa;
   private final UUID executadoPorUsuarioId;
   private final UUID solicitacaoRelacionadaId;
   private final Instant criadoEm;
@@ -29,7 +28,6 @@ public final class EventoModelo {
       final String titulo,
       final String descricao,
       final String estadoModeloDescricao,
-      final boolean defineFotoCapa,
       final UUID executadoPorUsuarioId,
       final UUID solicitacaoRelacionadaId,
       final Instant criadoEm) {
@@ -39,7 +37,6 @@ public final class EventoModelo {
     this.titulo = requireNonBlank(titulo, "titulo");
     this.descricao = requireNonBlank(descricao, "descricao");
     this.estadoModeloDescricao = optionalTrimToNull(estadoModeloDescricao);
-    this.defineFotoCapa = defineFotoCapa;
     this.executadoPorUsuarioId = requireNonNull(executadoPorUsuarioId, "executadoPorUsuarioId");
     this.solicitacaoRelacionadaId = solicitacaoRelacionadaId;
     this.criadoEm = requireNonNull(criadoEm, "criadoEm");
@@ -52,7 +49,6 @@ public final class EventoModelo {
       final String titulo,
       final String descricao,
       final String estadoModeloDescricao,
-      final boolean defineFotoCapa,
       final UUID executadoPorUsuarioId,
       final UUID solicitacaoRelacionadaId,
       final Instant agora) {
@@ -63,7 +59,6 @@ public final class EventoModelo {
         titulo,
         descricao,
         estadoModeloDescricao,
-        defineFotoCapa,
         executadoPorUsuarioId,
         solicitacaoRelacionadaId,
         agora);
@@ -91,10 +86,6 @@ public final class EventoModelo {
 
   public String getEstadoModeloDescricao() {
     return estadoModeloDescricao;
-  }
-
-  public boolean isDefineFotoCapa() {
-    return defineFotoCapa;
   }
 
   public UUID getExecutadoPorUsuarioId() {

@@ -10,6 +10,7 @@ import com.rgm.api.core.domain.model.entities.SolicitacaoEvidencia;
 import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.EventoModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.EvidenciaRepository;
+import com.rgm.api.core.domain.ports.repositories.FotoGaleriaModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.ModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoAtribuicaoRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoEvidenciaRepository;
@@ -31,6 +32,7 @@ public final class ExcluirRegistroUseCase {
   private final EventoModeloRepository eventoModeloRepository;
   private final RecalcularPendenciaUseCase recalcularPendenciaUseCase;
   private final EvidenciaRepository evidenciaRepository;
+  private final FotoGaleriaModeloRepository fotoGaleriaModeloRepository;
   private final StorageService storageService;
 
   public ExcluirRegistroUseCase(
@@ -43,6 +45,7 @@ public final class ExcluirRegistroUseCase {
       final EventoModeloRepository eventoModeloRepository,
       final RecalcularPendenciaUseCase recalcularPendenciaUseCase,
       final EvidenciaRepository evidenciaRepository,
+      final FotoGaleriaModeloRepository fotoGaleriaModeloRepository,
       final StorageService storageService) {
     this.usuarioRepository = usuarioRepository;
     this.solicitacaoRepository = solicitacaoRepository;
@@ -53,6 +56,7 @@ public final class ExcluirRegistroUseCase {
     this.eventoModeloRepository = eventoModeloRepository;
     this.recalcularPendenciaUseCase = recalcularPendenciaUseCase;
     this.evidenciaRepository = evidenciaRepository;
+    this.fotoGaleriaModeloRepository = fotoGaleriaModeloRepository;
     this.storageService = storageService;
   }
 
@@ -116,6 +120,10 @@ public final class ExcluirRegistroUseCase {
       throw new BusinessRuleException(
           "Nao e possivel excluir modelo com solicitacoes vinculadas. Desative o modelo em vez de excluir.");
     }
+
+    fotoGaleriaModeloRepository
+        .findByModeloId(modeloId)
+        .forEach(foto -> storageService.delete(foto.getPublicUrl()));
 
     modeloRepository.deleteById(modeloId);
   }

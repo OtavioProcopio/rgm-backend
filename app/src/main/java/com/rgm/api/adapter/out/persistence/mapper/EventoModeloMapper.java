@@ -15,7 +15,6 @@ public final class EventoModeloMapper {
         e.getTitulo(),
         e.getDescricao(),
         e.getEstadoModeloDescricao(),
-        e.isDefineFotoCapa(),
         e.getExecutadoPorUsuarioId(),
         e.getSolicitacaoRelacionadaId(),
         e.getCriadoEm());
@@ -29,7 +28,6 @@ public final class EventoModeloMapper {
         e.getTitulo(),
         e.getDescricao(),
         e.getEstadoModeloDescricao(),
-        e.isDefineFotoCapa(),
         e.getExecutadoPorUsuarioId(),
         e.getSolicitacaoRelacionadaId(),
         e.getCriadoEm());
