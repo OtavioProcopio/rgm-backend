@@ -10,6 +10,8 @@ import com.rgm.api.core.application.usecases.modelo.GerenciarModelosUseCase;
 import com.rgm.api.core.application.usecases.modelo.ListarModelosUseCase;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.model.aggregates.Modelo;
+import com.rgm.api.core.domain.model.aggregates.Solicitacao;
+import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
 import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.EventoModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.FotoGaleriaModeloRepository;
@@ -223,6 +225,8 @@ public class ModeloController {
             .collect(Collectors.toMap(u -> u.getId(), u -> u.getNome()));
 
     final String geradoPorNome = resolveNome(authentication);
+    final Double tempoMedioResolucaoSegundos = calcularTempoMedioResolucaoSegundos(solicitacoes);
+    final Double intervaloMedioSegundos = calcularIntervaloMedioSegundos(solicitacoes);
     final byte[] pdf =
         modeloPdfService.gerarFicha(
             modelo,
@@ -230,13 +234,54 @@ public class ModeloController {
             solicitacoes,
             atividadesPorSolicitacao,
             geradoPorNome,
-            nomesPorUsuario);
+            nomesPorUsuario,
+            tempoMedioResolucaoSegundos,
+            intervaloMedioSegundos);
     final var headers = new HttpHeaders();
     headers.setContentType(MediaType.APPLICATION_PDF);
     final String filename =
         "ficha-modelo-" + modelo.getCodigo().replaceAll("[^a-zA-Z0-9]", "-") + ".pdf";
     headers.setContentDispositionFormData("attachment", filename);
     return new ResponseEntity<>(pdf, headers, HttpStatus.OK);
+  }
+
+  /**
+   * Tempo medio de resolucao e intervalo medio entre solicitacoes concluidas deste modelo. Retorna
+   * nulo quando ha menos de 2 solicitacoes concluidas (dados insuficientes).
+   */
+  private Double calcularTempoMedioResolucaoSegundos(final List<Solicitacao> solicitacoes) {
+    final var concluidas =
+        solicitacoes.stream()
+            .filter(s -> s.getStatus() == StatusSolicitacao.CONCLUIDA && s.getConcluidaEm() != null)
+            .toList();
+    if (concluidas.size() < 2) {
+      return null;
+    }
+    return concluidas.stream()
+        .mapToLong(
+            s -> java.time.Duration.between(s.getCriadaEm(), s.getConcluidaEm()).getSeconds())
+        .average()
+        .orElse(0);
+  }
+
+  private Double calcularIntervaloMedioSegundos(final List<Solicitacao> solicitacoes) {
+    final var concluidasOrdenadas =
+        solicitacoes.stream()
+            .filter(s -> s.getStatus() == StatusSolicitacao.CONCLUIDA)
+            .sorted(java.util.Comparator.comparing(Solicitacao::getCriadaEm))
+            .toList();
+    if (concluidasOrdenadas.size() < 2) {
+      return null;
+    }
+    long totalSegundos = 0;
+    for (int i = 1; i < concluidasOrdenadas.size(); i++) {
+      totalSegundos +=
+          java.time.Duration.between(
+                  concluidasOrdenadas.get(i - 1).getCriadaEm(),
+                  concluidasOrdenadas.get(i).getCriadaEm())
+              .getSeconds();
+    }
+    return (double) totalSegundos / (concluidasOrdenadas.size() - 1);
   }
 
   private String resolveNome(final Authentication authentication) {

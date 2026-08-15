@@ -80,6 +80,7 @@ class SolicitacaoControllerTest {
   @MockitoBean private ObterSolicitacaoUseCase obterUseCase;
   @MockitoBean private ListarAtividadesUseCase listarAtividadesUseCase;
   @MockitoBean private com.rgm.api.adapter.out.report.SolicitacaoPdfService pdfService;
+  @MockitoBean private com.rgm.api.adapter.out.report.ModeloPdfService modeloPdfService;
 
   @MockitoBean
   private com.rgm.api.core.domain.ports.repositories.UsuarioRepository usuarioRepository;
@@ -87,6 +88,10 @@ class SolicitacaoControllerTest {
   @MockitoBean
   private com.rgm.api.core.application.usecases.solicitacao.ObterHistoricoMetricasUseCase
       obterHistoricoMetricasUseCase;
+
+  @MockitoBean
+  private com.rgm.api.core.application.usecases.solicitacao.ObterMetricasPorModeloUseCase
+      obterMetricasPorModeloUseCase;
 
   @MockitoBean private SolicitacaoEventPublisher eventPublisher;
 
@@ -205,6 +210,66 @@ class SolicitacaoControllerTest {
         .andExpect(jsonPath("$.totalSolicitacoes").value(42))
         .andExpect(jsonPath("$.solicitacoesPorStatus.A_FAZER").value(42))
         .andExpect(jsonPath("$.tempoMedioResolucaoSegundos").value(120));
+  }
+
+  @Test
+  void obterMetricasPorModelo() throws Exception {
+    final UUID modeloId = UUID.randomUUID();
+    final var row =
+        new com.rgm.api.core.domain.ports.repositories.MetricaModeloRow(
+            modeloId, "MDL-001", 3600.0, 7200.0);
+    final var pageResult =
+        new com.rgm.api.core.domain.ports.repositories.PageResult<>(
+            java.util.List.of(row), 0, 20, 1L, 1);
+    when(obterMetricasPorModeloUseCase.execute(any())).thenReturn(pageResult);
+
+    mockMvc
+        .perform(
+            get("/api/solicitacoes/metricas/por-modelo")
+                .param("sort", "TEMPO_RESOLUCAO")
+                .param("dir", "desc")
+                .with(user("admin")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.content[0].modeloId").value(modeloId.toString()))
+        .andExpect(jsonPath("$.content[0].codigo").value("MDL-001"))
+        .andExpect(jsonPath("$.content[0].tempoMedioResolucaoSegundos").value(3600.0))
+        .andExpect(jsonPath("$.content[0].intervaloMedioSegundos").value(7200.0));
+  }
+
+  @Test
+  void exportarMetricasPorModeloPdf() throws Exception {
+    final var row =
+        new com.rgm.api.core.domain.ports.repositories.MetricaModeloRow(
+            UUID.randomUUID(), "MDL-001", 3600.0, 7200.0);
+    final var pageResult =
+        new com.rgm.api.core.domain.ports.repositories.PageResult<>(
+            java.util.List.of(row), 0, Integer.MAX_VALUE, 1L, 1);
+    when(obterMetricasPorModeloUseCase.execute(any())).thenReturn(pageResult);
+    when(modeloPdfService.gerarRankingModelos(any(), any())).thenReturn(new byte[] {1, 2, 3});
+
+    mockMvc
+        .perform(get("/api/solicitacoes/metricas/por-modelo/pdf").with(user("admin")))
+        .andExpect(status().isOk());
+  }
+
+  @Test
+  void obterMetricasPorModeloComOrdenacaoInvalidaRetorna400() throws Exception {
+    mockMvc
+        .perform(
+            get("/api/solicitacoes/metricas/por-modelo")
+                .param("sort", "CAMPO_INEXISTENTE")
+                .with(user("admin")))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void obterMetricasPorModeloComDirecaoInvalidaRetorna400() throws Exception {
+    mockMvc
+        .perform(
+            get("/api/solicitacoes/metricas/por-modelo")
+                .param("dir", "lateral")
+                .with(user("admin")))
+        .andExpect(status().isBadRequest());
   }
 
   @Test

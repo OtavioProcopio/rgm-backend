@@ -80,4 +80,30 @@ public interface SolicitacaoJpaRepository extends JpaRepository<SolicitacaoJpaEn
           "SELECT COALESCE(AVG(EXTRACT(EPOCH FROM (s.concluida_em - s.criada_em))), 0) FROM solicitacoes s WHERE s.status = 'CONCLUIDA'",
       nativeQuery = true)
   double getTempoMedioResolucaoSegundos();
+
+  @Query(
+      value =
+          "WITH intervalos AS ("
+              + "  SELECT modelo_id, "
+              + "    EXTRACT(EPOCH FROM (criada_em - LAG(criada_em) OVER (PARTITION BY modelo_id ORDER BY criada_em))) AS intervalo_segundos "
+              + "  FROM solicitacoes"
+              + "), resolucao AS ("
+              + "  SELECT modelo_id, AVG(EXTRACT(EPOCH FROM (concluida_em - criada_em))) AS tempo_medio_resolucao "
+              + "  FROM solicitacoes WHERE status = 'CONCLUIDA' GROUP BY modelo_id"
+              + "), intervalo_medio AS ("
+              + "  SELECT modelo_id, AVG(intervalo_segundos) AS intervalo_medio "
+              + "  FROM intervalos WHERE intervalo_segundos IS NOT NULL GROUP BY modelo_id"
+              + ") "
+              + "SELECT m.id AS modelo_id, m.codigo AS codigo, "
+              + "  r.tempo_medio_resolucao AS tempo_medio_resolucao, i.intervalo_medio AS intervalo_medio "
+              + "FROM modelos m "
+              + "JOIN resolucao r ON r.modelo_id = m.id "
+              + "LEFT JOIN intervalo_medio i ON i.modelo_id = m.id",
+      countQuery =
+          "WITH resolucao AS ("
+              + "  SELECT modelo_id FROM solicitacoes WHERE status = 'CONCLUIDA' GROUP BY modelo_id"
+              + ") "
+              + "SELECT COUNT(*) FROM modelos m JOIN resolucao r ON r.modelo_id = m.id",
+      nativeQuery = true)
+  Page<Object[]> findMetricasPorModelo(Pageable pageable);
 }

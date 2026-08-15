@@ -11,9 +11,11 @@ import com.rgm.api.adapter.in.web.dto.request.GerenciarResponsaveisRequest;
 import com.rgm.api.adapter.in.web.dto.request.TriarSolicitacaoRequest;
 import com.rgm.api.adapter.in.web.dto.response.AtividadeResponse;
 import com.rgm.api.adapter.in.web.dto.response.HistoricoMetricasResponse;
+import com.rgm.api.adapter.in.web.dto.response.MetricaModeloResponse;
 import com.rgm.api.adapter.in.web.dto.response.MetricasSolicitacaoResponse;
 import com.rgm.api.adapter.in.web.dto.response.PageResponse;
 import com.rgm.api.adapter.in.web.dto.response.SolicitacaoResponse;
+import com.rgm.api.adapter.out.report.ModeloPdfService;
 import com.rgm.api.adapter.out.report.SolicitacaoPdfService;
 import com.rgm.api.core.application.usecases.solicitacao.AbrirSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.CancelarSolicitacaoUseCase;
@@ -25,10 +27,13 @@ import com.rgm.api.core.application.usecases.solicitacao.GerenciarResponsaveisUs
 import com.rgm.api.core.application.usecases.solicitacao.ListarAtividadesUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ListarSolicitacoesUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ObterHistoricoMetricasUseCase;
+import com.rgm.api.core.application.usecases.solicitacao.ObterMetricasPorModeloUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ObterMetricasSolicitacoesUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ObterSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.RegistrarComentarioUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.TriarSolicitacaoUseCase;
+import com.rgm.api.core.domain.exceptions.ValidationException;
+import com.rgm.api.core.domain.model.enums.OrdenacaoMetricaModelo;
 import com.rgm.api.core.domain.model.enums.PrioridadeSolicitacao;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
 import com.rgm.api.core.domain.model.enums.TipoFiltroData;
@@ -71,10 +76,12 @@ public class SolicitacaoController {
   private final ListarSolicitacoesUseCase listarUseCase;
   private final ObterMetricasSolicitacoesUseCase obterMetricasUseCase;
   private final ObterHistoricoMetricasUseCase obterHistoricoMetricasUseCase;
+  private final ObterMetricasPorModeloUseCase obterMetricasPorModeloUseCase;
   private final GerenciarResponsaveisUseCase gerenciarResponsaveisUseCase;
   private final ObterSolicitacaoUseCase obterUseCase;
   private final ListarAtividadesUseCase listarAtividadesUseCase;
   private final SolicitacaoPdfService pdfService;
+  private final ModeloPdfService modeloPdfService;
   private final UsuarioRepository usuarioRepository;
   private final SolicitacaoEventPublisher eventPublisher;
 
@@ -90,10 +97,12 @@ public class SolicitacaoController {
       final ListarSolicitacoesUseCase listarUseCase,
       final ObterMetricasSolicitacoesUseCase obterMetricasUseCase,
       final ObterHistoricoMetricasUseCase obterHistoricoMetricasUseCase,
+      final ObterMetricasPorModeloUseCase obterMetricasPorModeloUseCase,
       final GerenciarResponsaveisUseCase gerenciarResponsaveisUseCase,
       final ObterSolicitacaoUseCase obterUseCase,
       final ListarAtividadesUseCase listarAtividadesUseCase,
       final SolicitacaoPdfService pdfService,
+      final ModeloPdfService modeloPdfService,
       final UsuarioRepository usuarioRepository,
       final SolicitacaoEventPublisher eventPublisher) {
     this.abrirUseCase = abrirUseCase;
@@ -107,10 +116,12 @@ public class SolicitacaoController {
     this.listarUseCase = listarUseCase;
     this.obterMetricasUseCase = obterMetricasUseCase;
     this.obterHistoricoMetricasUseCase = obterHistoricoMetricasUseCase;
+    this.obterMetricasPorModeloUseCase = obterMetricasPorModeloUseCase;
     this.gerenciarResponsaveisUseCase = gerenciarResponsaveisUseCase;
     this.obterUseCase = obterUseCase;
     this.listarAtividadesUseCase = listarAtividadesUseCase;
     this.pdfService = pdfService;
+    this.modeloPdfService = modeloPdfService;
     this.usuarioRepository = usuarioRepository;
     this.eventPublisher = eventPublisher;
   }
@@ -131,6 +142,45 @@ public class SolicitacaoController {
         obterHistoricoMetricasUseCase.execute(
             new ObterHistoricoMetricasUseCase.Input(dias, modeloId));
     return ResponseEntity.ok(HistoricoMetricasResponse.from(output));
+  }
+
+  @GetMapping("/metricas/por-modelo")
+  public ResponseEntity<PageResponse<MetricaModeloResponse>> obterMetricasPorModelo(
+      @RequestParam(defaultValue = "TEMPO_RESOLUCAO") final String sort,
+      @RequestParam(defaultValue = "desc") final String dir,
+      @RequestParam(defaultValue = "0") final int page,
+      @RequestParam(defaultValue = "20") final int size) {
+    log.info(
+        "SolicitacaoController.obterMetricasPorModelo sort={} dir={} page={} size={}",
+        sort,
+        dir,
+        page,
+        size);
+    final var output =
+        obterMetricasPorModeloUseCase.execute(
+            new ObterMetricasPorModeloUseCase.Input(
+                parseOrdenacao(sort), parseAscendente(dir), page, size));
+    return ResponseEntity.ok(PageResponse.from(output, MetricaModeloResponse::from));
+  }
+
+  @GetMapping("/metricas/por-modelo/pdf")
+  public ResponseEntity<byte[]> exportarMetricasPorModeloPdf(
+      @RequestParam(defaultValue = "TEMPO_RESOLUCAO") final String sort,
+      @RequestParam(defaultValue = "desc") final String dir,
+      final Authentication authentication) {
+    log.info("SolicitacaoController.exportarMetricasPorModeloPdf sort={} dir={}", sort, dir);
+    final var linhas =
+        obterMetricasPorModeloUseCase
+            .execute(
+                new ObterMetricasPorModeloUseCase.Input(
+                    parseOrdenacao(sort), parseAscendente(dir), 0, Integer.MAX_VALUE))
+            .content();
+    final String geradoPorNome = resolveNome(authentication);
+    final byte[] pdf = modeloPdfService.gerarRankingModelos(linhas, geradoPorNome);
+    final var headers = new org.springframework.http.HttpHeaders();
+    headers.setContentType(org.springframework.http.MediaType.APPLICATION_PDF);
+    headers.setContentDispositionFormData("attachment", "ranking-modelos-por-tempo.pdf");
+    return new ResponseEntity<>(pdf, headers, HttpStatus.OK);
   }
 
   @GetMapping("/relatorio")
@@ -438,5 +488,24 @@ public class SolicitacaoController {
     } catch (final IllegalArgumentException e) {
       return "Sistema";
     }
+  }
+
+  /** Whitelist explicita - nunca interpolar o parametro de ordenacao direto em SQL. */
+  private OrdenacaoMetricaModelo parseOrdenacao(final String sort) {
+    try {
+      return OrdenacaoMetricaModelo.valueOf(sort.toUpperCase());
+    } catch (final IllegalArgumentException e) {
+      throw new ValidationException("Campo de ordenacao invalido: " + sort);
+    }
+  }
+
+  private boolean parseAscendente(final String dir) {
+    if ("asc".equalsIgnoreCase(dir)) {
+      return true;
+    }
+    if ("desc".equalsIgnoreCase(dir)) {
+      return false;
+    }
+    throw new ValidationException("Direcao de ordenacao invalida: " + dir);
   }
 }

@@ -232,13 +232,89 @@ class ModeloControllerTest {
     when(modeloRepository.findById(modelo.getId())).thenReturn(java.util.Optional.of(modelo));
     when(eventoModeloRepository.findByModeloId(modelo.getId())).thenReturn(List.of());
     when(solicitacaoRepository.findByModeloId(modelo.getId())).thenReturn(List.of());
-    when(modeloPdfService.gerarFicha(any(), any(), any(), any())).thenReturn(new byte[] {1, 2, 3});
+    when(modeloPdfService.gerarFicha(any(), any(), any(), any(), any(), any(), any(), any()))
+        .thenReturn(new byte[] {1, 2, 3});
 
     mockMvc
         .perform(
             get("/api/modelos/{id}/relatorio", modelo.getId())
                 .with(user(UUID.randomUUID().toString())))
         .andExpect(status().isOk());
+  }
+
+  private com.rgm.api.core.domain.model.aggregates.Solicitacao criarSolicitacaoConcluida(
+      final UUID modeloId, final Instant criadaEm, final Instant concluidaEm) {
+    return new com.rgm.api.core.domain.model.aggregates.Solicitacao(
+        UUID.randomUUID(),
+        "Titulo",
+        "Descricao",
+        com.rgm.api.core.domain.model.enums.TipoSolicitacao.REPARO,
+        com.rgm.api.core.domain.model.enums.StatusSolicitacao.CONCLUIDA,
+        com.rgm.api.core.domain.model.enums.PrioridadeSolicitacao.ALTA,
+        modeloId,
+        UUID.randomUUID(),
+        "Concluido",
+        criadaEm,
+        concluidaEm,
+        concluidaEm,
+        null);
+  }
+
+  @Test
+  void exportarFichaModelo_comDuasOuMaisConcluidasCalculaMetricas() throws Exception {
+    final Modelo modelo = criarModelo();
+    final Instant t0 = Instant.parse("2026-01-01T00:00:00Z");
+    final var sol1 = criarSolicitacaoConcluida(modelo.getId(), t0, t0.plusSeconds(3600));
+    final var sol2 =
+        criarSolicitacaoConcluida(
+            modelo.getId(), t0.plusSeconds(7200), t0.plusSeconds(7200 + 7200));
+    when(modeloRepository.findById(modelo.getId())).thenReturn(java.util.Optional.of(modelo));
+    when(eventoModeloRepository.findByModeloId(modelo.getId())).thenReturn(List.of());
+    when(solicitacaoRepository.findByModeloId(modelo.getId())).thenReturn(List.of(sol1, sol2));
+    final var captor = org.mockito.ArgumentCaptor.forClass(Double.class);
+    when(modeloPdfService.gerarFicha(
+            any(), any(), any(), any(), any(), any(), captor.capture(), any()))
+        .thenReturn(new byte[] {1, 2, 3});
+
+    mockMvc
+        .perform(
+            get("/api/modelos/{id}/relatorio", modelo.getId())
+                .with(user(UUID.randomUUID().toString())))
+        .andExpect(status().isOk());
+
+    // media dos tempos de resolucao: sol1=3600s, sol2=7200s -> media 5400s
+    org.junit.jupiter.api.Assertions.assertEquals(5400.0, captor.getValue());
+  }
+
+  @Test
+  void exportarFichaModelo_comMenosDeDuasConcluidasOmiteMetricas() throws Exception {
+    final Modelo modelo = criarModelo();
+    final Instant t0 = Instant.parse("2026-01-01T00:00:00Z");
+    final var sol1 = criarSolicitacaoConcluida(modelo.getId(), t0, t0.plusSeconds(3600));
+    when(modeloRepository.findById(modelo.getId())).thenReturn(java.util.Optional.of(modelo));
+    when(eventoModeloRepository.findByModeloId(modelo.getId())).thenReturn(List.of());
+    when(solicitacaoRepository.findByModeloId(modelo.getId())).thenReturn(List.of(sol1));
+    final var tempoCaptor = org.mockito.ArgumentCaptor.forClass(Double.class);
+    final var intervaloCaptor = org.mockito.ArgumentCaptor.forClass(Double.class);
+    when(modeloPdfService.gerarFicha(
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            tempoCaptor.capture(),
+            intervaloCaptor.capture()))
+        .thenReturn(new byte[] {1, 2, 3});
+
+    mockMvc
+        .perform(
+            get("/api/modelos/{id}/relatorio", modelo.getId())
+                .with(user(UUID.randomUUID().toString())))
+        .andExpect(status().isOk());
+
+    org.junit.jupiter.api.Assertions.assertNull(tempoCaptor.getValue());
+    org.junit.jupiter.api.Assertions.assertNull(intervaloCaptor.getValue());
   }
 
   @Test

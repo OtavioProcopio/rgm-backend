@@ -1,6 +1,7 @@
 package com.rgm.api.core.domain.ports.repositories;
 
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
+import com.rgm.api.core.domain.model.enums.OrdenacaoMetricaModelo;
 import com.rgm.api.core.domain.model.enums.PrioridadeSolicitacao;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
 import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
@@ -58,4 +59,11 @@ public interface SolicitacaoRepository {
       StatusSolicitacao status, Instant inicio, Instant fim);
 
   long getTempoMedioResolucaoSegundos();
+
+  /**
+   * Ranking de metricas de tempo por modelo (apenas modelos com ao menos 1 solicitacao concluida).
+   * Agregado no banco - nunca carrega solicitacoes em memoria.
+   */
+  PageResult<MetricaModeloRow> findMetricasPorModelo(
+      OrdenacaoMetricaModelo sort, boolean ascendente, int page, int size);
 }

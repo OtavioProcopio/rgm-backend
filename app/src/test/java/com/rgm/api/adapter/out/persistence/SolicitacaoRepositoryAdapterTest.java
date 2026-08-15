@@ -3,6 +3,7 @@ package com.rgm.api.adapter.out.persistence;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -258,6 +259,52 @@ class SolicitacaoRepositoryAdapterTest {
     final List<Solicitacao> result = adapter.findByCriadaEmBetween(inicio, fim);
 
     assertEquals(1, result.size());
+  }
+
+  @Test
+  void findMetricasPorModelo_mapeiaLinhasEOrdenaPorTempoResolucaoDescendente() {
+    final UUID modeloId = UUID.randomUUID();
+    final Object[] row = {modeloId, "MDL-001", 3600.0, 7200.0};
+    final Page<Object[]> page = new PageImpl<>(List.<Object[]>of(row), PageRequest.of(0, 20), 1);
+    final org.mockito.ArgumentCaptor<org.springframework.data.domain.Pageable> captor =
+        org.mockito.ArgumentCaptor.forClass(org.springframework.data.domain.Pageable.class);
+    when(jpa.findMetricasPorModelo(captor.capture())).thenReturn(page);
+
+    final PageResult<com.rgm.api.core.domain.ports.repositories.MetricaModeloRow> result =
+        adapter.findMetricasPorModelo(
+            com.rgm.api.core.domain.model.enums.OrdenacaoMetricaModelo.TEMPO_RESOLUCAO,
+            false,
+            0,
+            20);
+
+    assertEquals(1, result.content().size());
+    assertEquals(modeloId, result.content().get(0).modeloId());
+    assertEquals("MDL-001", result.content().get(0).codigo());
+    assertEquals(3600.0, result.content().get(0).tempoMedioResolucaoSegundos());
+    assertEquals(7200.0, result.content().get(0).intervaloMedioSegundos());
+
+    final var sort = captor.getValue().getSort().getOrderFor("tempo_medio_resolucao");
+    assertNotNull(sort);
+    assertTrue(sort.isDescending());
+  }
+
+  @Test
+  void findMetricasPorModelo_ordenaPorIntervaloAscendenteEAceitaIntervaloNulo() {
+    final UUID modeloId = UUID.randomUUID();
+    final Object[] row = {modeloId, "MDL-002", 1800.0, null};
+    final Page<Object[]> page = new PageImpl<>(List.<Object[]>of(row), PageRequest.of(1, 10), 1);
+    final org.mockito.ArgumentCaptor<org.springframework.data.domain.Pageable> captor =
+        org.mockito.ArgumentCaptor.forClass(org.springframework.data.domain.Pageable.class);
+    when(jpa.findMetricasPorModelo(captor.capture())).thenReturn(page);
+
+    final PageResult<com.rgm.api.core.domain.ports.repositories.MetricaModeloRow> result =
+        adapter.findMetricasPorModelo(
+            com.rgm.api.core.domain.model.enums.OrdenacaoMetricaModelo.INTERVALO, true, 1, 10);
+
+    assertNull(result.content().get(0).intervaloMedioSegundos());
+    final var sort = captor.getValue().getSort().getOrderFor("intervalo_medio");
+    assertNotNull(sort);
+    assertTrue(sort.isAscending());
   }
 
   @Test

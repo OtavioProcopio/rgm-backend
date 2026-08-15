@@ -16,6 +16,7 @@ import com.rgm.api.core.domain.model.aggregates.EventoModelo;
 import com.rgm.api.core.domain.model.aggregates.Modelo;
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
 import com.rgm.api.core.domain.model.entities.AtividadeSolicitacao;
+import com.rgm.api.core.domain.ports.repositories.MetricaModeloRow;
 import java.awt.Color;
 import java.io.ByteArrayOutputStream;
 import java.time.ZoneId;
@@ -73,6 +74,21 @@ public class ModeloPdfService {
     return gerarLista(modelos, "Sistema");
   }
 
+  /** Ranking de modelos por tempo médio de resolução e intervalo médio entre solicitações. */
+  public byte[] gerarRankingModelos(
+      final List<MetricaModeloRow> linhas, final String geradoPorNome) {
+    final var out = new ByteArrayOutputStream();
+    final var doc = new Document(PageSize.A4.rotate(), 40, 40, 55, 45);
+    final PdfWriter writer = PdfWriter.getInstance(doc, out);
+    writer.setPageEvent(new PdfFooterEvent(geradoPorNome));
+    doc.open();
+    addBanner(doc, "RGM Auto Parts — Ranking de Modelos por Tempo");
+    addMeta(doc, linhas.size() + " modelo(s)", geradoPorNome);
+    addTabelaRanking(doc, linhas);
+    doc.close();
+    return out.toByteArray();
+  }
+
   /** Ficha completa de um modelo: dados + eventos + solicitações com histórico. */
   public byte[] gerarFicha(
       final Modelo modelo,
@@ -80,13 +96,21 @@ public class ModeloPdfService {
       final List<Solicitacao> solicitacoes,
       final Map<UUID, List<AtividadeSolicitacao>> atividadesPorSolicitacao,
       final String geradoPorNome,
-      final Map<UUID, String> nomesPorUsuario) {
+      final Map<UUID, String> nomesPorUsuario,
+      final Double tempoMedioResolucaoSegundos,
+      final Double intervaloMedioSegundos) {
     final var out = new ByteArrayOutputStream();
     final var doc = new Document(PageSize.A4, 40, 40, 55, 45);
     final PdfWriter writer = PdfWriter.getInstance(doc, out);
     writer.setPageEvent(new PdfFooterEvent(geradoPorNome));
     doc.open();
-    addFichaCabecalho(doc, modelo, solicitacoes, geradoPorNome);
+    addFichaCabecalho(
+        doc,
+        modelo,
+        solicitacoes,
+        geradoPorNome,
+        tempoMedioResolucaoSegundos,
+        intervaloMedioSegundos);
     if (!eventos.isEmpty()) {
       addSecao(doc, "Eventos do Modelo");
       addTabelaEventos(doc, eventos, nomesPorUsuario);
@@ -102,13 +126,14 @@ public class ModeloPdfService {
     return out.toByteArray();
   }
 
-  /** Mantém compatibilidade sem resolução de usuários. */
+  /** Mantém compatibilidade sem resolução de usuários nem métricas de tempo. */
   public byte[] gerarFicha(
       final Modelo modelo,
       final List<EventoModelo> eventos,
       final List<Solicitacao> solicitacoes,
       final Map<UUID, List<AtividadeSolicitacao>> atividadesPorSolicitacao) {
-    return gerarFicha(modelo, eventos, solicitacoes, atividadesPorSolicitacao, "Sistema", Map.of());
+    return gerarFicha(
+        modelo, eventos, solicitacoes, atividadesPorSolicitacao, "Sistema", Map.of(), null, null);
   }
 
   // ── Cabeçalho / Banner ───────────────────────────────────────────────────
@@ -164,7 +189,9 @@ public class ModeloPdfService {
       final Document doc,
       final Modelo modelo,
       final List<Solicitacao> solicitacoes,
-      final String geradoPorNome) {
+      final String geradoPorNome,
+      final Double tempoMedioResolucaoSegundos,
+      final Double intervaloMedioSegundos) {
     try {
       addBanner(
           doc, modelo.getCodigo() + "  v" + modelo.getVersao() + "  —  " + modelo.getDescricao());
@@ -226,6 +253,26 @@ public class ModeloPdfService {
       addKpiCell(kpi, "Concluídas", String.valueOf(concluidas), GREEN_BG);
       addKpiCell(kpi, "Canceladas", String.valueOf(canceladas), new Color(100, 100, 100));
       doc.add(kpi);
+
+      if (tempoMedioResolucaoSegundos != null) {
+        final float[] tempoWidths = {3f, 3f};
+        final var tempoKpi = new PdfPTable(tempoWidths.length);
+        tempoKpi.setWidthPercentage(66);
+        tempoKpi.setHorizontalAlignment(com.lowagie.text.Element.ALIGN_LEFT);
+        tempoKpi.setWidths(tempoWidths);
+        tempoKpi.setSpacingAfter(10);
+        addKpiCell(
+            tempoKpi,
+            "Tempo médio de resolução",
+            formatarDuracao(tempoMedioResolucaoSegundos),
+            new Color(29, 78, 216));
+        addKpiCell(
+            tempoKpi,
+            "Intervalo médio entre solicitações",
+            intervaloMedioSegundos != null ? formatarDuracao(intervaloMedioSegundos) : "—",
+            new Color(100, 100, 100));
+        doc.add(tempoKpi);
+      }
     } catch (final Exception e) {
       throw new RuntimeException("Erro ao gerar cabeçalho da ficha", e);
     }
@@ -290,6 +337,49 @@ public class ModeloPdfService {
     } catch (final Exception e) {
       throw new RuntimeException("Erro ao gerar tabela de modelos", e);
     }
+  }
+
+  // ── Tabela de ranking por tempo ───────────────────────────────────────────
+
+  private void addTabelaRanking(final Document doc, final List<MetricaModeloRow> linhas) {
+    try {
+      final float[] widths = {3f, 4f, 4f};
+      final var table = new PdfPTable(widths.length);
+      table.setWidthPercentage(100);
+      table.setWidths(widths);
+      table.setHeaderRows(1);
+
+      addHeaderRow(
+          table, "Código", "Tempo médio de resolução", "Intervalo médio entre solicitações");
+
+      boolean isEven = false;
+      for (final MetricaModeloRow linha : linhas) {
+        final Color bg = isEven ? ROW_ALT : Color.WHITE;
+        addCell(table, linha.codigo(), bg, CELL_BOLD);
+        addCell(table, formatarDuracao(linha.tempoMedioResolucaoSegundos()), bg, CELL_FONT);
+        addCell(
+            table,
+            linha.intervaloMedioSegundos() != null
+                ? formatarDuracao(linha.intervaloMedioSegundos())
+                : "—",
+            bg,
+            CELL_FONT);
+        isEven = !isEven;
+      }
+      doc.add(table);
+    } catch (final Exception e) {
+      throw new RuntimeException("Erro ao gerar tabela de ranking", e);
+    }
+  }
+
+  private static String formatarDuracao(final double segundos) {
+    final long horas = Math.round(segundos / 3600.0);
+    if (horas < 24) {
+      return horas + "h";
+    }
+    final long dias = horas / 24;
+    final long horasRestantes = horas % 24;
+    return dias + "d " + horasRestantes + "h";
   }
 
   // ── Tabela de eventos ─────────────────────────────────────────────────────

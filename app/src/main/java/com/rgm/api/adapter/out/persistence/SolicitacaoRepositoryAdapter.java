@@ -3,9 +3,11 @@ package com.rgm.api.adapter.out.persistence;
 import com.rgm.api.adapter.out.persistence.mapper.SolicitacaoMapper;
 import com.rgm.api.adapter.out.persistence.repository.SolicitacaoJpaRepository;
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
+import com.rgm.api.core.domain.model.enums.OrdenacaoMetricaModelo;
 import com.rgm.api.core.domain.model.enums.PrioridadeSolicitacao;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
 import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
+import com.rgm.api.core.domain.ports.repositories.MetricaModeloRow;
 import com.rgm.api.core.domain.ports.repositories.PageResult;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import java.time.Instant;
@@ -166,5 +168,33 @@ public class SolicitacaoRepositoryAdapter implements SolicitacaoRepository {
   @Override
   public long getTempoMedioResolucaoSegundos() {
     return (long) jpa.getTempoMedioResolucaoSegundos();
+  }
+
+  @Override
+  public PageResult<MetricaModeloRow> findMetricasPorModelo(
+      final OrdenacaoMetricaModelo sort, final boolean ascendente, final int page, final int size) {
+    final String coluna =
+        sort == OrdenacaoMetricaModelo.INTERVALO ? "intervalo_medio" : "tempo_medio_resolucao";
+    final var direcao = ascendente ? Sort.Direction.ASC : Sort.Direction.DESC;
+    final var pageable = PageRequest.of(page, size, Sort.by(direcao, coluna));
+
+    final var result = jpa.findMetricasPorModelo(pageable);
+    final List<MetricaModeloRow> content =
+        result.getContent().stream()
+            .map(
+                row ->
+                    new MetricaModeloRow(
+                        (UUID) row[0],
+                        (String) row[1],
+                        ((Number) row[2]).doubleValue(),
+                        row[3] != null ? ((Number) row[3]).doubleValue() : null))
+            .toList();
+
+    return new PageResult<>(
+        content,
+        result.getNumber(),
+        result.getSize(),
+        result.getTotalElements(),
+        result.getTotalPages());
   }
 }
