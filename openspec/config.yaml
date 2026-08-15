@@ -1,0 +1,43 @@
+schema: spec-driven
+
+context: |
+  Sistema RGM (Reparo/Gestao de Modelos) - backend Java 21 / Spring Boot 3, Clean Architecture.
+  Camadas: core/domain/{model/aggregates,model/enums,model/entities,ports/repositories,ports/services,validation,exceptions}
+  (agregados imutaveis, campos privados final, factories estaticas `criar()`);
+  core/application/usecases/<area> (um caso de uso por classe, metodo `execute()`, sem framework);
+  adapter/in/web/<area> (controllers REST + DTOs request/response);
+  adapter/out/persistence (JPA entities/mappers/repository adapters);
+  adapter/out/storage (MinIO/S3, padrao two-phase: upload() fora da transacao, depois persist());
+  adapter/out/report (geracao de PDF com OpenPDF);
+  adapter/config/UseCaseConfig.java (wiring manual de beans @Bean, sem @Service nos usecases).
+  Persistencia: PostgreSQL + Flyway (src/main/resources/db/migration/V{n}__descricao.sql, sequencial).
+  Dominio central: Modelo (maquina cadastrada) -> Solicitacao (chamado de manutencao, maquina de estados
+  Kanban: A_FAZER -> EM_ANDAMENTO -> EM_VALIDACAO -> CONCLUIDA/CANCELADA, com DEVOLUCAO de volta a EM_ANDAMENTO)
+  -> Evidencia (anexo com TipoEvidencia: GERAL/ABERTURA/INSTRUCAO_SERVICO/SERVICO_REALIZADO/CONCLUSAO/DEVOLUCAO).
+  Perfis: OPERADOR, GESTOR, ADMINISTRADOR, EXTERNO (nao faz login) - autorizacao central em
+  PerfilUsuario (metodos podeX()) e Solicitacao.validarAutorizacaoMover().
+  Qualidade: spotless (formatacao), checkstyle, JaCoCo >= 95% de cobertura em toda mudanca.
+  Documentacao viva em docs/casos-de-uso.md e docs/modelo_dados.md - manter atualizada a cada mudanca de dominio.
+  Repos irmaos: rgm-frontend (React/Vite/TanStack Query) e rgm-infra (docker-compose/deploy).
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+# Example:
+#   rules:
+#     proposal:
+#       - Keep proposals under 500 words
+#       - Always include a "Non-goals" section
+#     tasks:
+#       - Break tasks into chunks of max 2 hours
+
+# Per-operation guidance (optional)
+# Add advisory guidance for how apply and archive work should be conducted.
+# This is separate from artifact rules above.
+# Example:
+#   operations:
+#     apply:
+#       guidance:
+#         - Keep test summaries concise
+#     archive:
+#       guidance:
+#         - Summarize the archive outcome before finishing
