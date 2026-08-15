@@ -108,6 +108,14 @@ Referência de todos os casos de uso implementados no sistema.
 - **Endpoints**: `DELETE /api/admin/registros` (genérico)
 - **Regras**: Somente ADMIN; cascata em atribuições, atividades e vínculos
 
+## UC-16 — Ranking de métricas de tempo por modelo
+- **Atores**: Gestor, Administrador
+- **Classe**: `ObterMetricasPorModeloUseCase`
+- **Endpoints**: `GET /api/solicitacoes/metricas/por-modelo`, `GET /api/solicitacoes/metricas/por-modelo/pdf`
+- **Regras**: Agregação via SQL nativo (CTEs + `LAG()`), nunca carrega solicitações em memória; retorna, por modelo com ao menos 1 solicitação CONCLUIDA, o tempo médio de resolução e o intervalo médio entre solicitações consecutivas (nulo se houver menos de 2); ordenação (`sort=TEMPO_RESOLUCAO|INTERVALO`, `dir=asc|desc`) validada contra whitelist antes de virar SQL; exportação em PDF separada do relatório de lista de modelos
+- **Erros**: 400 (`sort`/`dir` inválidos)
+- **Nota**: A ficha PDF individual do modelo (`GET /api/modelos/{id}/pdf`) também passou a exibir as mesmas duas métricas, calculadas em memória a partir das solicitações já carregadas do modelo (exige 2+ solicitações CONCLUIDA); o critério difere levemente do ranking (que considera intervalos entre TODAS as solicitações, não só as concluídas), decisão documentada no OpenSpec change `metricas-tempo-por-modelo`.
+
 ---
 
 ## Endpoints de Listagem (com filtros)

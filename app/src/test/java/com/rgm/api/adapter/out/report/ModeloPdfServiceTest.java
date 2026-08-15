@@ -99,6 +99,56 @@ class ModeloPdfServiceTest {
   }
 
   @Test
+  void gerarFicha_comMetricasDeTempo() {
+    final Modelo modelo = buildModelo(true, false);
+    final byte[] pdf =
+        service.gerarFicha(
+            modelo, List.of(), List.of(), Map.of(), "Gestor Teste", Map.of(), 7200.0, 90000.0);
+    assertNotNull(pdf);
+    assertTrue(pdf.length > 100);
+  }
+
+  @Test
+  void gerarFicha_semMetricasDeTempo() {
+    final Modelo modelo = buildModelo(true, false);
+    final byte[] pdf =
+        service.gerarFicha(
+            modelo, List.of(), List.of(), Map.of(), "Gestor Teste", Map.of(), null, null);
+    assertNotNull(pdf);
+    assertTrue(pdf.length > 100);
+  }
+
+  @Test
+  void gerarFicha_comTempoMasSemIntervalo() {
+    final Modelo modelo = buildModelo(true, false);
+    final byte[] pdf =
+        service.gerarFicha(
+            modelo, List.of(), List.of(), Map.of(), "Gestor Teste", Map.of(), 3600.0, null);
+    assertNotNull(pdf);
+    assertTrue(pdf.length > 100);
+  }
+
+  @Test
+  void gerarRankingModelos_comLinhas() {
+    final var linha1 =
+        new com.rgm.api.core.domain.ports.repositories.MetricaModeloRow(
+            UUID.randomUUID(), "MDL-001", 3600.0, 90000.0);
+    final var linha2 =
+        new com.rgm.api.core.domain.ports.repositories.MetricaModeloRow(
+            UUID.randomUUID(), "MDL-002", 172800.0, null);
+    final byte[] pdf = service.gerarRankingModelos(List.of(linha1, linha2), "Gestor Teste");
+    assertNotNull(pdf);
+    assertTrue(pdf.length > 100);
+  }
+
+  @Test
+  void gerarRankingModelos_listaVazia() {
+    final byte[] pdf = service.gerarRankingModelos(List.of(), "Gestor Teste");
+    assertNotNull(pdf);
+    assertTrue(pdf.length > 0);
+  }
+
+  @Test
   void gerarFicha_modeloSemSolicitacoes() {
     final Modelo modelo = buildModelo(true, false);
     final byte[] pdf = service.gerarFicha(modelo, List.of(), List.of(), Map.of());

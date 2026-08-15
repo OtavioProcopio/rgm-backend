@@ -30,6 +30,7 @@ import com.rgm.api.core.application.usecases.solicitacao.GerenciarResponsaveisUs
 import com.rgm.api.core.application.usecases.solicitacao.ListarAtividadesUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ListarSolicitacoesUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ObterHistoricoMetricasUseCase;
+import com.rgm.api.core.application.usecases.solicitacao.ObterMetricasPorModeloUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ObterMetricasSolicitacoesUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ObterSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.RegistrarComentarioUseCase;
@@ -359,6 +360,12 @@ public class UseCaseConfig {
   public ObterHistoricoMetricasUseCase obterHistoricoMetricasUseCase(
       final SolicitacaoRepository solicitacaoRepository) {
     return new ObterHistoricoMetricasUseCase(solicitacaoRepository);
+  }
+
+  @Bean
+  public ObterMetricasPorModeloUseCase obterMetricasPorModeloUseCase(
+      final SolicitacaoRepository solicitacaoRepository) {
+    return new ObterMetricasPorModeloUseCase(solicitacaoRepository);
   }
 
   @Bean
