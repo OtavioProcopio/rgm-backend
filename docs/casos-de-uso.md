@@ -122,8 +122,8 @@ Referência de todos os casos de uso implementados no sistema.
 
 | Endpoint | Filtros | Paginação |
 |----------|---------|-----------|
-| `GET /api/solicitacoes` | `status`, `modeloId` | `page`, `size` |
-| `GET /api/solicitacoes/exportar` | `status`, `modeloId` | — (Exportação de arquivo CSV) |
+| `GET /api/solicitacoes` | `status`, `modeloId`, `tipo`, `prioridade`, `criadaEmInicio`/`criadaEmFim`, `abertaPorUsuarioId`, `responsavelId`, `maquina` | `page`, `size` |
+| `GET /api/solicitacoes/relatorio` | mesmos filtros de `GET /api/solicitacoes` | — (Exportação em PDF) |
 | `GET /api/admin/usuarios` | `perfil`, `ativo` | `page`, `size` |
 | `GET /api/modelos` | `ativo`, `codigo` | `page`, `size` |
 

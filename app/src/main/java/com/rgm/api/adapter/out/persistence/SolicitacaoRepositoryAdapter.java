@@ -102,6 +102,7 @@ public class SolicitacaoRepositoryAdapter implements SolicitacaoRepository {
       final Instant concluidaEmFim,
       final UUID abertaPorUsuarioId,
       final UUID responsavelId,
+      final String maquina,
       final int page,
       final int size) {
     final var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "criada_em"));
@@ -117,6 +118,7 @@ public class SolicitacaoRepositoryAdapter implements SolicitacaoRepository {
             concluidaEmFim,
             abertaPorUsuarioId,
             responsavelId,
+            maquina,
             pageable);
     return new PageResult<>(
         result.getContent().stream().map(SolicitacaoMapper::toDomain).toList(),

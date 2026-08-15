@@ -24,7 +24,8 @@ public interface SolicitacaoJpaRepository extends JpaRepository<SolicitacaoJpaEn
 
   @Query(
       value =
-          "SELECT s.* FROM solicitacoes s WHERE "
+          "SELECT s.* FROM solicitacoes s "
+              + "JOIN modelos mo ON mo.id = s.modelo_id WHERE "
               + "(CAST(:status AS text) IS NULL OR s.status = :status) AND "
               + "(CAST(:modeloId AS uuid) IS NULL OR s.modelo_id = :modeloId) AND "
               + "(CAST(:tipo AS text) IS NULL OR s.tipo = :tipo) AND "
@@ -34,9 +35,11 @@ public interface SolicitacaoJpaRepository extends JpaRepository<SolicitacaoJpaEn
               + "(CAST(:concluidaEmInicio AS timestamptz) IS NULL OR s.concluida_em >= :concluidaEmInicio) AND "
               + "(CAST(:concluidaEmFim AS timestamptz) IS NULL OR s.concluida_em <= :concluidaEmFim) AND "
               + "(CAST(:abertaPorUsuarioId AS uuid) IS NULL OR s.aberta_por_usuario_id = :abertaPorUsuarioId) AND "
-              + "(CAST(:responsavelId AS uuid) IS NULL OR EXISTS (SELECT 1 FROM solicitacao_atribuicoes a WHERE a.solicitacao_id = s.id AND a.usuario_id = :responsavelId AND a.removido_em IS NULL))",
+              + "(CAST(:responsavelId AS uuid) IS NULL OR EXISTS (SELECT 1 FROM solicitacao_atribuicoes a WHERE a.solicitacao_id = s.id AND a.usuario_id = :responsavelId AND a.removido_em IS NULL)) AND "
+              + "(CAST(:maquina AS text) IS NULL OR mo.maquina = :maquina)",
       countQuery =
-          "SELECT COUNT(s.*) FROM solicitacoes s WHERE "
+          "SELECT COUNT(s.*) FROM solicitacoes s "
+              + "JOIN modelos mo ON mo.id = s.modelo_id WHERE "
               + "(CAST(:status AS text) IS NULL OR s.status = :status) AND "
               + "(CAST(:modeloId AS uuid) IS NULL OR s.modelo_id = :modeloId) AND "
               + "(CAST(:tipo AS text) IS NULL OR s.tipo = :tipo) AND "
@@ -46,7 +49,8 @@ public interface SolicitacaoJpaRepository extends JpaRepository<SolicitacaoJpaEn
               + "(CAST(:concluidaEmInicio AS timestamptz) IS NULL OR s.concluida_em >= :concluidaEmInicio) AND "
               + "(CAST(:concluidaEmFim AS timestamptz) IS NULL OR s.concluida_em <= :concluidaEmFim) AND "
               + "(CAST(:abertaPorUsuarioId AS uuid) IS NULL OR s.aberta_por_usuario_id = :abertaPorUsuarioId) AND "
-              + "(CAST(:responsavelId AS uuid) IS NULL OR EXISTS (SELECT 1 FROM solicitacao_atribuicoes a WHERE a.solicitacao_id = s.id AND a.usuario_id = :responsavelId AND a.removido_em IS NULL))",
+              + "(CAST(:responsavelId AS uuid) IS NULL OR EXISTS (SELECT 1 FROM solicitacao_atribuicoes a WHERE a.solicitacao_id = s.id AND a.usuario_id = :responsavelId AND a.removido_em IS NULL)) AND "
+              + "(CAST(:maquina AS text) IS NULL OR mo.maquina = :maquina)",
       nativeQuery = true)
   Page<SolicitacaoJpaEntity> findByFilters(
       @org.springframework.data.repository.query.Param("status") String status,
@@ -61,6 +65,7 @@ public interface SolicitacaoJpaRepository extends JpaRepository<SolicitacaoJpaEn
       @org.springframework.data.repository.query.Param("abertaPorUsuarioId")
           UUID abertaPorUsuarioId,
       @org.springframework.data.repository.query.Param("responsavelId") UUID responsavelId,
+      @org.springframework.data.repository.query.Param("maquina") String maquina,
       Pageable pageable);
 
   @Query("SELECT s.modeloId, COUNT(s) FROM SolicitacaoJpaEntity s GROUP BY s.modeloId")

@@ -42,6 +42,7 @@ public interface SolicitacaoRepository {
       Instant concluidaEmFim,
       UUID abertaPorUsuarioId,
       UUID responsavelId,
+      String maquina,
       int page,
       int size);
 

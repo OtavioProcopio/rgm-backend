@@ -1,6 +1,8 @@
 package com.rgm.api.adapter.in.web.solicitacao;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -128,6 +130,22 @@ class SolicitacaoControllerTest {
         .perform(get("/api/solicitacoes").param("status", "A_FAZER"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.content").isEmpty());
+  }
+
+  @Test
+  void listarSolicitacoesPorMaquina() throws Exception {
+    when(listarUseCase.execute(any())).thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
+    when(obterUseCase.listarResponsaveisBatch(any())).thenReturn(java.util.Map.of());
+
+    mockMvc
+        .perform(get("/api/solicitacoes").param("maquina", "VICK"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.content").isEmpty());
+
+    final org.mockito.ArgumentCaptor<ListarSolicitacoesUseCase.Input> captor =
+        org.mockito.ArgumentCaptor.forClass(ListarSolicitacoesUseCase.Input.class);
+    verify(listarUseCase).execute(captor.capture());
+    assertEquals("VICK", captor.getValue().maquina());
   }
 
   @Test
