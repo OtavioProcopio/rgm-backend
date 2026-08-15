@@ -228,12 +228,18 @@ diretamente (precisa de um GESTOR como procurador).
 
 ### Requirement: Listar, filtrar e exportar solicitacoes
 O sistema SHALL permitir listar solicitacoes com paginacao e filtros (status,
-modelo, tipo, periodo), e exportar a lista filtrada em PDF com trilha de
-auditoria (quem abriu, quem alterou, quando).
+modelo, tipo, periodo, maquina), e exportar a lista filtrada em PDF com
+trilha de auditoria (quem abriu, quem alterou, quando).
 
 #### Scenario: Listagem paginada e filtrada
 - **WHEN** um usuario autenticado lista solicitacoes com filtros
 - **THEN** o sistema retorna a pagina correspondente
+
+#### Scenario: Filtro por maquina
+- **WHEN** um usuario autenticado lista solicitacoes filtrando por uma
+  maquina do catalogo
+- **THEN** o sistema retorna apenas solicitacoes cujo modelo pertence aquela
+  maquina
 
 #### Scenario: Exportar PDF
 - **WHEN** um usuario autenticado exporta a lista com os filtros aplicados

@@ -37,6 +37,7 @@ public final class ListarSolicitacoesUseCase {
       Instant dataFim,
       UUID abertaPorUsuarioId,
       UUID responsavelId,
+      String maquina,
       UUID usuarioAutenticadoId,
       int page,
       int size) {}
@@ -60,6 +61,7 @@ public final class ListarSolicitacoesUseCase {
         || input.dataInicio() != null
         || input.dataFim() != null
         || input.abertaPorUsuarioId() != null
+        || input.maquina() != null
         || responsavelId != null) {
       return solicitacaoRepository.findByFilters(
           input.status(),
@@ -72,6 +74,7 @@ public final class ListarSolicitacoesUseCase {
           concluidaEmFim,
           input.abertaPorUsuarioId(),
           responsavelId,
+          input.maquina(),
           input.page(),
           input.size());
     }

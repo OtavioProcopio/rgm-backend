@@ -40,6 +40,26 @@ class ListarSolicitacoesUseCaseTest {
       final UUID abertaPorUsuarioId,
       final UUID responsavelId,
       final UUID usuarioAutenticadoId) {
+    return input(
+        status,
+        tipoData,
+        dataInicio,
+        dataFim,
+        abertaPorUsuarioId,
+        responsavelId,
+        null,
+        usuarioAutenticadoId);
+  }
+
+  private ListarSolicitacoesUseCase.Input input(
+      final StatusSolicitacao status,
+      final TipoFiltroData tipoData,
+      final Instant dataInicio,
+      final Instant dataFim,
+      final UUID abertaPorUsuarioId,
+      final UUID responsavelId,
+      final String maquina,
+      final UUID usuarioAutenticadoId) {
     return new ListarSolicitacoesUseCase.Input(
         status,
         null,
@@ -50,6 +70,7 @@ class ListarSolicitacoesUseCaseTest {
         dataFim,
         abertaPorUsuarioId,
         responsavelId,
+        maquina,
         usuarioAutenticadoId,
         0,
         20);
@@ -90,12 +111,38 @@ class ListarSolicitacoesUseCaseTest {
             isNull(),
             isNull(),
             isNull(),
+            isNull(),
             eq(0),
             eq(20)))
         .thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
 
     final PageResult<Solicitacao> result =
         useCase.execute(input(StatusSolicitacao.EM_ANDAMENTO, null, null, null, null, null, null));
+
+    assertEquals(0, result.totalElements());
+    verify(solicitacaoRepository, never()).findAll(anyInt(), anyInt());
+  }
+
+  @Test
+  void deveListarPorMaquina() {
+    when(solicitacaoRepository.findByFilters(
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            eq("VICK"),
+            eq(0),
+            eq(20)))
+        .thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
+
+    final PageResult<Solicitacao> result =
+        useCase.execute(input(null, null, null, null, null, null, "VICK", null));
 
     assertEquals(0, result.totalElements());
     verify(solicitacaoRepository, never()).findAll(anyInt(), anyInt());
@@ -117,6 +164,7 @@ class ListarSolicitacoesUseCaseTest {
             any(),
             any(),
             eq(operadorId),
+            any(),
             anyInt(),
             anyInt()))
         .thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
@@ -135,6 +183,7 @@ class ListarSolicitacoesUseCaseTest {
             isNull(),
             isNull(),
             eq(operadorId),
+            isNull(),
             eq(0),
             eq(20));
   }
@@ -155,6 +204,7 @@ class ListarSolicitacoesUseCaseTest {
             any(),
             any(),
             eq(responsavelFiltrado),
+            any(),
             anyInt(),
             anyInt()))
         .thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
@@ -173,6 +223,7 @@ class ListarSolicitacoesUseCaseTest {
             isNull(),
             isNull(),
             eq(responsavelFiltrado),
+            isNull(),
             eq(0),
             eq(20));
   }
@@ -182,7 +233,7 @@ class ListarSolicitacoesUseCaseTest {
     final Instant inicio = Instant.parse("2026-01-01T00:00:00Z");
     final Instant fim = Instant.parse("2026-02-01T00:00:00Z");
     when(solicitacaoRepository.findByFilters(
-            any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), anyInt(),
+            any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), anyInt(),
             anyInt()))
         .thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
 
@@ -200,6 +251,7 @@ class ListarSolicitacoesUseCaseTest {
             eq(fim),
             isNull(),
             isNull(),
+            isNull(),
             eq(0),
             eq(20));
   }
@@ -209,7 +261,7 @@ class ListarSolicitacoesUseCaseTest {
     final Instant inicio = Instant.parse("2026-01-01T00:00:00Z");
     final Instant fim = Instant.parse("2026-02-01T00:00:00Z");
     when(solicitacaoRepository.findByFilters(
-            any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), anyInt(),
+            any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), anyInt(),
             anyInt()))
         .thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
 
@@ -223,6 +275,7 @@ class ListarSolicitacoesUseCaseTest {
             isNull(),
             eq(inicio),
             eq(fim),
+            isNull(),
             isNull(),
             isNull(),
             isNull(),
