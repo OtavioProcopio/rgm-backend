@@ -11,6 +11,7 @@ import com.rgm.api.core.domain.model.aggregates.Evidencia;
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
 import com.rgm.api.core.domain.model.aggregates.Usuario;
 import com.rgm.api.core.domain.model.enums.PerfilUsuario;
+import com.rgm.api.core.domain.model.enums.TipoEvidencia;
 import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
 import com.rgm.api.core.domain.ports.repositories.EvidenciaRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoAtribuicaoRepository;
@@ -45,7 +46,15 @@ class ExcluirEvidenciaUseCaseTest {
 
   private Evidencia evidencia(final UUID enviadaPor) {
     return new Evidencia(
-        UUID.randomUUID(), "http://url", "image/jpeg", "foto.jpg", 100, enviadaPor, Instant.now());
+        UUID.randomUUID(),
+        "http://url",
+        "image/jpeg",
+        "foto.jpg",
+        100,
+        enviadaPor,
+        Instant.now(),
+        TipoEvidencia.GERAL,
+        null);
   }
 
   private Usuario gestor(final UUID id) {

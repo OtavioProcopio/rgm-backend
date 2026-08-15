@@ -22,6 +22,7 @@ import com.rgm.api.core.domain.exceptions.BusinessRuleException;
 import com.rgm.api.core.domain.exceptions.NaoAutorizadoException;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.model.aggregates.Evidencia;
+import com.rgm.api.core.domain.model.enums.TipoEvidencia;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -60,7 +61,9 @@ class EvidenciaControllerTest {
             "foto.jpg",
             1024,
             UUID.randomUUID(),
-            agora);
+            agora,
+            TipoEvidencia.GERAL,
+            null);
 
     when(visualizarUseCase.execute(any())).thenReturn(List.of(ev));
 
@@ -86,7 +89,9 @@ class EvidenciaControllerTest {
             "foto.jpg",
             1024,
             userId,
-            agora);
+            agora,
+            TipoEvidencia.GERAL,
+            null);
     when(anexarUseCase.upload(any())).thenReturn("http://minio/foto.jpg");
     when(anexarUseCase.persist(any(), any())).thenReturn(ev);
 
@@ -115,7 +120,9 @@ class EvidenciaControllerTest {
             "unknown",
             12,
             userId,
-            Instant.now());
+            Instant.now(),
+            TipoEvidencia.GERAL,
+            null);
     when(anexarUseCase.upload(any())).thenReturn("http://minio/unknown");
     when(anexarUseCase.persist(any(), any())).thenReturn(ev);
 

@@ -11,6 +11,7 @@ import com.rgm.api.core.domain.model.entities.SolicitacaoEvidencia;
 import com.rgm.api.core.domain.model.enums.PerfilUsuario;
 import com.rgm.api.core.domain.model.enums.PrioridadeSolicitacao;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
+import com.rgm.api.core.domain.model.enums.TipoEvidencia;
 import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
 import com.rgm.api.core.domain.ports.repositories.EvidenciaRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoAtribuicaoRepository;
@@ -73,9 +74,27 @@ class VisualizarEvidenciaUseCaseTest {
     final UUID evId1 = UUID.randomUUID();
     final UUID evId2 = UUID.randomUUID();
     final Evidencia ev1 =
-        new Evidencia(evId1, "http://url1", "image/png", "f1.png", 100, UUID.randomUUID(), agora);
+        new Evidencia(
+            evId1,
+            "http://url1",
+            "image/png",
+            "f1.png",
+            100,
+            UUID.randomUUID(),
+            agora,
+            TipoEvidencia.GERAL,
+            null);
     final Evidencia ev2 =
-        new Evidencia(evId2, "http://url2", "image/jpeg", "f2.jpg", 200, UUID.randomUUID(), agora);
+        new Evidencia(
+            evId2,
+            "http://url2",
+            "image/jpeg",
+            "f2.jpg",
+            200,
+            UUID.randomUUID(),
+            agora,
+            TipoEvidencia.GERAL,
+            null);
 
     when(solicitacaoRepository.findById(solId)).thenReturn(Optional.of(sol));
     when(usuarioRepository.findById(usuarioId))

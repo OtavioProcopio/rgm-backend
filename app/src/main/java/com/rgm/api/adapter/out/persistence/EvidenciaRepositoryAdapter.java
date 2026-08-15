@@ -3,6 +3,7 @@ package com.rgm.api.adapter.out.persistence;
 import com.rgm.api.adapter.out.persistence.mapper.EvidenciaMapper;
 import com.rgm.api.adapter.out.persistence.repository.EvidenciaJpaRepository;
 import com.rgm.api.core.domain.model.aggregates.Evidencia;
+import com.rgm.api.core.domain.model.enums.TipoEvidencia;
 import com.rgm.api.core.domain.ports.repositories.EvidenciaRepository;
 import java.util.Optional;
 import java.util.UUID;
@@ -30,5 +31,10 @@ public class EvidenciaRepositoryAdapter implements EvidenciaRepository {
   @Override
   public void deleteById(final UUID id) {
     jpa.deleteById(id);
+  }
+
+  @Override
+  public boolean existsBySolicitacaoIdAndTipo(final UUID solicitacaoId, final TipoEvidencia tipo) {
+    return jpa.existsBySolicitacaoIdAndTipo(solicitacaoId, tipo);
   }
 }

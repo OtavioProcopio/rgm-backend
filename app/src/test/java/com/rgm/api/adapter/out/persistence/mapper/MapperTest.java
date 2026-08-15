@@ -153,7 +153,16 @@ class MapperTest {
     final UUID id = UUID.randomUUID();
     final UUID userId = UUID.randomUUID();
     final Evidencia ev =
-        new Evidencia(id, "http://url", "image/jpeg", "foto.jpg", 1024, userId, NOW);
+        new Evidencia(
+            id,
+            "http://url",
+            "image/jpeg",
+            "foto.jpg",
+            1024,
+            userId,
+            NOW,
+            TipoEvidencia.GERAL,
+            null);
     final EvidenciaJpaEntity jpa = EvidenciaMapper.toJpa(ev);
 
     assertEquals(id, jpa.getId());
@@ -168,7 +177,16 @@ class MapperTest {
     final UUID id = UUID.randomUUID();
     final UUID userId = UUID.randomUUID();
     final EvidenciaJpaEntity e =
-        new EvidenciaJpaEntity(id, "http://url2", "application/pdf", "doc.pdf", 2048, userId, NOW);
+        new EvidenciaJpaEntity(
+            id,
+            "http://url2",
+            "application/pdf",
+            "doc.pdf",
+            2048,
+            userId,
+            NOW,
+            TipoEvidencia.GERAL,
+            null);
     final Evidencia ev = EvidenciaMapper.toDomain(e);
 
     assertEquals(id, ev.getId());

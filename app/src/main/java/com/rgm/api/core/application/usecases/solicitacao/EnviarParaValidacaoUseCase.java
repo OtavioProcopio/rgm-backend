@@ -7,10 +7,11 @@ import com.rgm.api.core.domain.model.aggregates.Solicitacao;
 import com.rgm.api.core.domain.model.aggregates.Usuario;
 import com.rgm.api.core.domain.model.entities.AtividadeSolicitacao;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
+import com.rgm.api.core.domain.model.enums.TipoEvidencia;
 import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
 import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository;
+import com.rgm.api.core.domain.ports.repositories.EvidenciaRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoAtribuicaoRepository;
-import com.rgm.api.core.domain.ports.repositories.SolicitacaoEvidenciaRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import java.time.Instant;
@@ -25,19 +26,19 @@ public class EnviarParaValidacaoUseCase {
   private final UsuarioRepository usuarioRepository;
   private final SolicitacaoAtribuicaoRepository atribuicaoRepository;
   private final AtividadeSolicitacaoRepository atividadeRepository;
-  private final SolicitacaoEvidenciaRepository solicitacaoEvidenciaRepository;
+  private final EvidenciaRepository evidenciaRepository;
 
   public EnviarParaValidacaoUseCase(
       final SolicitacaoRepository solicitacaoRepository,
       final UsuarioRepository usuarioRepository,
       final SolicitacaoAtribuicaoRepository atribuicaoRepository,
       final AtividadeSolicitacaoRepository atividadeRepository,
-      final SolicitacaoEvidenciaRepository solicitacaoEvidenciaRepository) {
+      final EvidenciaRepository evidenciaRepository) {
     this.solicitacaoRepository = solicitacaoRepository;
     this.usuarioRepository = usuarioRepository;
     this.atribuicaoRepository = atribuicaoRepository;
     this.atividadeRepository = atividadeRepository;
-    this.solicitacaoEvidenciaRepository = solicitacaoEvidenciaRepository;
+    this.evidenciaRepository = evidenciaRepository;
   }
 
   public record Input(UUID solicitacaoId, UUID usuarioId, String comentario) {}
@@ -72,7 +73,8 @@ public class EnviarParaValidacaoUseCase {
     if ((solicitacao.getTipo() == TipoSolicitacao.REPARO
             || solicitacao.getTipo() == TipoSolicitacao.INSPECAO
             || solicitacao.getTipo() == TipoSolicitacao.REENGENHARIA)
-        && solicitacaoEvidenciaRepository.findBySolicitacaoId(solicitacao.getId()).isEmpty()) {
+        && !evidenciaRepository.existsBySolicitacaoIdAndTipo(
+            solicitacao.getId(), TipoEvidencia.SERVICO_REALIZADO)) {
       throw new BusinessRuleException(
           "Solicitações de REPARO, INSPEÇÃO ou REENGENHARIA exigem o anexo de pelo menos 1 evidência do serviço realizado antes de serem enviadas para validação.");
     }

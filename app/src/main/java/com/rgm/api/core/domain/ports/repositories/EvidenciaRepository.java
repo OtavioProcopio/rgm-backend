@@ -1,6 +1,7 @@
 package com.rgm.api.core.domain.ports.repositories;
 
 import com.rgm.api.core.domain.model.aggregates.Evidencia;
+import com.rgm.api.core.domain.model.enums.TipoEvidencia;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -11,4 +12,6 @@ public interface EvidenciaRepository {
   Evidencia save(Evidencia evidencia);
 
   void deleteById(UUID id);
+
+  boolean existsBySolicitacaoIdAndTipo(UUID solicitacaoId, TipoEvidencia tipo);
 }

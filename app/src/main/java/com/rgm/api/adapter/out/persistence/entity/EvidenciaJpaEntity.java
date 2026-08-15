@@ -1,7 +1,10 @@
 package com.rgm.api.adapter.out.persistence.entity;
 
+import com.rgm.api.core.domain.model.enums.TipoEvidencia;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
@@ -37,4 +40,11 @@ public class EvidenciaJpaEntity {
 
   @Column(nullable = false)
   private Instant criadaEm;
+
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false, length = 30)
+  private TipoEvidencia tipo;
+
+  @Column(columnDefinition = "TEXT")
+  private String descricao;
 }

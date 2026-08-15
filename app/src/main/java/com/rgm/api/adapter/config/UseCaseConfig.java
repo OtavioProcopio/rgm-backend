@@ -100,13 +100,13 @@ public class UseCaseConfig {
       final UsuarioRepository usuarioRepository,
       final SolicitacaoAtribuicaoRepository atribuicaoRepository,
       final AtividadeSolicitacaoRepository atividadeRepository,
-      final SolicitacaoEvidenciaRepository solicitacaoEvidenciaRepository) {
+      final EvidenciaRepository evidenciaRepository) {
     return new EnviarParaValidacaoUseCase(
         solicitacaoRepository,
         usuarioRepository,
         atribuicaoRepository,
         atividadeRepository,
-        solicitacaoEvidenciaRepository);
+        evidenciaRepository);
   }
 
   @Bean

@@ -1,6 +1,7 @@
 package com.rgm.api.adapter.in.web.dto.response;
 
 import com.rgm.api.core.domain.model.aggregates.Evidencia;
+import com.rgm.api.core.domain.model.enums.TipoEvidencia;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -11,7 +12,9 @@ public record EvidenciaResponse(
     String nomeArquivo,
     Integer tamanhoBytes,
     UUID enviadaPorUsuarioId,
-    Instant criadaEm) {
+    Instant criadaEm,
+    TipoEvidencia tipo,
+    String descricao) {
 
   public static EvidenciaResponse from(final Evidencia e) {
     return new EvidenciaResponse(
@@ -21,6 +24,8 @@ public record EvidenciaResponse(
         e.getNomeArquivo(),
         e.getTamanhoBytes(),
         e.getEnviadaPorUsuarioId(),
-        e.getCriadaEm());
+        e.getCriadaEm(),
+        e.getTipo(),
+        e.getDescricao());
   }
 }
