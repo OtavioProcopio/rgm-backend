@@ -32,4 +32,4 @@
 
 - [x] 6.1 `make lint` (spotless + checkstyle) e `./mvnw clean verify` com cobertura JaCoCo >= 95% nos arquivos tocados
 - [x] 6.2 Atualizar `docs/casos-de-uso.md` com o novo caso de uso
-- [ ] 6.3 Rodar `/opsx:archive` ao final, sincronizando `openspec/specs/metricas-dashboard/spec.md` e `openspec/specs/modelos/spec.md` com as mudancas deste change
+- [x] 6.3 Rodar `/opsx:archive` ao final, sincronizando `openspec/specs/metricas-dashboard/spec.md` e `openspec/specs/modelos/spec.md` com as mudancas deste change
