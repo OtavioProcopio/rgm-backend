@@ -3,6 +3,8 @@ package com.rgm.api.core.domain.model.aggregates;
 import static com.rgm.api.core.domain.validation.DomainValidations.requireNonBlank;
 import static com.rgm.api.core.domain.validation.DomainValidations.requireNonNull;
 
+import com.rgm.api.core.domain.exceptions.ValidationException;
+import com.rgm.api.core.domain.model.enums.TipoEvidencia;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -19,6 +21,8 @@ public final class Evidencia {
   private final Integer tamanhoBytes;
   private final UUID enviadaPorUsuarioId;
   private final Instant criadaEm;
+  private final TipoEvidencia tipo;
+  private final String descricao;
 
   public Evidencia(
       final UUID id,
@@ -27,7 +31,9 @@ public final class Evidencia {
       final String nomeArquivo,
       final Integer tamanhoBytes,
       final UUID enviadaPorUsuarioId,
-      final Instant criadaEm) {
+      final Instant criadaEm,
+      final TipoEvidencia tipo,
+      final String descricao) {
     this.id = requireNonNull(id, "id");
     this.publicUrl = requireNonBlank(publicUrl, "publicUrl");
     this.mimeType = requireNonBlank(mimeType, "mimeType");
@@ -35,9 +41,16 @@ public final class Evidencia {
     this.tamanhoBytes = tamanhoBytes;
     this.enviadaPorUsuarioId = requireNonNull(enviadaPorUsuarioId, "enviadaPorUsuarioId");
     this.criadaEm = requireNonNull(criadaEm, "criadaEm");
+    this.tipo = requireNonNull(tipo, "tipo");
+    this.descricao = descricao;
 
     if (tamanhoBytes != null && tamanhoBytes < 0) {
       throw new IllegalArgumentException("tamanhoBytes deve ser >= 0");
+    }
+
+    if (tipo == TipoEvidencia.SERVICO_REALIZADO && (descricao == null || descricao.isBlank())) {
+      throw new ValidationException(
+          "Descricao e obrigatoria para evidencia do tipo SERVICO_REALIZADO");
     }
   }
 
@@ -48,7 +61,9 @@ public final class Evidencia {
       final String nomeArquivo,
       final Integer tamanhoBytes,
       final UUID enviadaPorUsuarioId,
-      final Instant agora) {
+      final Instant agora,
+      final TipoEvidencia tipo,
+      final String descricao) {
     return new Evidencia(
         UUID.randomUUID(),
         publicUrl,
@@ -56,7 +71,9 @@ public final class Evidencia {
         nomeArquivo,
         tamanhoBytes,
         enviadaPorUsuarioId,
-        agora);
+        agora,
+        tipo,
+        descricao);
   }
 
   /** Verifica se o MIME type corresponde a uma imagem (para foto capa). */
@@ -90,5 +107,13 @@ public final class Evidencia {
 
   public Instant getCriadaEm() {
     return criadaEm;
+  }
+
+  public TipoEvidencia getTipo() {
+    return tipo;
+  }
+
+  public String getDescricao() {
+    return descricao;
   }
 }

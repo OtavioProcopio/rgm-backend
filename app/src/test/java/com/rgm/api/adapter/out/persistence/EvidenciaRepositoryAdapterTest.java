@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 import com.rgm.api.adapter.out.persistence.entity.EvidenciaJpaEntity;
 import com.rgm.api.adapter.out.persistence.repository.EvidenciaJpaRepository;
 import com.rgm.api.core.domain.model.aggregates.Evidencia;
+import com.rgm.api.core.domain.model.enums.TipoEvidencia;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
@@ -37,6 +38,7 @@ class EvidenciaRepositoryAdapterTest {
     e.setTamanhoBytes(1024);
     e.setEnviadaPorUsuarioId(UUID.randomUUID());
     e.setCriadaEm(Instant.now());
+    e.setTipo(TipoEvidencia.GERAL);
     return e;
   }
 
@@ -48,7 +50,9 @@ class EvidenciaRepositoryAdapterTest {
         "foto.jpg",
         1024,
         UUID.randomUUID(),
-        Instant.now());
+        Instant.now(),
+        TipoEvidencia.GERAL,
+        null);
   }
 
   @Test
@@ -89,5 +93,18 @@ class EvidenciaRepositoryAdapterTest {
     final UUID id = UUID.randomUUID();
     adapter.deleteById(id);
     verify(jpa).deleteById(id);
+  }
+
+  @Test
+  void existsBySolicitacaoIdAndTipo_delegaAoJpa() {
+    final UUID solicitacaoId = UUID.randomUUID();
+    when(jpa.existsBySolicitacaoIdAndTipo(solicitacaoId, TipoEvidencia.SERVICO_REALIZADO))
+        .thenReturn(true);
+
+    final boolean result =
+        adapter.existsBySolicitacaoIdAndTipo(solicitacaoId, TipoEvidencia.SERVICO_REALIZADO);
+
+    assertTrue(result);
+    verify(jpa).existsBySolicitacaoIdAndTipo(solicitacaoId, TipoEvidencia.SERVICO_REALIZADO);
   }
 }

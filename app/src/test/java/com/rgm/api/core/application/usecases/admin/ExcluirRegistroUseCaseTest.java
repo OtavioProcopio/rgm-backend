@@ -15,6 +15,7 @@ import com.rgm.api.core.domain.model.entities.SolicitacaoEvidencia;
 import com.rgm.api.core.domain.model.enums.PerfilUsuario;
 import com.rgm.api.core.domain.model.enums.PrioridadeSolicitacao;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
+import com.rgm.api.core.domain.model.enums.TipoEvidencia;
 import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
 import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.EventoModeloRepository;
@@ -115,7 +116,15 @@ class ExcluirRegistroUseCaseTest {
     final SolicitacaoEvidencia rel = new SolicitacaoEvidencia(solId, evidenciaId);
     final Evidencia ev =
         new Evidencia(
-            evidenciaId, "http://file", "image/png", "foto.png", 1024, UUID.randomUUID(), agora);
+            evidenciaId,
+            "http://file",
+            "image/png",
+            "foto.png",
+            1024,
+            UUID.randomUUID(),
+            agora,
+            TipoEvidencia.GERAL,
+            null);
 
     when(usuarioRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
     when(solicitacaoRepository.findById(solId)).thenReturn(Optional.of(sol));

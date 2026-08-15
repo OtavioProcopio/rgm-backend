@@ -12,13 +12,14 @@ import com.rgm.api.core.domain.model.aggregates.Usuario;
 import com.rgm.api.core.domain.model.enums.PerfilUsuario;
 import com.rgm.api.core.domain.model.enums.PrioridadeSolicitacao;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
+import com.rgm.api.core.domain.model.enums.TipoEvidencia;
 import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
 import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository;
+import com.rgm.api.core.domain.ports.repositories.EvidenciaRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoAtribuicaoRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import java.time.Instant;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,8 +31,7 @@ class EnviarParaValidacaoUseCaseTest {
   private UsuarioRepository usuarioRepository;
   private SolicitacaoAtribuicaoRepository atribuicaoRepository;
   private AtividadeSolicitacaoRepository atividadeRepository;
-  private com.rgm.api.core.domain.ports.repositories.SolicitacaoEvidenciaRepository
-      solicitacaoEvidenciaRepository;
+  private EvidenciaRepository evidenciaRepository;
   private EnviarParaValidacaoUseCase useCase;
 
   @BeforeEach
@@ -40,13 +40,12 @@ class EnviarParaValidacaoUseCaseTest {
     usuarioRepository = mock(UsuarioRepository.class);
     atribuicaoRepository = mock(SolicitacaoAtribuicaoRepository.class);
     atividadeRepository = mock(AtividadeSolicitacaoRepository.class);
-    solicitacaoEvidenciaRepository =
-        mock(com.rgm.api.core.domain.ports.repositories.SolicitacaoEvidenciaRepository.class);
+    evidenciaRepository = mock(EvidenciaRepository.class);
 
-    // Default mock: return a list containing an evidence so existing transition tests succeed
-    when(solicitacaoEvidenciaRepository.findBySolicitacaoId(any()))
-        .thenReturn(
-            List.of(mock(com.rgm.api.core.domain.model.entities.SolicitacaoEvidencia.class)));
+    // Default mock: evidencia de SERVICO_REALIZADO ja anexada, para os testes de transicao.
+    when(evidenciaRepository.existsBySolicitacaoIdAndTipo(
+            any(), eq(TipoEvidencia.SERVICO_REALIZADO)))
+        .thenReturn(true);
 
     useCase =
         new EnviarParaValidacaoUseCase(
@@ -54,7 +53,7 @@ class EnviarParaValidacaoUseCaseTest {
             usuarioRepository,
             atribuicaoRepository,
             atividadeRepository,
-            solicitacaoEvidenciaRepository);
+            evidenciaRepository);
   }
 
   private Solicitacao criarSolicitacaoEmAndamento() {
@@ -236,8 +235,9 @@ class EnviarParaValidacaoUseCaseTest {
 
     when(usuarioRepository.findById(gestor.getId())).thenReturn(Optional.of(gestor));
     when(solicitacaoRepository.findById(solicitacao.getId())).thenReturn(Optional.of(solicitacao));
-    when(solicitacaoEvidenciaRepository.findBySolicitacaoId(solicitacao.getId()))
-        .thenReturn(java.util.Collections.emptyList());
+    when(evidenciaRepository.existsBySolicitacaoIdAndTipo(
+            solicitacao.getId(), TipoEvidencia.SERVICO_REALIZADO))
+        .thenReturn(false);
 
     final var ex =
         assertThrows(
@@ -267,9 +267,10 @@ class EnviarParaValidacaoUseCaseTest {
 
     when(usuarioRepository.findById(gestor.getId())).thenReturn(Optional.of(gestor));
     when(solicitacaoRepository.findById(solicitacao.getId())).thenReturn(Optional.of(solicitacao));
-    // Simulate no uploaded files (empty list)
-    when(solicitacaoEvidenciaRepository.findBySolicitacaoId(solicitacao.getId()))
-        .thenReturn(java.util.Collections.emptyList());
+    // Simulate no evidencia de SERVICO_REALIZADO anexada
+    when(evidenciaRepository.existsBySolicitacaoIdAndTipo(
+            solicitacao.getId(), TipoEvidencia.SERVICO_REALIZADO))
+        .thenReturn(false);
 
     final var ex =
         assertThrows(

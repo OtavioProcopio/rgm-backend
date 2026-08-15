@@ -9,6 +9,7 @@ import com.rgm.api.core.domain.model.aggregates.Solicitacao;
 import com.rgm.api.core.domain.model.aggregates.Usuario;
 import com.rgm.api.core.domain.model.entities.AtividadeSolicitacao;
 import com.rgm.api.core.domain.model.entities.SolicitacaoEvidencia;
+import com.rgm.api.core.domain.model.enums.TipoEvidencia;
 import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.EvidenciaRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoAtribuicaoRepository;
@@ -59,7 +60,16 @@ public final class AnexarEvidenciaUseCase {
       String mimeType,
       long tamanhoBytes,
       InputStream conteudo,
-      UUID enviadaPorUsuarioId) {}
+      UUID enviadaPorUsuarioId,
+      TipoEvidencia tipo,
+      String descricao) {
+
+    public Input {
+      if (tipo == null) {
+        tipo = TipoEvidencia.GERAL;
+      }
+    }
+  }
 
   public String upload(final Input input) {
 
@@ -105,7 +115,9 @@ public final class AnexarEvidenciaUseCase {
                 ? (int) input.tamanhoBytes()
                 : null,
             input.enviadaPorUsuarioId(),
-            agora);
+            agora,
+            input.tipo(),
+            input.descricao());
 
     final Evidencia salva = evidenciaRepository.save(evidencia);
 

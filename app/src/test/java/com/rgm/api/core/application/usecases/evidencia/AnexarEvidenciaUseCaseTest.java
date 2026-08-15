@@ -13,6 +13,7 @@ import com.rgm.api.core.domain.model.aggregates.Usuario;
 import com.rgm.api.core.domain.model.enums.PerfilUsuario;
 import com.rgm.api.core.domain.model.enums.PrioridadeSolicitacao;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
+import com.rgm.api.core.domain.model.enums.TipoEvidencia;
 import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
 import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.EvidenciaRepository;
@@ -106,7 +107,9 @@ class AnexarEvidenciaUseCaseTest {
             "image/jpeg",
             1024L,
             new ByteArrayInputStream(new byte[1024]),
-            usuarioId);
+            usuarioId,
+            null,
+            null);
 
     final String publicUrl = useCase.upload(input);
     final Evidencia resultado = useCase.persist(input, publicUrl);
@@ -114,8 +117,74 @@ class AnexarEvidenciaUseCaseTest {
     assertNotNull(resultado);
     assertEquals(url, publicUrl);
     assertEquals("image/jpeg", resultado.getMimeType());
+    assertEquals(TipoEvidencia.GERAL, resultado.getTipo());
     verify(solicitacaoEvidenciaRepository).save(any());
     verify(atividadeRepository).save(any());
+  }
+
+  @Test
+  void deveAnexarEvidenciaComTipoEDescricao() {
+    final Solicitacao sol = criarSolicitacao(StatusSolicitacao.EM_ANDAMENTO);
+    final UUID usuarioId = UUID.randomUUID();
+    final String url = "http://minio:9000/images/servico.jpg";
+
+    when(solicitacaoRepository.findById(sol.getId())).thenReturn(Optional.of(sol));
+    when(usuarioRepository.findById(usuarioId))
+        .thenReturn(Optional.of(criarUsuario(usuarioId, PerfilUsuario.OPERADOR)));
+    when(atribuicaoRepository.existsBySolicitacaoIdAndUsuarioIdAndRemovidoEmIsNull(
+            sol.getId(), usuarioId))
+        .thenReturn(true);
+    when(storageService.upload(any(), any(), any(), anyLong())).thenReturn(url);
+    when(evidenciaRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(solicitacaoEvidenciaRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(atividadeRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    final var input =
+        new AnexarEvidenciaUseCase.Input(
+            sol.getId(),
+            "servico.jpg",
+            "image/jpeg",
+            1024L,
+            new ByteArrayInputStream(new byte[1024]),
+            usuarioId,
+            TipoEvidencia.SERVICO_REALIZADO,
+            "Servico realizado conforme solicitado");
+
+    final String publicUrl = useCase.upload(input);
+    final Evidencia resultado = useCase.persist(input, publicUrl);
+
+    assertEquals(TipoEvidencia.SERVICO_REALIZADO, resultado.getTipo());
+    assertEquals("Servico realizado conforme solicitado", resultado.getDescricao());
+  }
+
+  @Test
+  void deveFalharComServicoRealizadoSemDescricao() {
+    final Solicitacao sol = criarSolicitacao(StatusSolicitacao.EM_ANDAMENTO);
+    final UUID usuarioId = UUID.randomUUID();
+    final String url = "http://minio:9000/images/servico.jpg";
+
+    when(solicitacaoRepository.findById(sol.getId())).thenReturn(Optional.of(sol));
+    when(usuarioRepository.findById(usuarioId))
+        .thenReturn(Optional.of(criarUsuario(usuarioId, PerfilUsuario.OPERADOR)));
+    when(atribuicaoRepository.existsBySolicitacaoIdAndUsuarioIdAndRemovidoEmIsNull(
+            sol.getId(), usuarioId))
+        .thenReturn(true);
+    when(storageService.upload(any(), any(), any(), anyLong())).thenReturn(url);
+
+    final var input =
+        new AnexarEvidenciaUseCase.Input(
+            sol.getId(),
+            "servico.jpg",
+            "image/jpeg",
+            1024L,
+            new ByteArrayInputStream(new byte[1024]),
+            usuarioId,
+            TipoEvidencia.SERVICO_REALIZADO,
+            "   ");
+
+    final String publicUrl = useCase.upload(input);
+
+    assertThrows(ValidationException.class, () -> useCase.persist(input, publicUrl));
   }
 
   @Test
@@ -132,7 +201,9 @@ class AnexarEvidenciaUseCaseTest {
                     "image/jpeg",
                     1024L,
                     new ByteArrayInputStream(new byte[0]),
-                    UUID.randomUUID())));
+                    UUID.randomUUID(),
+                    null,
+                    null)));
   }
 
   @Test
@@ -151,7 +222,9 @@ class AnexarEvidenciaUseCaseTest {
                     "image/jpeg",
                     1024L,
                     new ByteArrayInputStream(new byte[0]),
-                    UUID.randomUUID())));
+                    UUID.randomUUID(),
+                    null,
+                    null)));
   }
 
   @Test
@@ -175,7 +248,9 @@ class AnexarEvidenciaUseCaseTest {
             "application/pdf",
             2048L,
             new ByteArrayInputStream(new byte[2048]),
-            usuarioId);
+            usuarioId,
+            null,
+            null);
 
     final String publicUrl = useCase.upload(input);
     final Evidencia resultado = useCase.persist(input, publicUrl);
@@ -199,6 +274,8 @@ class AnexarEvidenciaUseCaseTest {
                     "text/html",
                     1024L,
                     new ByteArrayInputStream(new byte[0]),
-                    UUID.randomUUID())));
+                    UUID.randomUUID(),
+                    null,
+                    null)));
   }
 }

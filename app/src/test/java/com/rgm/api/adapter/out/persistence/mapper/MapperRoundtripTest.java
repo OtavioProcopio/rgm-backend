@@ -15,6 +15,7 @@ import com.rgm.api.core.domain.model.enums.PrioridadeSolicitacao;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
 import com.rgm.api.core.domain.model.enums.TipoAtividadeSolicitacao;
 import com.rgm.api.core.domain.model.enums.TipoEventoModelo;
+import com.rgm.api.core.domain.model.enums.TipoEvidencia;
 import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
 import java.time.Instant;
 import java.util.UUID;
@@ -214,7 +215,16 @@ class MapperRoundtripTest {
     final UUID id = UUID.randomUUID();
     final UUID enviadaPor = UUID.randomUUID();
     final Evidencia original =
-        new Evidencia(id, "http://url/img.png", "image/png", "img.png", 4096, enviadaPor, T1);
+        new Evidencia(
+            id,
+            "http://url/img.png",
+            "image/png",
+            "img.png",
+            4096,
+            enviadaPor,
+            T1,
+            TipoEvidencia.GERAL,
+            null);
 
     final Evidencia result = EvidenciaMapper.toDomain(EvidenciaMapper.toJpa(original));
 

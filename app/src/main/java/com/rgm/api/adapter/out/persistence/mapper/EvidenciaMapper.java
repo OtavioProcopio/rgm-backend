@@ -15,7 +15,9 @@ public final class EvidenciaMapper {
         e.getNomeArquivo(),
         e.getTamanhoBytes(),
         e.getEnviadaPorUsuarioId(),
-        e.getCriadaEm());
+        e.getCriadaEm(),
+        e.getTipo(),
+        e.getDescricao());
   }
 
   public static Evidencia toDomain(final EvidenciaJpaEntity e) {
@@ -26,6 +28,8 @@ public final class EvidenciaMapper {
         e.getNomeArquivo(),
         e.getTamanhoBytes(),
         e.getEnviadaPorUsuarioId(),
-        e.getCriadaEm());
+        e.getCriadaEm(),
+        e.getTipo(),
+        e.getDescricao());
   }
 }

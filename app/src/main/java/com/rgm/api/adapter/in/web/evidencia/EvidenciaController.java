@@ -4,7 +4,9 @@ import com.rgm.api.adapter.in.web.dto.response.EvidenciaResponse;
 import com.rgm.api.core.application.usecases.evidencia.AnexarEvidenciaUseCase;
 import com.rgm.api.core.application.usecases.evidencia.ExcluirEvidenciaUseCase;
 import com.rgm.api.core.application.usecases.evidencia.VisualizarEvidenciaUseCase;
+import com.rgm.api.core.domain.exceptions.ValidationException;
 import com.rgm.api.core.domain.model.aggregates.Evidencia;
+import com.rgm.api.core.domain.model.enums.TipoEvidencia;
 import java.util.List;
 import java.util.UUID;
 import org.slf4j.Logger;
@@ -44,6 +46,8 @@ public class EvidenciaController {
   public ResponseEntity<EvidenciaResponse> anexar(
       @PathVariable final UUID solicitacaoId,
       @RequestParam("file") final MultipartFile file,
+      @RequestParam(value = "tipo", required = false) final String tipo,
+      @RequestParam(value = "descricao", required = false) final String descricao,
       final Authentication authentication) {
     try {
       final UUID usuarioId = UUID.fromString(authentication.getName());
@@ -54,13 +58,26 @@ public class EvidenciaController {
               file.getContentType() != null ? file.getContentType() : "application/octet-stream",
               file.getSize(),
               file.getInputStream(),
-              usuarioId);
+              usuarioId,
+              parseTipo(tipo),
+              descricao);
 
       final String publicUrl = anexarUseCase.upload(input);
       final Evidencia evidencia = anexarUseCase.persist(input, publicUrl);
       return ResponseEntity.status(HttpStatus.CREATED).body(EvidenciaResponse.from(evidencia));
     } catch (final java.io.IOException e) {
       throw new RuntimeException("Erro ao ler arquivo: " + e.getMessage(), e);
+    }
+  }
+
+  private static TipoEvidencia parseTipo(final String tipo) {
+    if (tipo == null || tipo.isBlank()) {
+      return null;
+    }
+    try {
+      return TipoEvidencia.valueOf(tipo);
+    } catch (final IllegalArgumentException e) {
+      throw new ValidationException("Tipo de evidencia invalido: " + tipo);
     }
   }
 
