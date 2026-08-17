@@ -116,6 +116,12 @@ Referência de todos os casos de uso implementados no sistema.
 - **Erros**: 400 (`sort`/`dir` inválidos)
 - **Nota**: A ficha PDF individual do modelo (`GET /api/modelos/{id}/pdf`) também passou a exibir as mesmas duas métricas, calculadas em memória a partir das solicitações já carregadas do modelo (exige 2+ solicitações CONCLUIDA); o critério difere levemente do ranking (que considera intervalos entre TODAS as solicitações, não só as concluídas), decisão documentada no OpenSpec change `metricas-tempo-por-modelo`.
 
+## UC-17 — SLA de solicitações (SOL-007)
+- **Classe**: `Solicitacao` (agregado) — `getPrazoLimite()`, `getTempoRestanteSegundos(agora)`, `isAtrasada(agora)`, `getTempoResolucaoSegundos()`
+- **Regras**: cada `PrioridadeSolicitacao` tem um prazo de SLA fixo em horas (`URGENTE`=4h, `ALTA`=24h, `MEDIA`=72h, `BAIXA`=168h); `prazoLimite = criadaEm + slaHoras(prioridade)`, calculado a partir da abertura (mesmo anchor usado no "tempo médio de resolução" do UC-16); antes da triagem (sem prioridade) todos os campos de SLA retornam nulo/`false`; `atrasada` compara com `now()` em status não-terminal, com `concluidaEm` em CONCLUIDA, e é sempre `false` em CANCELADA (trabalho cancelado não conta contra o SLA); `tempoResolucaoSegundos` só é preenchido quando CONCLUIDA
+- **Exposição**: os 4 campos (`prazoLimite`, `tempoRestanteSegundos`, `atrasada`, `tempoResolucaoSegundos`) são computados em `SolicitacaoResponse.from(...)` com `Instant.now()`, portanto aparecem em toda resposta de solicitação (`GET /api/solicitacoes`, `GET /api/solicitacoes/{id}`, e nas respostas de cada transição de status) sem exigir coluna nova no banco
+- **Fora de escopo por ora**: não há filtro de listagem por `atrasada=true` nem alerta/notificação de vencimento — os campos ficam disponíveis para o cliente decidir como destacar
+
 ---
 
 ## Endpoints de Listagem (com filtros)

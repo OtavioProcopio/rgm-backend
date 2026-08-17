@@ -19,27 +19,18 @@ public record SolicitacaoResponse(
     Instant atualizadaEm,
     Instant concluidaEm,
     Instant canceladaEm,
-    List<UUID> responsavelIds) {
+    List<UUID> responsavelIds,
+    Instant prazoLimite,
+    Long tempoRestanteSegundos,
+    boolean atrasada,
+    Long tempoResolucaoSegundos) {
 
   public static SolicitacaoResponse from(final Solicitacao s) {
-    return new SolicitacaoResponse(
-        s.getId(),
-        s.getTitulo(),
-        s.getDescricao(),
-        s.getTipo().name(),
-        s.getStatus().name(),
-        s.getPrioridade() != null ? s.getPrioridade().name() : null,
-        s.getModeloId(),
-        s.getAbertaPorUsuarioId(),
-        s.getComentarioFinal(),
-        s.getCriadaEm(),
-        s.getAtualizadaEm(),
-        s.getConcluidaEm(),
-        s.getCanceladaEm(),
-        List.of());
+    return from(s, List.of());
   }
 
   public static SolicitacaoResponse from(final Solicitacao s, final List<UUID> responsaveis) {
+    final Instant agora = Instant.now();
     return new SolicitacaoResponse(
         s.getId(),
         s.getTitulo(),
@@ -54,6 +45,10 @@ public record SolicitacaoResponse(
         s.getAtualizadaEm(),
         s.getConcluidaEm(),
         s.getCanceladaEm(),
-        responsaveis);
+        responsaveis,
+        s.getPrazoLimite(),
+        s.getTempoRestanteSegundos(agora),
+        s.isAtrasada(agora),
+        s.getTempoResolucaoSegundos());
   }
 }
