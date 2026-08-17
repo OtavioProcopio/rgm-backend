@@ -97,11 +97,35 @@ class MapperTest {
             NOW,
             NOW,
             null,
-            null);
+            null,
+            3L);
     final Solicitacao s = SolicitacaoMapper.toDomain(e);
 
     assertEquals(PrioridadeSolicitacao.ALTA, s.getPrioridade());
     assertEquals(StatusSolicitacao.EM_ANDAMENTO, s.getStatus());
+    assertEquals(3L, s.getVersion());
+  }
+
+  @Test
+  void solicitacaoMapper_toJpa_preservaVersion() {
+    final Solicitacao s =
+        new Solicitacao(
+            UUID.randomUUID(),
+            "T",
+            "D",
+            TipoSolicitacao.REPARO,
+            StatusSolicitacao.EM_ANDAMENTO,
+            PrioridadeSolicitacao.MEDIA,
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            null,
+            NOW,
+            NOW,
+            null,
+            null,
+            5L);
+
+    assertEquals(5L, SolicitacaoMapper.toJpa(s).getVersion());
   }
 
   // ──────── ModeloMapper ────────

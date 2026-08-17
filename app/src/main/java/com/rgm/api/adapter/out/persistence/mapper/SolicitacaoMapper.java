@@ -21,7 +21,8 @@ public final class SolicitacaoMapper {
         s.getCriadaEm(),
         s.getAtualizadaEm(),
         s.getConcluidaEm(),
-        s.getCanceladaEm());
+        s.getCanceladaEm(),
+        s.getVersion());
   }
 
   public static Solicitacao toDomain(final SolicitacaoJpaEntity e) {
@@ -38,6 +39,7 @@ public final class SolicitacaoMapper {
         e.getCriadaEm(),
         e.getAtualizadaEm(),
         e.getConcluidaEm(),
-        e.getCanceladaEm());
+        e.getCanceladaEm(),
+        e.getVersion());
   }
 }

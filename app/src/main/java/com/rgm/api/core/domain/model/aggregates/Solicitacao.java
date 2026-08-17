@@ -32,6 +32,7 @@ public final class Solicitacao {
   private final Instant atualizadaEm;
   private final Instant concluidaEm;
   private final Instant canceladaEm;
+  private final Long version;
 
   public Solicitacao(
       final UUID id,
@@ -47,6 +48,43 @@ public final class Solicitacao {
       final Instant atualizadaEm,
       final Instant concluidaEm,
       final Instant canceladaEm) {
+    this(
+        id,
+        titulo,
+        descricao,
+        tipo,
+        status,
+        prioridade,
+        modeloId,
+        abertaPorUsuarioId,
+        comentarioFinal,
+        criadaEm,
+        atualizadaEm,
+        concluidaEm,
+        canceladaEm,
+        null);
+  }
+
+  /**
+   * Construtor completo, incluindo o {@code version} usado para lock otimista na persistencia
+   * (issue #80) — preservado, nao recalculado, a cada transicao. O construtor publico de 13
+   * argumentos cobre o caso comum (version nulo, ainda nao persistido).
+   */
+  public Solicitacao(
+      final UUID id,
+      final String titulo,
+      final String descricao,
+      final TipoSolicitacao tipo,
+      final StatusSolicitacao status,
+      final PrioridadeSolicitacao prioridade,
+      final UUID modeloId,
+      final UUID abertaPorUsuarioId,
+      final String comentarioFinal,
+      final Instant criadaEm,
+      final Instant atualizadaEm,
+      final Instant concluidaEm,
+      final Instant canceladaEm,
+      final Long version) {
     this.id = requireNonNull(id, "id");
     this.titulo = requireNonBlank(titulo, "titulo");
     this.descricao = requireNonBlank(descricao, "descricao");
@@ -60,6 +98,7 @@ public final class Solicitacao {
     this.atualizadaEm = requireNonNull(atualizadaEm, "atualizadaEm");
     this.concluidaEm = concluidaEm;
     this.canceladaEm = canceladaEm;
+    this.version = version;
 
     validateInvariants();
   }
@@ -108,7 +147,8 @@ public final class Solicitacao {
         criadaEm,
         agora,
         null,
-        null);
+        null,
+        version);
   }
 
   /** UC-05: Enviar para validacao (EM_ANDAMENTO -> EM_VALIDACAO). */
@@ -127,7 +167,8 @@ public final class Solicitacao {
         criadaEm,
         agora,
         null,
-        null);
+        null,
+        version);
   }
 
   /** UC-06: Devolver para correcao (EM_VALIDACAO -> EM_ANDAMENTO). */
@@ -148,7 +189,8 @@ public final class Solicitacao {
         criadaEm,
         agora,
         null,
-        null);
+        null,
+        version);
   }
 
   /** Editar titulo, descricao e tipo (somente em status nao-terminal). */
@@ -173,7 +215,8 @@ public final class Solicitacao {
         criadaEm,
         agora,
         concluidaEm,
-        canceladaEm);
+        canceladaEm,
+        version);
   }
 
   /** UC-07: Concluir solicitacao (EM_VALIDACAO -> CONCLUIDA). */
@@ -193,7 +236,8 @@ public final class Solicitacao {
         criadaEm,
         agora,
         agora,
-        null);
+        null,
+        version);
   }
 
   /** UC-07: Cancelar solicitacao (status permitido -> CANCELADA). */
@@ -213,7 +257,8 @@ public final class Solicitacao {
         criadaEm,
         agora,
         null,
-        agora);
+        agora,
+        version);
   }
 
   /**
@@ -349,6 +394,11 @@ public final class Solicitacao {
 
   public Instant getCanceladaEm() {
     return canceladaEm;
+  }
+
+  /** Version usada para lock otimista na persistencia (issue #80). Nulo se ainda nao persistida. */
+  public Long getVersion() {
+    return version;
   }
 
   /**

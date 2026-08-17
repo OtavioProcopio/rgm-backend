@@ -120,7 +120,14 @@ Referência de todos os casos de uso implementados no sistema.
 - **Classe**: `Solicitacao` (agregado) — `getPrazoLimite()`, `getTempoRestanteSegundos(agora)`, `isAtrasada(agora)`, `getTempoResolucaoSegundos()`
 - **Regras**: cada `PrioridadeSolicitacao` tem um prazo de SLA fixo em horas (`URGENTE`=4h, `ALTA`=24h, `MEDIA`=72h, `BAIXA`=168h); `prazoLimite = criadaEm + slaHoras(prioridade)`, calculado a partir da abertura (mesmo anchor usado no "tempo médio de resolução" do UC-16); antes da triagem (sem prioridade) todos os campos de SLA retornam nulo/`false`; `atrasada` compara com `now()` em status não-terminal, com `concluidaEm` em CONCLUIDA, e é sempre `false` em CANCELADA (trabalho cancelado não conta contra o SLA); `tempoResolucaoSegundos` só é preenchido quando CONCLUIDA
 - **Exposição**: os 4 campos (`prazoLimite`, `tempoRestanteSegundos`, `atrasada`, `tempoResolucaoSegundos`) são computados em `SolicitacaoResponse.from(...)` com `Instant.now()`, portanto aparecem em toda resposta de solicitação (`GET /api/solicitacoes`, `GET /api/solicitacoes/{id}`, e nas respostas de cada transição de status) sem exigir coluna nova no banco
-- **Fora de escopo por ora**: não há filtro de listagem por `atrasada=true` nem alerta/notificação de vencimento — os campos ficam disponíveis para o cliente decidir como destacar
+- **Fora de escopo por ora**: não há alerta/notificação de vencimento — os campos ficam disponíveis para o cliente decidir como destacar (ver issue #81)
+
+## UC-18 — Lock otimista em Solicitacao (issue #80)
+- **Classe**: `Solicitacao` (agregado) — campo `version`, preservado (não recalculado) em toda transição; `SolicitacaoJpaEntity` mapeia via `@Version`
+- **Regras**: sem `@Version`/lock pessimista, duas transições concorrentes no mesmo card (ex.: GESTOR e OPERADOR atribuído mexendo ao mesmo tempo) podiam gerar lost update silencioso. Com `@Version`, o `UPDATE ... WHERE id = ? AND version = ?` gerado pelo Hibernate falha (0 linhas afetadas) se a linha mudou entre o load e o save da mesma transação
+- **Migração**: `V7__lock_otimista_solicitacoes.sql` adiciona a coluna `version BIGINT NOT NULL DEFAULT 0`
+- **Erros**: `ObjectOptimisticLockingFailureException` (Spring/Hibernate) é mapeada pelo `GlobalExceptionHandler` para 409 Conflict — "Este registro foi alterado por outro usuario. Recarregue e tente novamente."
+- **Compatibilidade**: o construtor público de 13 argumentos de `Solicitacao` continua existindo (version nulo, i.e. ainda não persistida); o mapper de persistência usa o construtor de 14 argumentos para preservar o version lido do banco
 
 ---
 
@@ -128,7 +135,7 @@ Referência de todos os casos de uso implementados no sistema.
 
 | Endpoint | Filtros | Paginação |
 |----------|---------|-----------|
-| `GET /api/solicitacoes` | `status`, `modeloId`, `tipo`, `prioridade`, `criadaEmInicio`/`criadaEmFim`, `abertaPorUsuarioId`, `responsavelId`, `maquina` | `page`, `size` |
+| `GET /api/solicitacoes` | `status`, `modeloId`, `tipo`, `prioridade`, `criadaEmInicio`/`criadaEmFim`, `abertaPorUsuarioId`, `responsavelId`, `maquina`, `atrasada` | `page`, `size` |
 | `GET /api/solicitacoes/relatorio` | mesmos filtros de `GET /api/solicitacoes` | — (Exportação em PDF) |
 | `GET /api/admin/usuarios` | `perfil`, `ativo` | `page`, `size` |
 | `GET /api/modelos` | `ativo`, `codigo` | `page`, `size` |

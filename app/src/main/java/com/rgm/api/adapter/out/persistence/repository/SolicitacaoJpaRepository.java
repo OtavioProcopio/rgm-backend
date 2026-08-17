@@ -12,6 +12,28 @@ import org.springframework.data.jpa.repository.Query;
 
 public interface SolicitacaoJpaRepository extends JpaRepository<SolicitacaoJpaEntity, UUID> {
 
+  /** SOL-007: prazo-limite = criada_em + horas de SLA da prioridade atual. */
+  String PRAZO_LIMITE_EXPR =
+      "(s.criada_em + (CASE s.prioridade "
+          + "WHEN 'URGENTE' THEN INTERVAL '4 hours' "
+          + "WHEN 'ALTA' THEN INTERVAL '24 hours' "
+          + "WHEN 'MEDIA' THEN INTERVAL '72 hours' "
+          + "WHEN 'BAIXA' THEN INTERVAL '168 hours' END))";
+
+  /** issue #81: filtro por atrasada — espelha Solicitacao#isAtrasada em SQL. */
+  String ATRASADA_FILTRO =
+      "(CAST(:atrasada AS boolean) IS NULL OR ("
+          + "s.prioridade IS NOT NULL AND ("
+          + "CASE s.status "
+          + "WHEN 'CANCELADA' THEN false "
+          + "WHEN 'CONCLUIDA' THEN s.concluida_em > "
+          + PRAZO_LIMITE_EXPR
+          + " "
+          + "ELSE now() > "
+          + PRAZO_LIMITE_EXPR
+          + " "
+          + "END) = :atrasada))";
+
   boolean existsByModeloIdAndStatusIn(UUID modeloId, List<StatusSolicitacao> statuses);
 
   boolean existsByModeloId(UUID modeloId);
@@ -36,7 +58,8 @@ public interface SolicitacaoJpaRepository extends JpaRepository<SolicitacaoJpaEn
               + "(CAST(:concluidaEmFim AS timestamptz) IS NULL OR s.concluida_em <= :concluidaEmFim) AND "
               + "(CAST(:abertaPorUsuarioId AS uuid) IS NULL OR s.aberta_por_usuario_id = :abertaPorUsuarioId) AND "
               + "(CAST(:responsavelId AS uuid) IS NULL OR EXISTS (SELECT 1 FROM solicitacao_atribuicoes a WHERE a.solicitacao_id = s.id AND a.usuario_id = :responsavelId AND a.removido_em IS NULL)) AND "
-              + "(CAST(:maquina AS text) IS NULL OR mo.maquina = :maquina)",
+              + "(CAST(:maquina AS text) IS NULL OR mo.maquina = :maquina) AND "
+              + ATRASADA_FILTRO,
       countQuery =
           "SELECT COUNT(s.*) FROM solicitacoes s "
               + "JOIN modelos mo ON mo.id = s.modelo_id WHERE "
@@ -50,7 +73,8 @@ public interface SolicitacaoJpaRepository extends JpaRepository<SolicitacaoJpaEn
               + "(CAST(:concluidaEmFim AS timestamptz) IS NULL OR s.concluida_em <= :concluidaEmFim) AND "
               + "(CAST(:abertaPorUsuarioId AS uuid) IS NULL OR s.aberta_por_usuario_id = :abertaPorUsuarioId) AND "
               + "(CAST(:responsavelId AS uuid) IS NULL OR EXISTS (SELECT 1 FROM solicitacao_atribuicoes a WHERE a.solicitacao_id = s.id AND a.usuario_id = :responsavelId AND a.removido_em IS NULL)) AND "
-              + "(CAST(:maquina AS text) IS NULL OR mo.maquina = :maquina)",
+              + "(CAST(:maquina AS text) IS NULL OR mo.maquina = :maquina) AND "
+              + ATRASADA_FILTRO,
       nativeQuery = true)
   Page<SolicitacaoJpaEntity> findByFilters(
       @org.springframework.data.repository.query.Param("status") String status,
@@ -66,6 +90,7 @@ public interface SolicitacaoJpaRepository extends JpaRepository<SolicitacaoJpaEn
           UUID abertaPorUsuarioId,
       @org.springframework.data.repository.query.Param("responsavelId") UUID responsavelId,
       @org.springframework.data.repository.query.Param("maquina") String maquina,
+      @org.springframework.data.repository.query.Param("atrasada") Boolean atrasada,
       Pageable pageable);
 
   @Query("SELECT s.modeloId, COUNT(s) FROM SolicitacaoJpaEntity s GROUP BY s.modeloId")

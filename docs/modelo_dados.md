@@ -66,6 +66,11 @@ Relação (conceitual):
 - `atualizadaEm: datetime`
 - `concluidaEm: datetime` (opcional)
 - `canceladaEm: datetime` (opcional)
+- `version: long` (lock otimista — issue #80, não exposto na API)
+
+Campos computados (não persistidos, calculados a partir de `criadaEm` +
+`prioridade` — ver SOL-007): `prazoLimite`, `tempoRestanteSegundos`,
+`atrasada`, `tempoResolucaoSegundos`.
 
 ### SolicitacaoAtribuicao
 

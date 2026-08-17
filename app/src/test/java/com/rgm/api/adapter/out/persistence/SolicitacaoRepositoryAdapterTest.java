@@ -187,7 +187,8 @@ class SolicitacaoRepositoryAdapterTest {
     final SolicitacaoJpaEntity e = criarEntity();
     final Page<SolicitacaoJpaEntity> page = new PageImpl<>(List.of(e), PageRequest.of(0, 10), 1);
     when(jpa.findByFilters(
-            any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+            any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
+            any()))
         .thenReturn(page);
 
     final PageResult<Solicitacao> result =
@@ -195,6 +196,7 @@ class SolicitacaoRepositoryAdapterTest {
             StatusSolicitacao.A_FAZER,
             null,
             TipoSolicitacao.REPARO,
+            null,
             null,
             null,
             null,
@@ -213,12 +215,13 @@ class SolicitacaoRepositoryAdapterTest {
   void findByFilters_comNulos_retornaPaginado() {
     final Page<SolicitacaoJpaEntity> page = new PageImpl<>(List.of(), PageRequest.of(0, 10), 0);
     when(jpa.findByFilters(
-            any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+            any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
+            any()))
         .thenReturn(page);
 
     final PageResult<Solicitacao> result =
         adapter.findByFilters(
-            null, null, null, null, null, null, null, null, null, null, null, 0, 10);
+            null, null, null, null, null, null, null, null, null, null, null, null, 0, 10);
 
     assertEquals(0, result.content().size());
   }
