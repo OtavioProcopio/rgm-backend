@@ -228,8 +228,8 @@ diretamente (precisa de um GESTOR como procurador).
 
 ### Requirement: Listar, filtrar e exportar solicitacoes
 O sistema SHALL permitir listar solicitacoes com paginacao e filtros (status,
-modelo, tipo, periodo, maquina), e exportar a lista filtrada em PDF com
-trilha de auditoria (quem abriu, quem alterou, quando).
+modelo, tipo, periodo, maquina, atrasada), e exportar a lista filtrada em PDF
+com trilha de auditoria (quem abriu, quem alterou, quando).
 
 #### Scenario: Listagem paginada e filtrada
 - **WHEN** um usuario autenticado lista solicitacoes com filtros
@@ -241,9 +241,27 @@ trilha de auditoria (quem abriu, quem alterou, quando).
 - **THEN** o sistema retorna apenas solicitacoes cujo modelo pertence aquela
   maquina
 
+#### Scenario: Filtro por atrasada
+- **WHEN** um usuario autenticado lista solicitacoes com `atrasada=true`
+- **THEN** o sistema retorna apenas solicitacoes cujo SLA (ver Requirement
+  "SLA de solicitacoes") esta vencido, sem carregar solicitacoes em memoria
+  para filtrar (calculo feito no banco)
+
 #### Scenario: Exportar PDF
 - **WHEN** um usuario autenticado exporta a lista com os filtros aplicados
 - **THEN** o sistema retorna um PDF tabular com a auditoria completa
+
+### Requirement: Lock otimista em transicoes de status
+O sistema SHALL usar lock otimista (coluna `version`) em `Solicitacao` para
+detectar e rejeitar transicoes concorrentes no mesmo card, evitando lost
+update silencioso quando dois usuarios movem a mesma solicitacao quase
+simultaneamente.
+
+#### Scenario: Duas transicoes concorrentes na mesma solicitacao
+- **WHEN** duas requisicoes leem a mesma solicitacao na mesma versao e ambas
+  tentam persistir uma transicao de status
+- **THEN** apenas a primeira a persistir tem sucesso; a segunda recebe 409
+  Conflict, sem sobrescrever silenciosamente a mudanca da primeira
 
 ### Requirement: SLA de solicitacoes
 O sistema SHALL calcular, para cada solicitacao, um prazo-limite de SLA

@@ -9,6 +9,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
@@ -59,4 +60,6 @@ public class SolicitacaoJpaEntity {
   private Instant concluidaEm;
 
   private Instant canceladaEm;
+
+  @Version private Long version;
 }

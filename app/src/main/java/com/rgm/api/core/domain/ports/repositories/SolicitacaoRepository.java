@@ -43,6 +43,7 @@ public interface SolicitacaoRepository {
       UUID abertaPorUsuarioId,
       UUID responsavelId,
       String maquina,
+      Boolean atrasada,
       int page,
       int size);
 
