@@ -12,6 +12,7 @@ import com.rgm.api.core.domain.model.enums.PerfilUsuario;
 import com.rgm.api.core.domain.model.enums.PrioridadeSolicitacao;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
 import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -348,5 +349,55 @@ public final class Solicitacao {
 
   public Instant getCanceladaEm() {
     return canceladaEm;
+  }
+
+  /**
+   * SOL-007: data-limite de SLA, contada a partir da abertura ({@code criadaEm}) mais as horas de
+   * prazo da prioridade atual. {@code null} enquanto a solicitacao nao foi triada (sem prioridade).
+   */
+  public Instant getPrazoLimite() {
+    if (prioridade == null) {
+      return null;
+    }
+    return criadaEm.plusSeconds(prioridade.slaHoras() * 3600L);
+  }
+
+  /**
+   * SOL-007: tempo restante ate o prazo de SLA, em segundos (negativo se ja vencido). {@code null}
+   * se a solicitacao nao tem prioridade ainda ou ja esta em status terminal.
+   */
+  public Long getTempoRestanteSegundos(final Instant agora) {
+    final Instant prazo = getPrazoLimite();
+    if (prazo == null || !status.isNaoTerminal()) {
+      return null;
+    }
+    return Duration.between(agora, prazo).getSeconds();
+  }
+
+  /**
+   * SOL-007: indica se a solicitacao esta ou ficou atrasada em relacao ao SLA. Para status
+   * nao-terminal, compara com o instante atual; para CONCLUIDA, compara com {@code concluidaEm};
+   * CANCELADA nunca conta como atrasada.
+   */
+  public boolean isAtrasada(final Instant agora) {
+    final Instant prazo = getPrazoLimite();
+    if (prazo == null || status == StatusSolicitacao.CANCELADA) {
+      return false;
+    }
+    if (status == StatusSolicitacao.CONCLUIDA) {
+      return concluidaEm.isAfter(prazo);
+    }
+    return agora.isAfter(prazo);
+  }
+
+  /**
+   * SOL-007: tempo total de resolucao (abertura ate conclusao), em segundos. {@code null} se a
+   * solicitacao ainda nao foi concluida.
+   */
+  public Long getTempoResolucaoSegundos() {
+    if (status != StatusSolicitacao.CONCLUIDA) {
+      return null;
+    }
+    return Duration.between(criadaEm, concluidaEm).getSeconds();
   }
 }

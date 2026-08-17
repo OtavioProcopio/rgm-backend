@@ -93,4 +93,61 @@ class SolicitacaoTest {
     assertEquals(StatusSolicitacao.EM_ANDAMENTO, devolvida.getStatus());
     assertEquals(PrioridadeSolicitacao.ALTA, devolvida.getPrioridade());
   }
+
+  @Test
+  void prazoLimiteENuloAntesDaTriagem() {
+    final Solicitacao sol =
+        Solicitacao.abrir("T", "D", TipoSolicitacao.REPARO, modeloId, usuarioId, agora);
+
+    assertNull(sol.getPrazoLimite());
+    assertNull(sol.getTempoRestanteSegundos(agora));
+    assertFalse(sol.isAtrasada(agora));
+    assertNull(sol.getTempoResolucaoSegundos());
+  }
+
+  @Test
+  void prazoLimiteEComputadoAPartirDaPrioridadeAposTriagem() {
+    final Solicitacao sol =
+        Solicitacao.abrir("T", "D", TipoSolicitacao.REPARO, modeloId, usuarioId, agora);
+    final Solicitacao triada = sol.triar(PrioridadeSolicitacao.URGENTE, agora);
+
+    assertEquals(agora.plusSeconds(4 * 3600L), triada.getPrazoLimite());
+    assertFalse(triada.isAtrasada(agora));
+  }
+
+  @Test
+  void tempoRestanteFicaNegativoQuandoPrazoVenceu() {
+    final Solicitacao sol =
+        Solicitacao.abrir("T", "D", TipoSolicitacao.REPARO, modeloId, usuarioId, agora);
+    final Solicitacao triada = sol.triar(PrioridadeSolicitacao.URGENTE, agora);
+    final Instant depoisDoPrazo = agora.plusSeconds(5 * 3600L);
+
+    assertTrue(triada.getTempoRestanteSegundos(depoisDoPrazo) < 0);
+    assertTrue(triada.isAtrasada(depoisDoPrazo));
+  }
+
+  @Test
+  void tempoRestanteENuloEmStatusTerminal() {
+    final Solicitacao sol =
+        Solicitacao.abrir("T", "D", TipoSolicitacao.REPARO, modeloId, usuarioId, agora);
+    final Solicitacao triada = sol.triar(PrioridadeSolicitacao.URGENTE, agora);
+    final Solicitacao emValidacao = triada.enviarParaValidacao(agora);
+    final Instant depoisDoPrazo = agora.plusSeconds(5 * 3600L);
+    final Solicitacao concluida = emValidacao.concluir("Feito", depoisDoPrazo);
+
+    assertNull(concluida.getTempoRestanteSegundos(depoisDoPrazo));
+    assertTrue(concluida.isAtrasada(depoisDoPrazo));
+    assertEquals(5 * 3600L, concluida.getTempoResolucaoSegundos());
+  }
+
+  @Test
+  void canceladaNuncaContaComoAtrasada() {
+    final Solicitacao sol =
+        Solicitacao.abrir("T", "D", TipoSolicitacao.REPARO, modeloId, usuarioId, agora);
+    final Solicitacao triada = sol.triar(PrioridadeSolicitacao.URGENTE, agora);
+    final Instant depoisDoPrazo = agora.plusSeconds(5 * 3600L);
+    final Solicitacao cancelada = triada.cancelar("Motivo", depoisDoPrazo);
+
+    assertFalse(cancelada.isAtrasada(depoisDoPrazo));
+  }
 }

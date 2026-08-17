@@ -244,3 +244,35 @@ trilha de auditoria (quem abriu, quem alterou, quando).
 #### Scenario: Exportar PDF
 - **WHEN** um usuario autenticado exporta a lista com os filtros aplicados
 - **THEN** o sistema retorna um PDF tabular com a auditoria completa
+
+### Requirement: SLA de solicitacoes
+O sistema SHALL calcular, para cada solicitacao, um prazo-limite de SLA
+baseado na prioridade (URGENTE=4h, ALTA=24h, MEDIA=72h, BAIXA=168h) contado a
+partir da abertura (`criadaEm`), expondo em toda resposta de solicitacao o
+prazo-limite, o tempo restante, se esta atrasada e o tempo total de
+resolucao quando concluida.
+
+#### Scenario: Sem prazo antes da triagem
+- **WHEN** a solicitacao ainda esta em A_FAZER, sem prioridade definida
+- **THEN** prazo-limite, tempo restante e tempo de resolucao sao nulos, e
+  `atrasada` e falso
+
+#### Scenario: Prazo calculado apos a triagem
+- **WHEN** a solicitacao recebe uma prioridade na triagem
+- **THEN** o prazo-limite passa a ser `criadaEm` mais as horas de SLA da
+  prioridade, e o tempo restante reflete a diferenca ate esse prazo
+
+#### Scenario: Solicitacao atrasada em andamento
+- **WHEN** o instante atual e posterior ao prazo-limite e a solicitacao
+  ainda nao esta em status terminal
+- **THEN** `atrasada` e verdadeiro e o tempo restante e negativo
+
+#### Scenario: Atraso avaliado na conclusao
+- **WHEN** a solicitacao e concluida
+- **THEN** `atrasada` compara `concluidaEm` (nao o instante atual) com o
+  prazo-limite, e `tempoResolucaoSegundos` passa a refletir `concluidaEm -
+  criadaEm`
+
+#### Scenario: Cancelamento nunca conta como atraso
+- **WHEN** a solicitacao e cancelada, mesmo apos o prazo-limite ter passado
+- **THEN** `atrasada` e sempre falso
