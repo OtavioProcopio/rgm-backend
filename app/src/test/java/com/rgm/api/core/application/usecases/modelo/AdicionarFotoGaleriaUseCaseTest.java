@@ -176,6 +176,41 @@ class AdicionarFotoGaleriaUseCaseTest {
   }
 
   @Test
+  void uploadAutomaticoIgnoraPermissaoDoUsuario() {
+    final Instant agora = Instant.now();
+    final Usuario operador =
+        new Usuario(
+            UUID.randomUUID(),
+            "Op",
+            "op@test.com",
+            "hash",
+            PerfilUsuario.OPERADOR,
+            true,
+            agora,
+            agora);
+    final Modelo modelo = criarModelo();
+    final String url = "http://minio:9000/images/automatica.jpg";
+
+    when(modeloRepository.findById(modelo.getId())).thenReturn(Optional.of(modelo));
+    when(storageService.upload(any(), any(), any(), anyLong())).thenReturn(url);
+
+    final var input =
+        new AdicionarFotoGaleriaUseCase.Input(
+            modelo.getId(),
+            "Serviço realizado — Troca de rolamento",
+            "servico.jpg",
+            "image/jpeg",
+            512L,
+            new ByteArrayInputStream(new byte[512]),
+            operador.getId());
+
+    final String publicUrl = useCase.uploadAutomatico(input);
+
+    assertEquals(url, publicUrl);
+    verifyNoInteractions(usuarioRepository);
+  }
+
+  @Test
   void operadorNaoDeveAdicionarFoto() {
     final Instant agora = Instant.now();
     final Usuario operador =

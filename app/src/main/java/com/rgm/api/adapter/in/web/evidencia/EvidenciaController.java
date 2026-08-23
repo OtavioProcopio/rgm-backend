@@ -60,10 +60,17 @@ public class EvidenciaController {
               file.getInputStream(),
               usuarioId,
               parseTipo(tipo),
-              descricao);
+              descricao,
+              () -> {
+                try {
+                  return file.getInputStream();
+                } catch (final java.io.IOException e) {
+                  throw new java.io.UncheckedIOException(e);
+                }
+              });
 
-      final String publicUrl = anexarUseCase.upload(input);
-      final Evidencia evidencia = anexarUseCase.persist(input, publicUrl);
+      final AnexarEvidenciaUseCase.UploadResult uploadResult = anexarUseCase.upload(input);
+      final Evidencia evidencia = anexarUseCase.persist(input, uploadResult);
       return ResponseEntity.status(HttpStatus.CREATED).body(EvidenciaResponse.from(evidencia));
     } catch (final java.io.IOException e) {
       throw new RuntimeException("Erro ao ler arquivo: " + e.getMessage(), e);

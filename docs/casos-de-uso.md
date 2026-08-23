@@ -13,7 +13,7 @@ Referência de todos os casos de uso implementados no sistema.
 - **Ator**: Operador (Gestor também pode)
 - **Classe**: `AbrirSolicitacaoUseCase`
 - **Endpoint**: `POST /api/solicitacoes`
-- **Regras**: Modelo deve existir e estar ativo; EXTERNO não pode abrir; registra atividade ABERTURA; atualiza `temPendenciaAberta`
+- **Regras**: Modelo deve existir e estar ativo; EXTERNO não pode abrir; registra atividade ABERTURA; atualiza `temPendenciaAberta`. Tipo `CRIACAO` é um fluxo à parte — ver UC-19.
 - **Erros**: 422 (modelo inativo), 403 (EXTERNO)
 
 ## UC-03 — Triar e atribuir (A_FAZER → EM_ANDAMENTO)
@@ -47,7 +47,7 @@ Referência de todos os casos de uso implementados no sistema.
 - **Ator**: Gestor, Administrador
 - **Classe**: `EncerrarSolicitacaoUseCase`
 - **Endpoint**: `PATCH /api/solicitacoes/{id}/encerrar`
-- **Regras**: Comentário final **obrigatório**; publica `SolicitacaoFinalizadaEvent`
+- **Regras**: Comentário final **obrigatório**; publica `SolicitacaoFinalizadaEvent` (`modeloId` pode ser `null` ao cancelar uma solicitação `CRIACAO` ainda sem modelo). Ao **concluir** uma solicitação `CRIACAO`, o Modelo é criado nesse momento — ver UC-19.
 - **Erros**: 422 (sem comentário), 403 (sem permissão), 409 (status inválido)
 
 ## UC-08 — Anexar evidência (upload)
@@ -100,7 +100,7 @@ Referência de todos os casos de uso implementados no sistema.
   - `POST /api/modelos/{id}/galeria` (multipart: `file`, `identificacao`) — adicionar foto
   - `PATCH /api/modelos/{id}/galeria/{fotoId}` — editar `identificacao` e/ou marcar como `principal` (capa)
   - `DELETE /api/modelos/{id}/galeria/{fotoId}` — remover foto
-- **Regras**: Galeria é independente do histórico de evidências — fotos de evidência (anexadas a Solicitação/EventoModelo) nunca são promovidas automaticamente à galeria; cada foto da galeria tem uma `identificacao` livre (ex.: qual parte do ferramental ela retrata); no máximo uma foto por modelo é `principal` (capa), imposto por índice único parcial; a primeira foto adicionada a um modelo vira `principal` automaticamente; upload fora da transação DB; ao excluir um modelo (UC-15), os objetos da galeria são removidos do storage
+- **Regras**: Gestão manual da galeria (adicionar/editar/remover) é restrita a GESTOR/ADMINISTRADOR; cada foto da galeria tem uma `identificacao` livre (ex.: qual parte do ferramental ela retrata); no máximo uma foto por modelo é `principal` (capa), imposto por índice único parcial; a primeira foto adicionada a um modelo vira `principal` automaticamente; upload fora da transação DB; ao excluir um modelo (UC-15), os objetos da galeria são removidos do storage. **Gatilho automático**: uma evidência do tipo `SERVICO_REALIZADO` ou `CONCLUSAO`, anexada como imagem (JPEG/PNG/WEBP) a uma solicitação com modelo vinculado, é automaticamente copiada (arquivo duplicado, não compartilhado) para a galeria daquele modelo — mesmo se quem anexou não tiver permissão de gestão de galeria (ver `AnexarEvidenciaUseCase`/`AdicionarFotoGaleriaUseCase.uploadAutomatico`); falha nesse gatilho é logada e nunca derruba o anexo da evidência
 
 ## UC-15 — Exclusão (hard delete)
 - **Ator**: Administrador
@@ -127,7 +127,17 @@ Referência de todos os casos de uso implementados no sistema.
 - **Regras**: sem `@Version`/lock pessimista, duas transições concorrentes no mesmo card (ex.: GESTOR e OPERADOR atribuído mexendo ao mesmo tempo) podiam gerar lost update silencioso. Com `@Version`, o `UPDATE ... WHERE id = ? AND version = ?` gerado pelo Hibernate falha (0 linhas afetadas) se a linha mudou entre o load e o save da mesma transação
 - **Migração**: `V7__lock_otimista_solicitacoes.sql` adiciona a coluna `version BIGINT NOT NULL DEFAULT 0`
 - **Erros**: `ObjectOptimisticLockingFailureException` (Spring/Hibernate) é mapeada pelo `GlobalExceptionHandler` para 409 Conflict — "Este registro foi alterado por outro usuario. Recarregue e tente novamente."
-- **Compatibilidade**: o construtor público de 13 argumentos de `Solicitacao` continua existindo (version nulo, i.e. ainda não persistida); o mapper de persistência usa o construtor de 14 argumentos para preservar o version lido do banco
+- **Compatibilidade**: o construtor público de 16 argumentos de `Solicitacao` continua existindo (version nulo, i.e. ainda não persistida); o mapper de persistência usa o construtor de 17 argumentos para preservar o version lido do banco
+
+## UC-19 — Solicitação de criação de modelo (tipo CRIACAO)
+- **Ator**: Gestor, Administrador (restrito — diferente dos demais tipos, abertos por qualquer usuário interno)
+- **Classes**: `AbrirSolicitacaoUseCase` (branch CRIACAO), `EncerrarSolicitacaoUseCase` (branch CRIACAO), `Solicitacao.abrirCriacao()`/`concluirCriacao()`, `GerenciarModelosUseCase.criar()`
+- **Endpoint**: mesmos endpoints de solicitação (`POST /api/solicitacoes` com `tipo=CRIACAO`, `PATCH /api/solicitacoes/{id}/encerrar` com `concluir=true`)
+- **Fluxo**: uma solicitação `CRIACAO` nasce em A_FAZER **sem `modeloId`**, carregando em vez disso os dados do modelo pretendido (`modeloCodigo`, `modeloMaquina`, `modeloObservacoes` — mesma validação de máquina do cadastro direto). Percorre o Kanban normalmente (Triagem → Em Andamento → Em Validação). Ao ser **concluída**, o sistema cria o Modelo com esses dados (mesma regra de versionamento por código+máquina do cadastro direto) e só então vincula `modeloId` à solicitação, na mesma transação — se a criação do modelo falhar, a conclusão inteira é revertida
+- **Regras**: tipo da solicitação é **imutável** após a abertura (`Solicitacao.editar()` rejeita qualquer tentativa de mudança, para qualquer tipo); uma `CRIACAO` cancelada antes de concluída nunca tem modelo vinculado (`modeloId` permanece `null` para sempre); o cadastro direto de modelo (`POST /api/modelos`) continua existindo sem mudanças — este é um caminho adicional
+- **Evento CADASTRO**: ao nascer um Modelo — seja pelo cadastro direto, seja pela conclusão de uma `CRIACAO` — um evento `CADASTRO` é registrado automaticamente no prontuário do modelo (`EventoModelo.criarCadastro`), com autor o usuário responsável e, quando originado de uma solicitação, `solicitacaoRelacionadaId` preenchido
+- **Schema**: `V8__solicitacao_tipo_criacao.sql` torna `solicitacoes.modelo_id` nullable, adiciona `modelo_codigo`/`modelo_maquina`/`modelo_observacoes` (nullable) e um `CHECK` garantindo que só `CRIACAO` pode ter `modelo_id` nulo, e só antes de concluída
+- **Erros**: 403 (perfil sem permissão para abrir CRIACAO), 422 (dados do modelo inválidos, ex. máquina inativa)
 
 ---
 

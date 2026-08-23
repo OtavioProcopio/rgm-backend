@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+import com.rgm.api.core.domain.exceptions.BusinessRuleException;
 import com.rgm.api.core.domain.exceptions.NaoAutorizadoException;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
@@ -57,6 +58,9 @@ class EditarSolicitacaoUseCaseTest {
         StatusSolicitacao.A_FAZER,
         null,
         UUID.randomUUID(),
+        null /* modeloCodigo */,
+        null /* modeloMaquina */,
+        null /* modeloObservacoes */,
         abertaPorId,
         null,
         NOW,
@@ -79,10 +83,22 @@ class EditarSolicitacaoUseCaseTest {
     when(solicitacaoRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
     final Solicitacao result =
-        useCase.execute(input(sol.getId(), gestor.getId(), TipoSolicitacao.INSPECAO));
+        useCase.execute(input(sol.getId(), gestor.getId(), TipoSolicitacao.REPARO));
 
     assertEquals("Novo titulo", result.getTitulo());
-    assertEquals(TipoSolicitacao.INSPECAO, result.getTipo());
+    assertEquals(TipoSolicitacao.REPARO, result.getTipo());
+  }
+
+  @Test
+  void execute_tentativaDeAlterarTipoLancaException() {
+    final Usuario gestor = criarGestor();
+    final Solicitacao sol = criarSolicitacaoAFazer(UUID.randomUUID());
+    when(usuarioRepository.findById(gestor.getId())).thenReturn(Optional.of(gestor));
+    when(solicitacaoRepository.findById(sol.getId())).thenReturn(Optional.of(sol));
+
+    assertThrows(
+        BusinessRuleException.class,
+        () -> useCase.execute(input(sol.getId(), gestor.getId(), TipoSolicitacao.INSPECAO)));
   }
 
   @Test

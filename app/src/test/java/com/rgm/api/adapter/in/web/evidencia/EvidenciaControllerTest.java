@@ -92,7 +92,8 @@ class EvidenciaControllerTest {
             agora,
             TipoEvidencia.GERAL,
             null);
-    when(anexarUseCase.upload(any())).thenReturn("http://minio/foto.jpg");
+    when(anexarUseCase.upload(any()))
+        .thenReturn(new AnexarEvidenciaUseCase.UploadResult("http://minio/foto.jpg", null, null));
     when(anexarUseCase.persist(any(), any())).thenReturn(ev);
 
     final org.springframework.mock.web.MockMultipartFile arquivo =
@@ -123,7 +124,8 @@ class EvidenciaControllerTest {
             Instant.now(),
             TipoEvidencia.GERAL,
             null);
-    when(anexarUseCase.upload(any())).thenReturn("http://minio/unknown");
+    when(anexarUseCase.upload(any()))
+        .thenReturn(new AnexarEvidenciaUseCase.UploadResult("http://minio/unknown", null, null));
     when(anexarUseCase.persist(any(), any())).thenReturn(ev);
 
     final org.springframework.mock.web.MockMultipartFile arquivo =

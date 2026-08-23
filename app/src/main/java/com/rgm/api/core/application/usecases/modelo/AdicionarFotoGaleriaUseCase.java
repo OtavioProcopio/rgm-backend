@@ -48,7 +48,18 @@ public final class AdicionarFotoGaleriaUseCase {
 
   public String upload(final Input input) {
     validarPermissao(input.gestorId());
+    return uploadSemChecarPermissao(input);
+  }
 
+  /**
+   * Adiciona uma foto sem checar o perfil do usuario informado. Uso restrito ao gatilho automatico
+   * de evidencia elegivel (ver capacidade evidencias) — nao exposto por nenhum controller.
+   */
+  public String uploadAutomatico(final Input input) {
+    return uploadSemChecarPermissao(input);
+  }
+
+  private String uploadSemChecarPermissao(final Input input) {
     if (input.identificacao() == null || input.identificacao().isBlank()) {
       throw new ValidationException("Identificacao da foto e obrigatoria");
     }

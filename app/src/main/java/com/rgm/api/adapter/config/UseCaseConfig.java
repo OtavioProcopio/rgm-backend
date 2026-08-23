@@ -80,9 +80,14 @@ public class UseCaseConfig {
       final SolicitacaoRepository solicitacaoRepository,
       final ModeloRepository modeloRepository,
       final AtividadeSolicitacaoRepository atividadeRepository,
-      final UsuarioRepository usuarioRepository) {
+      final UsuarioRepository usuarioRepository,
+      final MaquinaRepository maquinaRepository) {
     return new AbrirSolicitacaoUseCase(
-        solicitacaoRepository, modeloRepository, atividadeRepository, usuarioRepository);
+        solicitacaoRepository,
+        modeloRepository,
+        atividadeRepository,
+        usuarioRepository,
+        maquinaRepository);
   }
 
   @Bean
@@ -125,13 +130,15 @@ public class UseCaseConfig {
       final UsuarioRepository usuarioRepository,
       final AtividadeSolicitacaoRepository atividadeRepository,
       final EventoModeloRepository eventoModeloRepository,
-      final DomainEventPublisher eventPublisher) {
+      final DomainEventPublisher eventPublisher,
+      final GerenciarModelosUseCase gerenciarModelosUseCase) {
     return new EncerrarSolicitacaoUseCase(
         solicitacaoRepository,
         usuarioRepository,
         atividadeRepository,
         eventoModeloRepository,
-        eventPublisher);
+        eventPublisher,
+        gerenciarModelosUseCase);
   }
 
   @Bean
@@ -184,7 +191,8 @@ public class UseCaseConfig {
       final AtividadeSolicitacaoRepository atividadeRepository,
       final StorageService storageService,
       final UsuarioRepository usuarioRepository,
-      final SolicitacaoAtribuicaoRepository atribuicaoRepository) {
+      final SolicitacaoAtribuicaoRepository atribuicaoRepository,
+      final AdicionarFotoGaleriaUseCase adicionarFotoGaleriaUseCase) {
     return new AnexarEvidenciaUseCase(
         solicitacaoRepository,
         evidenciaRepository,
@@ -192,7 +200,8 @@ public class UseCaseConfig {
         atividadeRepository,
         storageService,
         usuarioRepository,
-        atribuicaoRepository);
+        atribuicaoRepository,
+        adicionarFotoGaleriaUseCase);
   }
 
   @Bean
@@ -276,8 +285,10 @@ public class UseCaseConfig {
   public GerenciarModelosUseCase gerenciarModelosUseCase(
       final ModeloRepository modeloRepository,
       final UsuarioRepository usuarioRepository,
-      final MaquinaRepository maquinaRepository) {
-    return new GerenciarModelosUseCase(modeloRepository, usuarioRepository, maquinaRepository);
+      final MaquinaRepository maquinaRepository,
+      final EventoModeloRepository eventoModeloRepository) {
+    return new GerenciarModelosUseCase(
+        modeloRepository, usuarioRepository, maquinaRepository, eventoModeloRepository);
   }
 
   @Bean

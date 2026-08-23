@@ -64,6 +64,9 @@ class SolicitacaoRepositoryAdapterTest {
         StatusSolicitacao.A_FAZER,
         PrioridadeSolicitacao.MEDIA,
         UUID.randomUUID(),
+        null /* modeloCodigo */,
+        null /* modeloMaquina */,
+        null /* modeloObservacoes */,
         UUID.randomUUID(),
         null,
         Instant.now(),
@@ -238,6 +241,24 @@ class SolicitacaoRepositoryAdapterTest {
 
     assertEquals(1, result.size());
     assertEquals(3L, result.get(modeloId));
+  }
+
+  @Test
+  void countGroupByModeloId_ignoraLinhaComModeloIdNulo() {
+    // Solicitacoes CRIACAO ainda nao concluidas nao tem modelo_id — a linha nula
+    // do GROUP BY precisa ser descartada, senao a resposta JSON quebra (Map com
+    // chave nula nao e serializavel).
+    final UUID modeloId = UUID.randomUUID();
+    final List<Object[]> rows = new ArrayList<>();
+    rows.add(new Object[] {modeloId, 2L});
+    rows.add(new Object[] {null, 5L});
+    when(jpa.countGroupByModeloId()).thenReturn(rows);
+
+    final Map<UUID, Long> result = adapter.countGroupByModeloId();
+
+    assertEquals(1, result.size());
+    assertEquals(2L, result.get(modeloId));
+    assertFalse(result.containsKey(null));
   }
 
   @Test

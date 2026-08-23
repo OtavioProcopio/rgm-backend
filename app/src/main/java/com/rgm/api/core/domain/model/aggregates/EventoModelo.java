@@ -42,6 +42,28 @@ public final class EventoModelo {
     this.criadoEm = requireNonNull(criadoEm, "criadoEm");
   }
 
+  /**
+   * Cria o evento de CADASTRO — o marco inicial do prontuario do modelo, gerado automaticamente ao
+   * nascer um Modelo (cadastro direto ou conclusao de uma solicitacao do tipo CRIACAO). {@code
+   * solicitacaoRelacionadaId} e nulo no cadastro direto.
+   */
+  public static EventoModelo criarCadastro(
+      final UUID modeloId,
+      final String descricaoModelo,
+      final UUID autorId,
+      final UUID solicitacaoRelacionadaId,
+      final Instant agora) {
+    return criar(
+        modeloId,
+        TipoEventoModelo.CADASTRO,
+        "Modelo cadastrado",
+        descricaoModelo,
+        null,
+        autorId,
+        solicitacaoRelacionadaId,
+        agora);
+  }
+
   /** Cria um novo evento na timeline do modelo. */
   public static EventoModelo criar(
       final UUID modeloId,

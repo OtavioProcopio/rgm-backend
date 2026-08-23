@@ -10,6 +10,7 @@ import com.rgm.api.core.domain.exceptions.ValidationException;
 import com.rgm.api.core.domain.model.aggregates.Modelo;
 import com.rgm.api.core.domain.model.aggregates.Usuario;
 import com.rgm.api.core.domain.model.enums.PerfilUsuario;
+import com.rgm.api.core.domain.ports.repositories.EventoModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.MaquinaRepository;
 import com.rgm.api.core.domain.ports.repositories.ModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
@@ -24,6 +25,7 @@ class GerenciarModelosUseCaseTest {
   private ModeloRepository modeloRepository;
   private UsuarioRepository usuarioRepository;
   private MaquinaRepository maquinaRepository;
+  private EventoModeloRepository eventoModeloRepository;
   private GerenciarModelosUseCase useCase;
 
   @BeforeEach
@@ -31,8 +33,11 @@ class GerenciarModelosUseCaseTest {
     modeloRepository = mock(ModeloRepository.class);
     usuarioRepository = mock(UsuarioRepository.class);
     maquinaRepository = mock(MaquinaRepository.class);
+    eventoModeloRepository = mock(EventoModeloRepository.class);
     when(maquinaRepository.existsByNomeAndAtivoTrue(any())).thenReturn(true);
-    useCase = new GerenciarModelosUseCase(modeloRepository, usuarioRepository, maquinaRepository);
+    useCase =
+        new GerenciarModelosUseCase(
+            modeloRepository, usuarioRepository, maquinaRepository, eventoModeloRepository);
   }
 
   private Usuario criarGestor() {
@@ -65,6 +70,35 @@ class GerenciarModelosUseCaseTest {
     assertEquals("MOD-01", resultado.getCodigo());
     assertEquals("FBOX", resultado.getMaquina());
     assertTrue(resultado.isAtivo());
+
+    final var eventoCaptor =
+        org.mockito.ArgumentCaptor.forClass(
+            com.rgm.api.core.domain.model.aggregates.EventoModelo.class);
+    verify(eventoModeloRepository).save(eventoCaptor.capture());
+    final var evento = eventoCaptor.getValue();
+    assertEquals(com.rgm.api.core.domain.model.enums.TipoEventoModelo.CADASTRO, evento.getTipo());
+    assertEquals(resultado.getId(), evento.getModeloId());
+    assertNull(evento.getSolicitacaoRelacionadaId(), "cadastro direto nao referencia solicitacao");
+  }
+
+  @Test
+  void deveCriarModeloComReferenciaASolicitacaoDeOrigem() {
+    final Usuario gestor = criarGestor();
+    final UUID solicitacaoId = UUID.randomUUID();
+
+    when(usuarioRepository.findById(gestor.getId())).thenReturn(Optional.of(gestor));
+    when(modeloRepository.countByMaquinaAndCodigo("FBOX", "MOD-02")).thenReturn(0);
+    when(modeloRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    useCase.criar(
+        new GerenciarModelosUseCase.CriarInput(
+            "MOD-02", "Descricao", null, "FBOX", gestor.getId(), solicitacaoId));
+
+    final var eventoCaptor =
+        org.mockito.ArgumentCaptor.forClass(
+            com.rgm.api.core.domain.model.aggregates.EventoModelo.class);
+    verify(eventoModeloRepository).save(eventoCaptor.capture());
+    assertEquals(solicitacaoId, eventoCaptor.getValue().getSolicitacaoRelacionadaId());
   }
 
   @Test

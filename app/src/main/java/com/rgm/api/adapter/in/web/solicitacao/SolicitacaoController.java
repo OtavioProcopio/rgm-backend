@@ -350,7 +350,7 @@ public class SolicitacaoController {
                 id,
                 request.titulo(),
                 request.descricao(),
-                TipoSolicitacao.valueOf(request.tipo()),
+                request.tipo() != null ? TipoSolicitacao.valueOf(request.tipo()) : null,
                 usuarioId));
     return ResponseEntity.ok(SolicitacaoResponse.from(salva));
   }
@@ -384,6 +384,9 @@ public class SolicitacaoController {
                 request.descricao(),
                 TipoSolicitacao.valueOf(request.tipo()),
                 request.modeloId(),
+                request.modeloCodigo(),
+                request.modeloMaquina(),
+                request.modeloObservacoes(),
                 usuarioId));
     return ResponseEntity.status(HttpStatus.CREATED).body(SolicitacaoResponse.from(output));
   }
