@@ -26,6 +26,9 @@ public final class Solicitacao {
   private final StatusSolicitacao status;
   private final PrioridadeSolicitacao prioridade;
   private final UUID modeloId;
+  private final String modeloCodigo;
+  private final String modeloMaquina;
+  private final String modeloObservacoes;
   private final UUID abertaPorUsuarioId;
   private final String comentarioFinal;
   private final Instant criadaEm;
@@ -42,6 +45,9 @@ public final class Solicitacao {
       final StatusSolicitacao status,
       final PrioridadeSolicitacao prioridade,
       final UUID modeloId,
+      final String modeloCodigo,
+      final String modeloMaquina,
+      final String modeloObservacoes,
       final UUID abertaPorUsuarioId,
       final String comentarioFinal,
       final Instant criadaEm,
@@ -56,6 +62,9 @@ public final class Solicitacao {
         status,
         prioridade,
         modeloId,
+        modeloCodigo,
+        modeloMaquina,
+        modeloObservacoes,
         abertaPorUsuarioId,
         comentarioFinal,
         criadaEm,
@@ -67,7 +76,7 @@ public final class Solicitacao {
 
   /**
    * Construtor completo, incluindo o {@code version} usado para lock otimista na persistencia
-   * (issue #80) — preservado, nao recalculado, a cada transicao. O construtor publico de 13
+   * (issue #80) — preservado, nao recalculado, a cada transicao. O construtor publico de 16
    * argumentos cobre o caso comum (version nulo, ainda nao persistido).
    */
   public Solicitacao(
@@ -78,6 +87,9 @@ public final class Solicitacao {
       final StatusSolicitacao status,
       final PrioridadeSolicitacao prioridade,
       final UUID modeloId,
+      final String modeloCodigo,
+      final String modeloMaquina,
+      final String modeloObservacoes,
       final UUID abertaPorUsuarioId,
       final String comentarioFinal,
       final Instant criadaEm,
@@ -91,7 +103,10 @@ public final class Solicitacao {
     this.tipo = requireNonNull(tipo, "tipo");
     this.status = requireNonNull(status, "status");
     this.prioridade = prioridade;
-    this.modeloId = requireNonNull(modeloId, "modeloId");
+    this.modeloId = modeloId;
+    this.modeloCodigo = optionalTrimToNull(modeloCodigo);
+    this.modeloMaquina = optionalTrimToNull(modeloMaquina);
+    this.modeloObservacoes = optionalTrimToNull(modeloObservacoes);
     this.abertaPorUsuarioId = requireNonNull(abertaPorUsuarioId, "abertaPorUsuarioId");
     this.comentarioFinal = optionalTrimToNull(comentarioFinal);
     this.criadaEm = requireNonNull(criadaEm, "criadaEm");
@@ -103,7 +118,7 @@ public final class Solicitacao {
     validateInvariants();
   }
 
-  /** UC-02: Abre uma nova solicitacao em A_FAZER. */
+  /** UC-02: Abre uma nova solicitacao em A_FAZER, vinculada a um modelo existente. */
   public static Solicitacao abrir(
       final String titulo,
       final String descricao,
@@ -119,6 +134,40 @@ public final class Solicitacao {
         StatusSolicitacao.A_FAZER,
         null,
         modeloId,
+        null,
+        null,
+        null,
+        abertaPorUsuarioId,
+        null,
+        agora,
+        agora,
+        null,
+        null);
+  }
+
+  /**
+   * Abre uma nova solicitacao do tipo CRIACAO em A_FAZER — sem modelo vinculado, carregando os
+   * dados do modelo a ser criado quando a solicitacao for concluida.
+   */
+  public static Solicitacao abrirCriacao(
+      final String titulo,
+      final String descricao,
+      final String modeloCodigo,
+      final String modeloMaquina,
+      final String modeloObservacoes,
+      final UUID abertaPorUsuarioId,
+      final Instant agora) {
+    return new Solicitacao(
+        UUID.randomUUID(),
+        titulo,
+        descricao,
+        TipoSolicitacao.CRIACAO,
+        StatusSolicitacao.A_FAZER,
+        null,
+        null,
+        modeloCodigo,
+        modeloMaquina,
+        modeloObservacoes,
         abertaPorUsuarioId,
         null,
         agora,
@@ -142,6 +191,9 @@ public final class Solicitacao {
         StatusSolicitacao.EM_ANDAMENTO,
         novaPrioridade,
         modeloId,
+        modeloCodigo,
+        modeloMaquina,
+        modeloObservacoes,
         abertaPorUsuarioId,
         null,
         criadaEm,
@@ -162,6 +214,9 @@ public final class Solicitacao {
         StatusSolicitacao.EM_VALIDACAO,
         prioridade,
         modeloId,
+        modeloCodigo,
+        modeloMaquina,
+        modeloObservacoes,
         abertaPorUsuarioId,
         null,
         criadaEm,
@@ -184,6 +239,9 @@ public final class Solicitacao {
         StatusSolicitacao.EM_ANDAMENTO,
         prioridadeFinal,
         modeloId,
+        modeloCodigo,
+        modeloMaquina,
+        modeloObservacoes,
         abertaPorUsuarioId,
         null,
         criadaEm,
@@ -193,7 +251,11 @@ public final class Solicitacao {
         version);
   }
 
-  /** Editar titulo, descricao e tipo (somente em status nao-terminal). */
+  /**
+   * Editar titulo e descricao (somente em status nao-terminal). O tipo e imutavel apos a abertura:
+   * {@code novoTipo} so e aceito se igual ao tipo atual, e e ignorado (mantido) quando nulo —
+   * qualquer tentativa de mudanca e rejeitada.
+   */
   public Solicitacao editar(
       final String novoTitulo,
       final String novaDescricao,
@@ -202,14 +264,20 @@ public final class Solicitacao {
     if (!status.isNaoTerminal()) {
       throw new BusinessRuleException("Nao e possivel editar solicitacao em status terminal");
     }
+    if (novoTipo != null && novoTipo != tipo) {
+      throw new BusinessRuleException("Tipo da solicitacao e imutavel apos a abertura");
+    }
     return new Solicitacao(
         id,
         requireNonBlank(novoTitulo, "titulo"),
         requireNonBlank(novaDescricao, "descricao"),
-        requireNonNull(novoTipo, "tipo"),
+        tipo,
         status,
         prioridade,
         modeloId,
+        modeloCodigo,
+        modeloMaquina,
+        modeloObservacoes,
         abertaPorUsuarioId,
         comentarioFinal,
         criadaEm,
@@ -219,8 +287,13 @@ public final class Solicitacao {
         version);
   }
 
-  /** UC-07: Concluir solicitacao (EM_VALIDACAO -> CONCLUIDA). */
+  /** UC-07: Concluir solicitacao (EM_VALIDACAO -> CONCLUIDA). Nao se aplica ao tipo CRIACAO. */
   public Solicitacao concluir(final String novoComentarioFinal, final Instant agora) {
+    if (tipo == TipoSolicitacao.CRIACAO) {
+      throw new BusinessRuleException(
+          "Solicitacao do tipo CRIACAO deve ser concluida via concluirCriacao(), que cria o"
+              + " Modelo e vincula o modeloId");
+    }
     requireNonBlank(novoComentarioFinal, "comentarioFinal");
     validarTransicao(StatusSolicitacao.CONCLUIDA);
     return new Solicitacao(
@@ -231,6 +304,42 @@ public final class Solicitacao {
         StatusSolicitacao.CONCLUIDA,
         prioridade,
         modeloId,
+        modeloCodigo,
+        modeloMaquina,
+        modeloObservacoes,
+        abertaPorUsuarioId,
+        novoComentarioFinal,
+        criadaEm,
+        agora,
+        agora,
+        null,
+        version);
+  }
+
+  /**
+   * UC-07 (CRIACAO): Concluir uma solicitacao do tipo CRIACAO, vinculando o {@code Modelo}
+   * recem-criado a partir dos dados carregados por ela.
+   */
+  public Solicitacao concluirCriacao(
+      final String novoComentarioFinal, final UUID modeloIdCriado, final Instant agora) {
+    if (tipo != TipoSolicitacao.CRIACAO) {
+      throw new BusinessRuleException(
+          "concluirCriacao() so se aplica a solicitacoes do tipo CRIACAO");
+    }
+    requireNonBlank(novoComentarioFinal, "comentarioFinal");
+    requireNonNull(modeloIdCriado, "modeloId");
+    validarTransicao(StatusSolicitacao.CONCLUIDA);
+    return new Solicitacao(
+        id,
+        titulo,
+        descricao,
+        tipo,
+        StatusSolicitacao.CONCLUIDA,
+        prioridade,
+        modeloIdCriado,
+        modeloCodigo,
+        modeloMaquina,
+        modeloObservacoes,
         abertaPorUsuarioId,
         novoComentarioFinal,
         criadaEm,
@@ -252,6 +361,9 @@ public final class Solicitacao {
         StatusSolicitacao.CANCELADA,
         prioridade,
         modeloId,
+        modeloCodigo,
+        modeloMaquina,
+        modeloObservacoes,
         abertaPorUsuarioId,
         novoComentarioFinal,
         criadaEm,
@@ -290,6 +402,18 @@ public final class Solicitacao {
         throw new NaoAutorizadoException(
             "Operador so pode mover de EM_ANDAMENTO para EM_VALIDACAO");
       }
+    }
+  }
+
+  /**
+   * Valida se o perfil pode abrir uma solicitacao do tipo CRIACAO — restrito a GESTOR e
+   * ADMINISTRADOR, diferente dos demais tipos (abertos por qualquer usuario interno).
+   */
+  public static void validarAutorizacaoAbrirCriacao(final PerfilUsuario perfil) {
+    requireNonNull(perfil, "perfil");
+    if (!perfil.podeGerenciarModelos()) {
+      throw new NaoAutorizadoException(
+          "Apenas GESTOR/ADMINISTRADOR podem abrir solicitacao do tipo CRIACAO");
     }
   }
 
@@ -342,6 +466,34 @@ public final class Solicitacao {
         throw new ValidationException("datas terminais devem ser nulas em status nao-terminal");
       }
     }
+
+    if (tipo == TipoSolicitacao.CRIACAO) {
+      if (modeloCodigo == null) {
+        throw new ValidationException(
+            "modeloCodigo e obrigatorio para solicitacao do tipo CRIACAO");
+      }
+      if (modeloMaquina == null) {
+        throw new ValidationException(
+            "modeloMaquina e obrigatorio para solicitacao do tipo CRIACAO");
+      }
+      if (status == StatusSolicitacao.CONCLUIDA) {
+        if (modeloId == null) {
+          throw new ValidationException(
+              "modeloId e obrigatorio quando a solicitacao CRIACAO esta concluida");
+        }
+      } else if (modeloId != null) {
+        throw new ValidationException(
+            "modeloId deve ser nulo ate a solicitacao CRIACAO ser concluida");
+      }
+    } else {
+      if (modeloId == null) {
+        throw new ValidationException("modeloId e obrigatorio para este tipo de solicitacao");
+      }
+      if (modeloCodigo != null || modeloMaquina != null || modeloObservacoes != null) {
+        throw new ValidationException(
+            "dados de modelo em preparacao nao se aplicam a este tipo de solicitacao");
+      }
+    }
   }
 
   public UUID getId() {
@@ -370,6 +522,18 @@ public final class Solicitacao {
 
   public UUID getModeloId() {
     return modeloId;
+  }
+
+  public String getModeloCodigo() {
+    return modeloCodigo;
+  }
+
+  public String getModeloMaquina() {
+    return modeloMaquina;
+  }
+
+  public String getModeloObservacoes() {
+    return modeloObservacoes;
   }
 
   public UUID getAbertaPorUsuarioId() {

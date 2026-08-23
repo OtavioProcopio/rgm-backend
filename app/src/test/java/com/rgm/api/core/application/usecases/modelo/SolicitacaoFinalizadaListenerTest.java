@@ -48,4 +48,16 @@ class SolicitacaoFinalizadaListenerTest {
     verify(recalcularPendenciaUseCase).execute(modeloId1);
     verify(recalcularPendenciaUseCase).execute(modeloId2);
   }
+
+  @Test
+  void naoDeveRecalcularQuandoModeloIdENulo() {
+    // Solicitacao CRIACAO cancelada antes de concluida nunca teve modelo vinculado.
+    final SolicitacaoFinalizadaEvent event =
+        new SolicitacaoFinalizadaEvent(
+            UUID.randomUUID(), null, StatusSolicitacao.CANCELADA, Instant.now());
+
+    listener.onSolicitacaoFinalizada(event);
+
+    verifyNoInteractions(recalcularPendenciaUseCase);
+  }
 }

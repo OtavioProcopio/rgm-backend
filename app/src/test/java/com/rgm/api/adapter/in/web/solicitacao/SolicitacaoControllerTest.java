@@ -162,7 +162,7 @@ class SolicitacaoControllerTest {
                 .content(
                     objectMapper.writeValueAsString(
                         new AbrirSolicitacaoRequest(
-                            "Titulo", "Desc", "REPARO", UUID.randomUUID()))))
+                            "Titulo", "Desc", "REPARO", UUID.randomUUID(), null, null, null))))
         .andExpect(status().isCreated())
         .andExpect(jsonPath("$.titulo").value("Titulo"))
         .andExpect(jsonPath("$.status").value("A_FAZER"));
@@ -182,6 +182,9 @@ class SolicitacaoControllerTest {
             StatusSolicitacao.CANCELADA,
             null,
             UUID.randomUUID(),
+            null /* modeloCodigo */,
+            null /* modeloMaquina */,
+            null /* modeloObservacoes */,
             UUID.randomUUID(),
             "Cancelado via API",
             agora,
@@ -364,6 +367,9 @@ class SolicitacaoControllerTest {
             StatusSolicitacao.EM_ANDAMENTO,
             PrioridadeSolicitacao.ALTA,
             UUID.randomUUID(),
+            null /* modeloCodigo */,
+            null /* modeloMaquina */,
+            null /* modeloObservacoes */,
             UUID.randomUUID(),
             null,
             agora,
@@ -398,6 +404,9 @@ class SolicitacaoControllerTest {
             StatusSolicitacao.EM_VALIDACAO,
             PrioridadeSolicitacao.MEDIA,
             UUID.randomUUID(),
+            null /* modeloCodigo */,
+            null /* modeloMaquina */,
+            null /* modeloObservacoes */,
             UUID.randomUUID(),
             null,
             agora,
@@ -433,6 +442,9 @@ class SolicitacaoControllerTest {
             StatusSolicitacao.EM_ANDAMENTO,
             PrioridadeSolicitacao.ALTA,
             UUID.randomUUID(),
+            null /* modeloCodigo */,
+            null /* modeloMaquina */,
+            null /* modeloObservacoes */,
             UUID.randomUUID(),
             null,
             agora,
@@ -467,6 +479,9 @@ class SolicitacaoControllerTest {
             StatusSolicitacao.CONCLUIDA,
             PrioridadeSolicitacao.MEDIA,
             UUID.randomUUID(),
+            null /* modeloCodigo */,
+            null /* modeloMaquina */,
+            null /* modeloObservacoes */,
             UUID.randomUUID(),
             "Encerrado OK",
             agora,

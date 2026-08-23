@@ -3,8 +3,10 @@ package com.rgm.api.core.application.usecases.modelo;
 import com.rgm.api.core.domain.exceptions.NaoAutorizadoException;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.exceptions.ValidationException;
+import com.rgm.api.core.domain.model.aggregates.EventoModelo;
 import com.rgm.api.core.domain.model.aggregates.Modelo;
 import com.rgm.api.core.domain.model.aggregates.Usuario;
+import com.rgm.api.core.domain.ports.repositories.EventoModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.MaquinaRepository;
 import com.rgm.api.core.domain.ports.repositories.ModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
@@ -17,18 +19,37 @@ public final class GerenciarModelosUseCase {
   private final ModeloRepository modeloRepository;
   private final UsuarioRepository usuarioRepository;
   private final MaquinaRepository maquinaRepository;
+  private final EventoModeloRepository eventoModeloRepository;
 
   public GerenciarModelosUseCase(
       final ModeloRepository modeloRepository,
       final UsuarioRepository usuarioRepository,
-      final MaquinaRepository maquinaRepository) {
+      final MaquinaRepository maquinaRepository,
+      final EventoModeloRepository eventoModeloRepository) {
     this.modeloRepository = modeloRepository;
     this.usuarioRepository = usuarioRepository;
     this.maquinaRepository = maquinaRepository;
+    this.eventoModeloRepository = eventoModeloRepository;
   }
 
   public record CriarInput(
-      String codigo, String descricao, String observacoes, String maquina, UUID gestorId) {}
+      String codigo,
+      String descricao,
+      String observacoes,
+      String maquina,
+      UUID gestorId,
+      UUID solicitacaoOrigemId) {
+
+    /** Cadastro direto (fora de qualquer solicitacao) — construtor de conveniencia. */
+    public CriarInput(
+        final String codigo,
+        final String descricao,
+        final String observacoes,
+        final String maquina,
+        final UUID gestorId) {
+      this(codigo, descricao, observacoes, maquina, gestorId, null);
+    }
+  }
 
   public record EditarInput(
       UUID modeloId,
@@ -54,7 +75,17 @@ public final class GerenciarModelosUseCase {
         Modelo.criar(
             input.codigo(), input.descricao(), input.observacoes(), input.maquina(), versao, agora);
 
-    return modeloRepository.save(modelo);
+    final Modelo salvo = modeloRepository.save(modelo);
+
+    eventoModeloRepository.save(
+        EventoModelo.criarCadastro(
+            salvo.getId(),
+            salvo.getDescricao(),
+            input.gestorId(),
+            input.solicitacaoOrigemId(),
+            agora));
+
+    return salvo;
   }
 
   public Modelo editar(final EditarInput input) {

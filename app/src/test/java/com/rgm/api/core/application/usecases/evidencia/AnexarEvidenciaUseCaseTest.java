@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+import com.rgm.api.core.application.usecases.modelo.AdicionarFotoGaleriaUseCase;
 import com.rgm.api.core.domain.exceptions.BusinessRuleException;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.exceptions.ValidationException;
@@ -38,6 +39,7 @@ class AnexarEvidenciaUseCaseTest {
   private StorageService storageService;
   private UsuarioRepository usuarioRepository;
   private SolicitacaoAtribuicaoRepository atribuicaoRepository;
+  private AdicionarFotoGaleriaUseCase adicionarFotoGaleriaUseCase;
   private AnexarEvidenciaUseCase useCase;
 
   @BeforeEach
@@ -49,6 +51,7 @@ class AnexarEvidenciaUseCaseTest {
     storageService = mock(StorageService.class);
     usuarioRepository = mock(UsuarioRepository.class);
     atribuicaoRepository = mock(SolicitacaoAtribuicaoRepository.class);
+    adicionarFotoGaleriaUseCase = mock(AdicionarFotoGaleriaUseCase.class);
     useCase =
         new AnexarEvidenciaUseCase(
             solicitacaoRepository,
@@ -57,7 +60,8 @@ class AnexarEvidenciaUseCaseTest {
             atividadeRepository,
             storageService,
             usuarioRepository,
-            atribuicaoRepository);
+            atribuicaoRepository,
+            adicionarFotoGaleriaUseCase);
   }
 
   private Solicitacao criarSolicitacao(final StatusSolicitacao status) {
@@ -74,6 +78,9 @@ class AnexarEvidenciaUseCaseTest {
         status,
         status.exigePrioridade() ? PrioridadeSolicitacao.ALTA : null,
         UUID.randomUUID(),
+        null /* modeloCodigo */,
+        null /* modeloMaquina */,
+        null /* modeloObservacoes */,
         UUID.randomUUID(),
         comentarioFinal,
         agora,
@@ -111,11 +118,11 @@ class AnexarEvidenciaUseCaseTest {
             null,
             null);
 
-    final String publicUrl = useCase.upload(input);
-    final Evidencia resultado = useCase.persist(input, publicUrl);
+    final AnexarEvidenciaUseCase.UploadResult uploadResult = useCase.upload(input);
+    final Evidencia resultado = useCase.persist(input, uploadResult);
 
     assertNotNull(resultado);
-    assertEquals(url, publicUrl);
+    assertEquals(url, uploadResult.evidenciaPublicUrl());
     assertEquals("image/jpeg", resultado.getMimeType());
     assertEquals(TipoEvidencia.GERAL, resultado.getTipo());
     verify(solicitacaoEvidenciaRepository).save(any());
@@ -150,11 +157,12 @@ class AnexarEvidenciaUseCaseTest {
             TipoEvidencia.SERVICO_REALIZADO,
             "Servico realizado conforme solicitado");
 
-    final String publicUrl = useCase.upload(input);
-    final Evidencia resultado = useCase.persist(input, publicUrl);
+    final AnexarEvidenciaUseCase.UploadResult uploadResult = useCase.upload(input);
+    final Evidencia resultado = useCase.persist(input, uploadResult);
 
     assertEquals(TipoEvidencia.SERVICO_REALIZADO, resultado.getTipo());
     assertEquals("Servico realizado conforme solicitado", resultado.getDescricao());
+    verifyNoInteractions(adicionarFotoGaleriaUseCase);
   }
 
   @Test
@@ -182,9 +190,9 @@ class AnexarEvidenciaUseCaseTest {
             TipoEvidencia.SERVICO_REALIZADO,
             "   ");
 
-    final String publicUrl = useCase.upload(input);
+    final AnexarEvidenciaUseCase.UploadResult uploadResult = useCase.upload(input);
 
-    assertThrows(ValidationException.class, () -> useCase.persist(input, publicUrl));
+    assertThrows(ValidationException.class, () -> useCase.persist(input, uploadResult));
   }
 
   @Test
@@ -252,8 +260,8 @@ class AnexarEvidenciaUseCaseTest {
             null,
             null);
 
-    final String publicUrl = useCase.upload(input);
-    final Evidencia resultado = useCase.persist(input, publicUrl);
+    final AnexarEvidenciaUseCase.UploadResult uploadResult = useCase.upload(input);
+    final Evidencia resultado = useCase.persist(input, uploadResult);
 
     assertNotNull(resultado);
     assertEquals("application/pdf", resultado.getMimeType());
@@ -277,5 +285,180 @@ class AnexarEvidenciaUseCaseTest {
                     UUID.randomUUID(),
                     null,
                     null)));
+  }
+
+  @Test
+  void deveAlimentarGaleriaComEvidenciaDeServicoRealizadoEmImagem() {
+    final Solicitacao sol = criarSolicitacao(StatusSolicitacao.EM_ANDAMENTO);
+    final UUID usuarioId = UUID.randomUUID();
+    final String url = "http://minio:9000/images/servico.jpg";
+    final String urlGaleria = "http://minio:9000/images/servico-galeria.jpg";
+
+    when(solicitacaoRepository.findById(sol.getId())).thenReturn(Optional.of(sol));
+    when(usuarioRepository.findById(usuarioId))
+        .thenReturn(Optional.of(criarUsuario(usuarioId, PerfilUsuario.OPERADOR)));
+    when(atribuicaoRepository.existsBySolicitacaoIdAndUsuarioIdAndRemovidoEmIsNull(
+            sol.getId(), usuarioId))
+        .thenReturn(true);
+    when(storageService.upload(any(), any(), any(), anyLong())).thenReturn(url);
+    when(evidenciaRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(solicitacaoEvidenciaRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(atividadeRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(adicionarFotoGaleriaUseCase.uploadAutomatico(any())).thenReturn(urlGaleria);
+
+    final var input =
+        new AnexarEvidenciaUseCase.Input(
+            sol.getId(),
+            "servico.jpg",
+            "image/jpeg",
+            1024L,
+            new ByteArrayInputStream(new byte[1024]),
+            usuarioId,
+            TipoEvidencia.SERVICO_REALIZADO,
+            "Servico realizado conforme solicitado",
+            () -> new ByteArrayInputStream(new byte[1024]));
+
+    final AnexarEvidenciaUseCase.UploadResult uploadResult = useCase.upload(input);
+    useCase.persist(input, uploadResult);
+
+    assertEquals(sol.getModeloId(), uploadResult.galeriaInput().modeloId());
+    assertEquals(urlGaleria, uploadResult.galeriaPublicUrl());
+    verify(adicionarFotoGaleriaUseCase).uploadAutomatico(any());
+    verify(adicionarFotoGaleriaUseCase).persist(uploadResult.galeriaInput(), urlGaleria);
+  }
+
+  @Test
+  void deveAlimentarGaleriaComEvidenciaDeConclusaoEmImagem() {
+    final Solicitacao sol = criarSolicitacao(StatusSolicitacao.EM_VALIDACAO);
+    final UUID usuarioId = UUID.randomUUID();
+    final String url = "http://minio:9000/images/conclusao.png";
+
+    when(solicitacaoRepository.findById(sol.getId())).thenReturn(Optional.of(sol));
+    when(usuarioRepository.findById(usuarioId))
+        .thenReturn(Optional.of(criarUsuario(usuarioId, PerfilUsuario.GESTOR)));
+    when(storageService.upload(any(), any(), any(), anyLong())).thenReturn(url);
+    when(evidenciaRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(solicitacaoEvidenciaRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(atividadeRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(adicionarFotoGaleriaUseCase.uploadAutomatico(any())).thenReturn(url);
+
+    final var input =
+        new AnexarEvidenciaUseCase.Input(
+            sol.getId(),
+            "conclusao.png",
+            "image/png",
+            1024L,
+            new ByteArrayInputStream(new byte[1024]),
+            usuarioId,
+            TipoEvidencia.CONCLUSAO,
+            null,
+            () -> new ByteArrayInputStream(new byte[1024]));
+
+    final AnexarEvidenciaUseCase.UploadResult uploadResult = useCase.upload(input);
+    useCase.persist(input, uploadResult);
+
+    verify(adicionarFotoGaleriaUseCase).uploadAutomatico(any());
+  }
+
+  @Test
+  void naoDeveAlimentarGaleriaComTipoNaoElegivel() {
+    final Solicitacao sol = criarSolicitacao(StatusSolicitacao.EM_ANDAMENTO);
+    final UUID usuarioId = UUID.randomUUID();
+    final String url = "http://minio:9000/images/abertura.jpg";
+
+    when(solicitacaoRepository.findById(sol.getId())).thenReturn(Optional.of(sol));
+    when(usuarioRepository.findById(usuarioId))
+        .thenReturn(Optional.of(criarUsuario(usuarioId, PerfilUsuario.GESTOR)));
+    when(storageService.upload(any(), any(), any(), anyLong())).thenReturn(url);
+    when(evidenciaRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(solicitacaoEvidenciaRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(atividadeRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    final var input =
+        new AnexarEvidenciaUseCase.Input(
+            sol.getId(),
+            "abertura.jpg",
+            "image/jpeg",
+            1024L,
+            new ByteArrayInputStream(new byte[1024]),
+            usuarioId,
+            TipoEvidencia.ABERTURA,
+            null,
+            () -> new ByteArrayInputStream(new byte[1024]));
+
+    final AnexarEvidenciaUseCase.UploadResult uploadResult = useCase.upload(input);
+    useCase.persist(input, uploadResult);
+
+    assertNull(uploadResult.galeriaPublicUrl());
+    verifyNoInteractions(adicionarFotoGaleriaUseCase);
+  }
+
+  @Test
+  void naoDeveAlimentarGaleriaComFormatoIncompativel() {
+    final Solicitacao sol = criarSolicitacao(StatusSolicitacao.EM_ANDAMENTO);
+    final UUID usuarioId = UUID.randomUUID();
+    final String url = "http://minio:9000/images/servico.gif";
+
+    when(solicitacaoRepository.findById(sol.getId())).thenReturn(Optional.of(sol));
+    when(usuarioRepository.findById(usuarioId))
+        .thenReturn(Optional.of(criarUsuario(usuarioId, PerfilUsuario.GESTOR)));
+    when(storageService.upload(any(), any(), any(), anyLong())).thenReturn(url);
+    when(evidenciaRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(solicitacaoEvidenciaRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(atividadeRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    final var input =
+        new AnexarEvidenciaUseCase.Input(
+            sol.getId(),
+            "servico.gif",
+            "image/gif",
+            1024L,
+            new ByteArrayInputStream(new byte[1024]),
+            usuarioId,
+            TipoEvidencia.SERVICO_REALIZADO,
+            "Feito",
+            () -> new ByteArrayInputStream(new byte[1024]));
+
+    final AnexarEvidenciaUseCase.UploadResult uploadResult = useCase.upload(input);
+    useCase.persist(input, uploadResult);
+
+    assertNull(uploadResult.galeriaPublicUrl());
+    verifyNoInteractions(adicionarFotoGaleriaUseCase);
+  }
+
+  @Test
+  void falhaAoCopiarParaGaleriaNaoDerrubaAnexoDaEvidencia() {
+    final Solicitacao sol = criarSolicitacao(StatusSolicitacao.EM_ANDAMENTO);
+    final UUID usuarioId = UUID.randomUUID();
+    final String url = "http://minio:9000/images/servico.jpg";
+
+    when(solicitacaoRepository.findById(sol.getId())).thenReturn(Optional.of(sol));
+    when(usuarioRepository.findById(usuarioId))
+        .thenReturn(Optional.of(criarUsuario(usuarioId, PerfilUsuario.GESTOR)));
+    when(storageService.upload(any(), any(), any(), anyLong())).thenReturn(url);
+    when(evidenciaRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(solicitacaoEvidenciaRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(atividadeRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(adicionarFotoGaleriaUseCase.uploadAutomatico(any()))
+        .thenThrow(new RuntimeException("storage indisponivel"));
+
+    final var input =
+        new AnexarEvidenciaUseCase.Input(
+            sol.getId(),
+            "servico.jpg",
+            "image/jpeg",
+            1024L,
+            new ByteArrayInputStream(new byte[1024]),
+            usuarioId,
+            TipoEvidencia.SERVICO_REALIZADO,
+            "Feito",
+            () -> new ByteArrayInputStream(new byte[1024]));
+
+    final AnexarEvidenciaUseCase.UploadResult uploadResult = useCase.upload(input);
+    final Evidencia resultado = useCase.persist(input, uploadResult);
+
+    assertNotNull(resultado);
+    assertNull(uploadResult.galeriaPublicUrl());
+    verify(adicionarFotoGaleriaUseCase, never()).persist(any(), any());
   }
 }

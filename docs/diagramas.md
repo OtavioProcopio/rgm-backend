@@ -127,7 +127,10 @@ classDiagram
         +TipoSolicitacao tipo
         +StatusSolicitacao status
         +PrioridadeSolicitacao prioridade
-        +UUID modeloId
+        +UUID modeloId «nullable ate CRIACAO concluir»
+        +string modeloCodigo «so CRIACAO»
+        +string modeloMaquina «so CRIACAO»
+        +string modeloObservacoes «so CRIACAO»
         +UUID abertaPorUsuarioId
         +string comentarioFinal
         +datetime criadaEm
@@ -228,6 +231,7 @@ classDiagram
         REPARO
         INSPECAO
         REENGENHARIA
+        CRIACAO
     }
 
     class TipoAtividadeSolicitacao {
@@ -241,6 +245,7 @@ classDiagram
 
     class TipoEventoModelo {
         <<enumeration>>
+        CADASTRO
         MODIFICACAO
         INSPECAO
         REPARO

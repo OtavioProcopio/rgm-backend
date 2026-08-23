@@ -46,14 +46,11 @@ class SolicitacaoFinalizadaEventTest {
   }
 
   @Test
-  void deveFalharComModeloIdNulo() {
-    final NullPointerException ex =
-        assertThrows(
-            NullPointerException.class,
-            () ->
-                new SolicitacaoFinalizadaEvent(
-                    SOLICITACAO_ID, null, StatusSolicitacao.CONCLUIDA, AGORA));
-    assertTrue(ex.getMessage().contains("modeloId"));
+  void devePermitirModeloIdNulo() {
+    // Solicitacao CRIACAO cancelada antes de concluida nunca chegou a ter modelo vinculado.
+    final SolicitacaoFinalizadaEvent event =
+        new SolicitacaoFinalizadaEvent(SOLICITACAO_ID, null, StatusSolicitacao.CANCELADA, AGORA);
+    assertNull(event.getModeloId());
   }
 
   @Test

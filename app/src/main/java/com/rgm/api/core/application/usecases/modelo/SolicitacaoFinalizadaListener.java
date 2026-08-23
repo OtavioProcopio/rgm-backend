@@ -17,6 +17,8 @@ public final class SolicitacaoFinalizadaListener {
   }
 
   public void onSolicitacaoFinalizada(final SolicitacaoFinalizadaEvent event) {
-    recalcularPendenciaUseCase.execute(event.getModeloId());
+    if (event.getModeloId() != null) {
+      recalcularPendenciaUseCase.execute(event.getModeloId());
+    }
   }
 }

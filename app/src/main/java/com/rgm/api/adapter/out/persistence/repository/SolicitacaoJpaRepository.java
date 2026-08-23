@@ -47,7 +47,7 @@ public interface SolicitacaoJpaRepository extends JpaRepository<SolicitacaoJpaEn
   @Query(
       value =
           "SELECT s.* FROM solicitacoes s "
-              + "JOIN modelos mo ON mo.id = s.modelo_id WHERE "
+              + "LEFT JOIN modelos mo ON mo.id = s.modelo_id WHERE "
               + "(CAST(:status AS text) IS NULL OR s.status = :status) AND "
               + "(CAST(:modeloId AS uuid) IS NULL OR s.modelo_id = :modeloId) AND "
               + "(CAST(:tipo AS text) IS NULL OR s.tipo = :tipo) AND "
@@ -62,7 +62,7 @@ public interface SolicitacaoJpaRepository extends JpaRepository<SolicitacaoJpaEn
               + ATRASADA_FILTRO,
       countQuery =
           "SELECT COUNT(s.*) FROM solicitacoes s "
-              + "JOIN modelos mo ON mo.id = s.modelo_id WHERE "
+              + "LEFT JOIN modelos mo ON mo.id = s.modelo_id WHERE "
               + "(CAST(:status AS text) IS NULL OR s.status = :status) AND "
               + "(CAST(:modeloId AS uuid) IS NULL OR s.modelo_id = :modeloId) AND "
               + "(CAST(:tipo AS text) IS NULL OR s.tipo = :tipo) AND "

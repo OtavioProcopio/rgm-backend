@@ -64,6 +64,9 @@ class CancelarSolicitacaoUseCaseTest {
         status,
         status.exigePrioridade() ? PrioridadeSolicitacao.MEDIA : null,
         UUID.randomUUID(),
+        null /* modeloCodigo */,
+        null /* modeloMaquina */,
+        null /* modeloObservacoes */,
         abertaPorId,
         null,
         NOW,
@@ -189,6 +192,43 @@ class CancelarSolicitacaoUseCaseTest {
             useCase.execute(
                 new CancelarSolicitacaoUseCase.Input(
                     solicitacao.getId(), "Cancelando", operador.getId())));
+  }
+
+  @Test
+  void deveCancelarSolicitacaoDeCriacaoSemModeloVinculado() {
+    final Usuario gestor = criarUsuario(PerfilUsuario.GESTOR);
+    final Solicitacao solicitacao =
+        new Solicitacao(
+            UUID.randomUUID(),
+            "Novo modelo XYZ",
+            "Descricao pretendida",
+            TipoSolicitacao.CRIACAO,
+            StatusSolicitacao.EM_ANDAMENTO,
+            PrioridadeSolicitacao.MEDIA,
+            null,
+            "COD-XYZ",
+            "FBOX",
+            null,
+            UUID.randomUUID(),
+            null,
+            NOW,
+            NOW,
+            null,
+            null);
+
+    when(usuarioRepository.findById(gestor.getId())).thenReturn(Optional.of(gestor));
+    when(solicitacaoRepository.findById(solicitacao.getId())).thenReturn(Optional.of(solicitacao));
+    when(solicitacaoRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(atividadeRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    final Solicitacao resultado =
+        useCase.execute(
+            new CancelarSolicitacaoUseCase.Input(
+                solicitacao.getId(), "Nao precisa mais", gestor.getId()));
+
+    assertEquals(StatusSolicitacao.CANCELADA, resultado.getStatus());
+    assertNull(resultado.getModeloId());
+    verify(eventPublisher).publish(any(SolicitacaoFinalizadaEvent.class));
   }
 
   @Test

@@ -134,6 +134,12 @@ public class SolicitacaoRepositoryAdapter implements SolicitacaoRepository {
   public Map<UUID, Long> countGroupByModeloId() {
     final Map<UUID, Long> result = new HashMap<>();
     for (final Object[] row : jpa.countGroupByModeloId()) {
+      // modelo_id e nulo para solicitacoes CRIACAO ainda nao concluidas — nao ha
+      // modelo a que atribuir essa contagem, entao a linha e ignorada aqui (um Map
+      // com chave nula quebraria a serializacao JSON da resposta).
+      if (row[0] == null) {
+        continue;
+      }
       result.put((UUID) row[0], (Long) row[1]);
     }
     return result;

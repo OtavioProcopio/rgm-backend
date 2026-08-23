@@ -43,8 +43,13 @@ public class SolicitacaoJpaEntity {
   @Enumerated(EnumType.STRING)
   private PrioridadeSolicitacao prioridade;
 
-  @Column(nullable = false)
   private UUID modeloId;
+
+  private String modeloCodigo;
+
+  private String modeloMaquina;
+
+  private String modeloObservacoes;
 
   @Column(nullable = false)
   private UUID abertaPorUsuarioId;

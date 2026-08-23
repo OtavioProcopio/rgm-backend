@@ -4,5 +4,6 @@ package com.rgm.api.core.domain.model.enums;
 public enum TipoSolicitacao {
   REPARO,
   INSPECAO,
-  REENGENHARIA
+  REENGENHARIA,
+  CRIACAO
 }

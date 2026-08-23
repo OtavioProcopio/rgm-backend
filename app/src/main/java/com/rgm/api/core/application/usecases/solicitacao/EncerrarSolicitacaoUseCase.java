@@ -1,10 +1,12 @@
 package com.rgm.api.core.application.usecases.solicitacao;
 
+import com.rgm.api.core.application.usecases.modelo.GerenciarModelosUseCase;
 import com.rgm.api.core.domain.events.SolicitacaoFinalizadaEvent;
 import com.rgm.api.core.domain.exceptions.NaoAutorizadoException;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.exceptions.ValidationException;
 import com.rgm.api.core.domain.model.aggregates.EventoModelo;
+import com.rgm.api.core.domain.model.aggregates.Modelo;
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
 import com.rgm.api.core.domain.model.aggregates.Usuario;
 import com.rgm.api.core.domain.model.entities.AtividadeSolicitacao;
@@ -29,18 +31,21 @@ public class EncerrarSolicitacaoUseCase {
   private final AtividadeSolicitacaoRepository atividadeRepository;
   private final EventoModeloRepository eventoModeloRepository;
   private final DomainEventPublisher eventPublisher;
+  private final GerenciarModelosUseCase gerenciarModelosUseCase;
 
   public EncerrarSolicitacaoUseCase(
       final SolicitacaoRepository solicitacaoRepository,
       final UsuarioRepository usuarioRepository,
       final AtividadeSolicitacaoRepository atividadeRepository,
       final EventoModeloRepository eventoModeloRepository,
-      final DomainEventPublisher eventPublisher) {
+      final DomainEventPublisher eventPublisher,
+      final GerenciarModelosUseCase gerenciarModelosUseCase) {
     this.solicitacaoRepository = solicitacaoRepository;
     this.usuarioRepository = usuarioRepository;
     this.atividadeRepository = atividadeRepository;
     this.eventoModeloRepository = eventoModeloRepository;
     this.eventPublisher = eventPublisher;
+    this.gerenciarModelosUseCase = gerenciarModelosUseCase;
   }
 
   public record Input(
@@ -69,13 +74,31 @@ public class EncerrarSolicitacaoUseCase {
 
     final Solicitacao encerrada;
     final StatusSolicitacao novoStatus;
+    final boolean geradaPorCriacao;
 
     if (input.concluir()) {
-      encerrada = solicitacao.concluir(input.comentarioFinal(), agora);
       novoStatus = StatusSolicitacao.CONCLUIDA;
+      if (solicitacao.getTipo() == TipoSolicitacao.CRIACAO) {
+        final Modelo modeloCriado =
+            gerenciarModelosUseCase.criar(
+                new GerenciarModelosUseCase.CriarInput(
+                    solicitacao.getModeloCodigo(),
+                    solicitacao.getDescricao(),
+                    solicitacao.getModeloObservacoes(),
+                    solicitacao.getModeloMaquina(),
+                    input.gestorId(),
+                    solicitacao.getId()));
+        encerrada =
+            solicitacao.concluirCriacao(input.comentarioFinal(), modeloCriado.getId(), agora);
+        geradaPorCriacao = true;
+      } else {
+        encerrada = solicitacao.concluir(input.comentarioFinal(), agora);
+        geradaPorCriacao = false;
+      }
     } else {
       encerrada = solicitacao.cancelar(input.comentarioFinal(), agora);
       novoStatus = StatusSolicitacao.CANCELADA;
+      geradaPorCriacao = false;
     }
 
     final Solicitacao salva = solicitacaoRepository.save(encerrada);
@@ -84,7 +107,10 @@ public class EncerrarSolicitacaoUseCase {
         AtividadeSolicitacao.mudancaStatus(
             salva.getId(), solicitacao.getStatus(), novoStatus, input.gestorId(), agora));
 
-    if (novoStatus == StatusSolicitacao.CONCLUIDA && salva.getModeloId() != null) {
+    // Para CRIACAO, o evento CADASTRO ja foi criado dentro de gerenciarModelosUseCase.criar().
+    if (novoStatus == StatusSolicitacao.CONCLUIDA
+        && !geradaPorCriacao
+        && salva.getModeloId() != null) {
       eventoModeloRepository.save(
           EventoModelo.criar(
               salva.getModeloId(),
@@ -108,6 +134,9 @@ public class EncerrarSolicitacaoUseCase {
       case REPARO -> TipoEventoModelo.REPARO;
       case INSPECAO -> TipoEventoModelo.INSPECAO;
       case REENGENHARIA -> TipoEventoModelo.MODIFICACAO;
+      case CRIACAO -> throw new IllegalStateException(
+          "CRIACAO nao usa mapearTipoEvento — o evento e criado dentro de"
+              + " GerenciarModelosUseCase.criar()");
     };
   }
 }

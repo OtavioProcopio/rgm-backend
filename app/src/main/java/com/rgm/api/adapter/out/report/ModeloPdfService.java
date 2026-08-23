@@ -559,6 +559,7 @@ public class ModeloPdfService {
 
   private String tipoEventoLabel(final String tipo) {
     return switch (tipo) {
+      case "CADASTRO" -> "Cadastro";
       case "MODIFICACAO" -> "Modificação";
       case "INSPECAO" -> "Inspeção";
       case "REPARO" -> "Reparo";

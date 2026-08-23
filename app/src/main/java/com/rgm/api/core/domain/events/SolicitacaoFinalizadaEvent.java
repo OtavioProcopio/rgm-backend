@@ -8,7 +8,9 @@ import java.util.UUID;
 
 /**
  * Evento de dominio publicado quando uma solicitacao atinge estado terminal (CONCLUIDA ou
- * CANCELADA). Usado para disparar o recalculo de Modelo.temPendenciaAberta.
+ * CANCELADA). Usado para disparar o recalculo de Modelo.temPendenciaAberta. {@code modeloId} e nulo
+ * para uma solicitacao do tipo CRIACAO cancelada antes de concluida (nunca chegou a ter modelo
+ * vinculado).
  */
 public final class SolicitacaoFinalizadaEvent {
 
@@ -23,7 +25,7 @@ public final class SolicitacaoFinalizadaEvent {
       final StatusSolicitacao statusFinal,
       final Instant ocorridoEm) {
     this.solicitacaoId = requireNonNull(solicitacaoId, "solicitacaoId");
-    this.modeloId = requireNonNull(modeloId, "modeloId");
+    this.modeloId = modeloId;
     this.statusFinal = requireNonNull(statusFinal, "statusFinal");
     this.ocorridoEm = requireNonNull(ocorridoEm, "ocorridoEm");
 
