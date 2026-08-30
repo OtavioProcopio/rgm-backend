@@ -9,9 +9,11 @@ import com.rgm.api.adapter.out.report.ModeloPdfService;
 import com.rgm.api.core.application.usecases.modelo.GerenciarModelosUseCase;
 import com.rgm.api.core.application.usecases.modelo.ListarModelosUseCase;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
+import com.rgm.api.core.domain.exceptions.ValidationException;
 import com.rgm.api.core.domain.model.aggregates.Modelo;
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
+import com.rgm.api.core.domain.model.enums.TipoModelo;
 import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.EventoModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.FotoGaleriaModeloRepository;
@@ -131,6 +133,7 @@ public class ModeloController {
                 request.descricao(),
                 request.observacoes(),
                 request.maquina(),
+                parseTipo(request.tipo()),
                 gestorId));
     return ResponseEntity.status(HttpStatus.CREATED).body(ModeloResponse.from(modelo));
   }
@@ -151,6 +154,7 @@ public class ModeloController {
                 request.descricao(),
                 request.observacoes(),
                 request.maquina(),
+                parseTipo(request.tipo()),
                 gestorId));
     return ResponseEntity.ok(ModeloResponse.from(modelo));
   }
@@ -282,6 +286,17 @@ public class ModeloController {
               .getSeconds();
     }
     return (double) totalSegundos / (concluidasOrdenadas.size() - 1);
+  }
+
+  private TipoModelo parseTipo(final String tipo) {
+    if (tipo == null || tipo.isBlank()) {
+      return null;
+    }
+    try {
+      return TipoModelo.valueOf(tipo);
+    } catch (final IllegalArgumentException e) {
+      throw new ValidationException("Tipo de modelo invalido: " + tipo);
+    }
   }
 
   private String resolveNome(final Authentication authentication) {
