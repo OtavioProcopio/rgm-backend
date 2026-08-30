@@ -33,6 +33,7 @@ class ModeloPdfServiceTest {
         null,
         ativo,
         "Injetora A",
+        null,
         temPendencia,
         agora,
         agora);

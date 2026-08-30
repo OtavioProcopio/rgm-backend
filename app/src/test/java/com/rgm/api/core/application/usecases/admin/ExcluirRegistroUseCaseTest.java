@@ -192,7 +192,19 @@ class ExcluirRegistroUseCaseTest {
     final Instant agora = Instant.now();
     final Modelo modelo =
         new Modelo(
-            modeloId, "M1", 1, "Modelo 1", null, null, null, true, "FBOX", false, agora, agora);
+            modeloId,
+            "M1",
+            1,
+            "Modelo 1",
+            null,
+            null,
+            null,
+            true,
+            "FBOX",
+            null,
+            false,
+            agora,
+            agora);
 
     when(usuarioRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
     when(modeloRepository.findById(modeloId)).thenReturn(Optional.of(modelo));
@@ -212,7 +224,19 @@ class ExcluirRegistroUseCaseTest {
     final Instant agora = Instant.now();
     final Modelo modelo =
         new Modelo(
-            modeloId, "M1", 1, "Modelo 1", null, null, null, true, "FBOX", false, agora, agora);
+            modeloId,
+            "M1",
+            1,
+            "Modelo 1",
+            null,
+            null,
+            null,
+            true,
+            "FBOX",
+            null,
+            false,
+            agora,
+            agora);
     final com.rgm.api.core.domain.model.aggregates.FotoGaleriaModelo foto =
         com.rgm.api.core.domain.model.aggregates.FotoGaleriaModelo.criar(
             modeloId, "http://minio/foto.jpg", "Parte 1", true, admin.getId(), agora);
@@ -301,7 +325,8 @@ class ExcluirRegistroUseCaseTest {
     final UUID modeloId = UUID.randomUUID();
     final Instant agora = Instant.now();
     final Modelo modelo =
-        new Modelo(modeloId, "M1", 1, "Mod1", null, null, null, true, "FBOX", false, agora, agora);
+        new Modelo(
+            modeloId, "M1", 1, "Mod1", null, null, null, true, "FBOX", null, false, agora, agora);
 
     when(usuarioRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
     when(modeloRepository.findById(modeloId)).thenReturn(Optional.of(modelo));

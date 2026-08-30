@@ -13,6 +13,7 @@ public record ModeloResponse(
     String fotoCapaUrl,
     boolean ativo,
     String maquina,
+    String tipo,
     boolean temPendenciaAberta,
     Instant criadoEm,
     Instant atualizadoEm) {
@@ -33,6 +34,7 @@ public record ModeloResponse(
         fotoCapaUrl,
         m.isAtivo(),
         m.getMaquina(),
+        m.getTipo() != null ? m.getTipo().name() : null,
         m.isTemPendenciaAberta(),
         m.getCriadoEm(),
         m.getAtualizadoEm());

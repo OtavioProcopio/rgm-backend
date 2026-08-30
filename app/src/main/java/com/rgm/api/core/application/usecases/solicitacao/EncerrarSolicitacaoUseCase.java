@@ -86,6 +86,7 @@ public class EncerrarSolicitacaoUseCase {
                     solicitacao.getDescricao(),
                     solicitacao.getModeloObservacoes(),
                     solicitacao.getModeloMaquina(),
+                    null,
                     input.gestorId(),
                     solicitacao.getId()));
         encerrada =

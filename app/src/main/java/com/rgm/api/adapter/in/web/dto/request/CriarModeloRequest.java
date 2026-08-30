@@ -6,4 +6,5 @@ public record CriarModeloRequest(
     @NotBlank String codigo,
     @NotBlank String descricao,
     String observacoes,
-    @NotBlank String maquina) {}
+    @NotBlank String maquina,
+    String tipo) {}

@@ -76,6 +76,7 @@ class ModeloControllerTest {
         null,
         true,
         "FBOX",
+        null,
         false,
         agora,
         agora);
@@ -124,7 +125,7 @@ class ModeloControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     objectMapper.writeValueAsString(
-                        new CriarModeloRequest("MOD-001", "Desc", "Obs", "FBOX"))))
+                        new CriarModeloRequest("MOD-001", "Desc", "Obs", "FBOX", null))))
         .andExpect(status().isCreated())
         .andExpect(jsonPath("$.codigo").value("MOD-001"));
   }
@@ -211,7 +212,7 @@ class ModeloControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     objectMapper.writeValueAsString(
-                        new EditarModeloRequest("MOD-001", "Nova Desc", "Obs", "FBOX"))))
+                        new EditarModeloRequest("MOD-001", "Nova Desc", "Obs", "FBOX", null))))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.codigo").value("MOD-001"));
   }

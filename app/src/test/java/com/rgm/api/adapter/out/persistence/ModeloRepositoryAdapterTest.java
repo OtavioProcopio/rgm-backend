@@ -61,6 +61,7 @@ class ModeloRepositoryAdapterTest {
         null,
         true,
         "MANUAL",
+        null,
         false,
         Instant.now(),
         Instant.now());

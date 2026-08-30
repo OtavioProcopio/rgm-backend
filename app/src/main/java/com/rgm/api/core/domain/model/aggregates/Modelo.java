@@ -5,6 +5,7 @@ import static com.rgm.api.core.domain.validation.DomainValidations.requireNonBla
 import static com.rgm.api.core.domain.validation.DomainValidations.requireNonNull;
 import static com.rgm.api.core.domain.validation.DomainValidations.requirePositiveOrZero;
 
+import com.rgm.api.core.domain.model.enums.TipoModelo;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -20,6 +21,7 @@ public final class Modelo {
   private final Instant estadoAtualAtualizadoEm;
   private final boolean ativo;
   private final String maquina;
+  private final TipoModelo tipo;
   private final boolean temPendenciaAberta;
   private final Instant criadoEm;
   private final Instant atualizadoEm;
@@ -34,6 +36,7 @@ public final class Modelo {
       final Instant estadoAtualAtualizadoEm,
       final boolean ativo,
       final String maquina,
+      final TipoModelo tipo,
       final boolean temPendenciaAberta,
       final Instant criadoEm,
       final Instant atualizadoEm) {
@@ -46,6 +49,7 @@ public final class Modelo {
     this.estadoAtualAtualizadoEm = estadoAtualAtualizadoEm;
     this.ativo = ativo;
     this.maquina = requireNonBlank(maquina, "maquina");
+    this.tipo = tipo;
     this.temPendenciaAberta = temPendenciaAberta;
     this.criadoEm = requireNonNull(criadoEm, "criadoEm");
     this.atualizadoEm = requireNonNull(atualizadoEm, "atualizadoEm");
@@ -57,6 +61,7 @@ public final class Modelo {
       final String descricao,
       final String observacoes,
       final String maquina,
+      final TipoModelo tipo,
       final int versao,
       final Instant agora) {
     return new Modelo(
@@ -69,6 +74,7 @@ public final class Modelo {
         null,
         true,
         maquina,
+        tipo,
         false,
         agora,
         agora);
@@ -86,6 +92,7 @@ public final class Modelo {
         estadoAtualAtualizadoEm,
         ativo,
         maquina,
+        tipo,
         novoValor,
         criadoEm,
         novoAtualizadoEm);
@@ -103,6 +110,7 @@ public final class Modelo {
         novoAtualizadoEm,
         ativo,
         maquina,
+        tipo,
         temPendenciaAberta,
         criadoEm,
         novoAtualizadoEm);
@@ -120,6 +128,7 @@ public final class Modelo {
         estadoAtualAtualizadoEm,
         false,
         maquina,
+        tipo,
         temPendenciaAberta,
         criadoEm,
         novoAtualizadoEm);
@@ -137,6 +146,7 @@ public final class Modelo {
         estadoAtualAtualizadoEm,
         true,
         maquina,
+        tipo,
         temPendenciaAberta,
         criadoEm,
         novoAtualizadoEm);
@@ -148,6 +158,7 @@ public final class Modelo {
       final String novaDescricao,
       final String novasObservacoes,
       final String novaMaquina,
+      final TipoModelo novoTipo,
       final Instant novoAtualizadoEm) {
     return new Modelo(
         id,
@@ -159,6 +170,7 @@ public final class Modelo {
         estadoAtualAtualizadoEm,
         ativo,
         novaMaquina,
+        novoTipo,
         temPendenciaAberta,
         criadoEm,
         novoAtualizadoEm);
@@ -198,6 +210,10 @@ public final class Modelo {
 
   public String getMaquina() {
     return maquina;
+  }
+
+  public TipoModelo getTipo() {
+    return tipo;
   }
 
   public boolean isTemPendenciaAberta() {

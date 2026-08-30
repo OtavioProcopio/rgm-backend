@@ -157,7 +157,8 @@ class EncerrarSolicitacaoUseCaseTest {
     final Usuario gestor = criarGestor();
     final Solicitacao solicitacao = criarSolicitacaoCriacaoEmValidacao();
     final Modelo modeloCriado =
-        Modelo.criar("COD-XYZ", "Descricao do modelo pretendido", null, "FBOX", 1, Instant.now());
+        Modelo.criar(
+            "COD-XYZ", "Descricao do modelo pretendido", null, "FBOX", null, 1, Instant.now());
 
     when(usuarioRepository.findById(gestor.getId())).thenReturn(Optional.of(gestor));
     when(solicitacaoRepository.findById(solicitacao.getId())).thenReturn(Optional.of(solicitacao));

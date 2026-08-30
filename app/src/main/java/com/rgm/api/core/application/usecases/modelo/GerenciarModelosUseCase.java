@@ -6,6 +6,7 @@ import com.rgm.api.core.domain.exceptions.ValidationException;
 import com.rgm.api.core.domain.model.aggregates.EventoModelo;
 import com.rgm.api.core.domain.model.aggregates.Modelo;
 import com.rgm.api.core.domain.model.aggregates.Usuario;
+import com.rgm.api.core.domain.model.enums.TipoModelo;
 import com.rgm.api.core.domain.ports.repositories.EventoModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.MaquinaRepository;
 import com.rgm.api.core.domain.ports.repositories.ModeloRepository;
@@ -37,6 +38,7 @@ public final class GerenciarModelosUseCase {
       String descricao,
       String observacoes,
       String maquina,
+      TipoModelo tipo,
       UUID gestorId,
       UUID solicitacaoOrigemId) {
 
@@ -46,8 +48,9 @@ public final class GerenciarModelosUseCase {
         final String descricao,
         final String observacoes,
         final String maquina,
+        final TipoModelo tipo,
         final UUID gestorId) {
-      this(codigo, descricao, observacoes, maquina, gestorId, null);
+      this(codigo, descricao, observacoes, maquina, tipo, gestorId, null);
     }
   }
 
@@ -57,6 +60,7 @@ public final class GerenciarModelosUseCase {
       String descricao,
       String observacoes,
       String maquina,
+      TipoModelo tipo,
       UUID gestorId) {}
 
   public record DesativarInput(UUID modeloId, UUID gestorId) {}
@@ -73,7 +77,13 @@ public final class GerenciarModelosUseCase {
 
     final Modelo modelo =
         Modelo.criar(
-            input.codigo(), input.descricao(), input.observacoes(), input.maquina(), versao, agora);
+            input.codigo(),
+            input.descricao(),
+            input.observacoes(),
+            input.maquina(),
+            input.tipo(),
+            versao,
+            agora);
 
     final Modelo salvo = modeloRepository.save(modelo);
 
@@ -100,7 +110,12 @@ public final class GerenciarModelosUseCase {
 
     final Modelo editado =
         modelo.editar(
-            input.codigo(), input.descricao(), input.observacoes(), input.maquina(), agora);
+            input.codigo(),
+            input.descricao(),
+            input.observacoes(),
+            input.maquina(),
+            input.tipo(),
+            agora);
 
     return modeloRepository.save(editado);
   }

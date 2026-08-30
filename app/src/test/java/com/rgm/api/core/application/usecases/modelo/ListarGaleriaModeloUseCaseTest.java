@@ -32,7 +32,7 @@ class ListarGaleriaModeloUseCaseTest {
 
   @Test
   void deveListarFotosDoModelo() {
-    final Modelo modelo = Modelo.criar("COD-01", "Desc", null, "FBOX", 1, Instant.now());
+    final Modelo modelo = Modelo.criar("COD-01", "Desc", null, "FBOX", null, 1, Instant.now());
     final FotoGaleriaModelo foto =
         FotoGaleriaModelo.criar(
             modelo.getId(), "http://x/1.jpg", "Parte 1", true, UUID.randomUUID(), Instant.now());

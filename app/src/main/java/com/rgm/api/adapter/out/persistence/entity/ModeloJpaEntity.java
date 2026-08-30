@@ -1,7 +1,10 @@
 package com.rgm.api.adapter.out.persistence.entity;
 
+import com.rgm.api.core.domain.model.enums.TipoModelo;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
@@ -41,6 +44,9 @@ public class ModeloJpaEntity {
 
   @Column(nullable = false)
   private String maquina;
+
+  @Enumerated(EnumType.STRING)
+  private TipoModelo tipo;
 
   @Column(nullable = false)
   private boolean temPendenciaAberta;

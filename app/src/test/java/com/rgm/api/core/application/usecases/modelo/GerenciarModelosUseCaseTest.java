@@ -64,7 +64,7 @@ class GerenciarModelosUseCaseTest {
     final Modelo resultado =
         useCase.criar(
             new GerenciarModelosUseCase.CriarInput(
-                "MOD-01", "Descricao", null, "FBOX", gestor.getId()));
+                "MOD-01", "Descricao", null, "FBOX", null, gestor.getId()));
 
     assertNotNull(resultado);
     assertEquals("MOD-01", resultado.getCodigo());
@@ -92,7 +92,7 @@ class GerenciarModelosUseCaseTest {
 
     useCase.criar(
         new GerenciarModelosUseCase.CriarInput(
-            "MOD-02", "Descricao", null, "FBOX", gestor.getId(), solicitacaoId));
+            "MOD-02", "Descricao", null, "FBOX", null, gestor.getId(), solicitacaoId));
 
     final var eventoCaptor =
         org.mockito.ArgumentCaptor.forClass(
@@ -112,7 +112,7 @@ class GerenciarModelosUseCaseTest {
         () ->
             useCase.criar(
                 new GerenciarModelosUseCase.CriarInput(
-                    "MOD-01", "Descricao", null, "INEXISTENTE", gestor.getId())));
+                    "MOD-01", "Descricao", null, "INEXISTENTE", null, gestor.getId())));
   }
 
   @Test
@@ -135,7 +135,8 @@ class GerenciarModelosUseCaseTest {
         NaoAutorizadoException.class,
         () ->
             useCase.criar(
-                new GerenciarModelosUseCase.CriarInput("M", "D", null, "FBOX", operador.getId())));
+                new GerenciarModelosUseCase.CriarInput(
+                    "M", "D", null, "FBOX", null, operador.getId())));
   }
 
   @Test
@@ -153,6 +154,7 @@ class GerenciarModelosUseCaseTest {
             null,
             true,
             "FBOX",
+            null,
             false,
             agora,
             agora);
@@ -183,6 +185,7 @@ class GerenciarModelosUseCaseTest {
             null,
             false,
             "FBOX",
+            null,
             false,
             agora,
             agora);
@@ -237,6 +240,7 @@ class GerenciarModelosUseCaseTest {
             null,
             true,
             "FBOX",
+            null,
             false,
             agora,
             agora);
@@ -248,7 +252,7 @@ class GerenciarModelosUseCaseTest {
     final Modelo resultado =
         useCase.editar(
             new GerenciarModelosUseCase.EditarInput(
-                modelo.getId(), "MOD-EDITADO", "Desc Editada", "Obs", "MAQ", gestor.getId()));
+                modelo.getId(), "MOD-EDITADO", "Desc Editada", "Obs", "MAQ", null, gestor.getId()));
 
     assertNotNull(resultado);
     assertEquals("MOD-EDITADO", resultado.getCodigo());
@@ -267,7 +271,7 @@ class GerenciarModelosUseCaseTest {
         () ->
             useCase.editar(
                 new GerenciarModelosUseCase.EditarInput(
-                    UUID.randomUUID(), "MOD", "Desc", "Obs", "MAQ", gestor.getId())));
+                    UUID.randomUUID(), "MOD", "Desc", "Obs", "MAQ", null, gestor.getId())));
   }
 
   @Test
