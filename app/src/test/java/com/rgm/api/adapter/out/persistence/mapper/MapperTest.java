@@ -171,7 +171,7 @@ class MapperTest {
     final UUID id = UUID.randomUUID();
     final ModeloJpaEntity e =
         new ModeloJpaEntity(
-            id, "MDL-002", 2, "Desc", "Obs", null, null, false, "CNC-02", true, NOW, NOW);
+            id, "MDL-002", 2, "Desc", "Obs", null, null, false, "CNC-02", null, true, NOW, NOW);
     final Modelo m = ModeloMapper.toDomain(e);
 
     assertEquals(id, m.getId());
