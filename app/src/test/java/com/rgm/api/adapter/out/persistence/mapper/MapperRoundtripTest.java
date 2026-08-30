@@ -171,6 +171,7 @@ class MapperRoundtripTest {
             T2,
             true,
             "CNC-99",
+            null,
             true,
             T3,
             T4);
@@ -204,6 +205,7 @@ class MapperRoundtripTest {
             null,
             false,
             "CNC-00",
+            null,
             false,
             T1,
             T1);

@@ -66,6 +66,7 @@ class AbrirSolicitacaoUseCaseTest {
         null,
         ativo,
         maquina,
+        null,
         temPendencia,
         agora,
         agora);

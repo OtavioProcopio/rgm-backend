@@ -153,6 +153,7 @@ class MapperTest {
             NOW,
             true,
             "CNC-01",
+            null,
             false,
             NOW,
             NOW);

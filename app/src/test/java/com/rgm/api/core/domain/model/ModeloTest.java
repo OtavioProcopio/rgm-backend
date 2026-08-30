@@ -13,7 +13,7 @@ class ModeloTest {
 
   @Test
   void deveCriarModeloComValoresCorretos() {
-    final Modelo modelo = Modelo.criar("COD-001", "Descricao", "Obs", MAQUINA, 1, AGORA);
+    final Modelo modelo = Modelo.criar("COD-001", "Descricao", "Obs", MAQUINA, null, 1, AGORA);
 
     assertNotNull(modelo.getId());
     assertEquals("COD-001", modelo.getCodigo());
@@ -29,18 +29,19 @@ class ModeloTest {
   void deveFalharSemCodigo() {
     assertThrows(
         IllegalArgumentException.class,
-        () -> Modelo.criar("", "Descricao", null, MAQUINA, 1, AGORA));
+        () -> Modelo.criar("", "Descricao", null, MAQUINA, null, 1, AGORA));
   }
 
   @Test
   void deveFalharSemDescricao() {
     assertThrows(
-        IllegalArgumentException.class, () -> Modelo.criar("COD", "", null, MAQUINA, 1, AGORA));
+        IllegalArgumentException.class,
+        () -> Modelo.criar("COD", "", null, MAQUINA, null, 1, AGORA));
   }
 
   @Test
   void deveDesativarModelo() {
-    final Modelo modelo = Modelo.criar("COD", "Desc", null, MAQUINA, 1, AGORA);
+    final Modelo modelo = Modelo.criar("COD", "Desc", null, MAQUINA, null, 1, AGORA);
     final Modelo desativado = modelo.desativar(AGORA);
 
     assertFalse(desativado.isAtivo());
@@ -49,8 +50,9 @@ class ModeloTest {
 
   @Test
   void deveEditarModelo() {
-    final Modelo modelo = Modelo.criar("COD", "Desc", null, MAQUINA, 1, AGORA);
-    final Modelo editado = modelo.editar("COD-NEW", "Nova Desc", "Obs nova", "FAST-LOOP", AGORA);
+    final Modelo modelo = Modelo.criar("COD", "Desc", null, MAQUINA, null, 1, AGORA);
+    final Modelo editado =
+        modelo.editar("COD-NEW", "Nova Desc", "Obs nova", "FAST-LOOP", null, AGORA);
 
     assertEquals("COD-NEW", editado.getCodigo());
     assertEquals("Nova Desc", editado.getDescricao());
@@ -60,7 +62,7 @@ class ModeloTest {
 
   @Test
   void deveAtualizarPendenciaAberta() {
-    final Modelo modelo = Modelo.criar("COD", "Desc", null, MAQUINA, 1, AGORA);
+    final Modelo modelo = Modelo.criar("COD", "Desc", null, MAQUINA, null, 1, AGORA);
     final Modelo comPendencia = modelo.withTemPendenciaAberta(true, AGORA);
 
     assertTrue(comPendencia.isTemPendenciaAberta());

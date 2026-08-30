@@ -56,7 +56,7 @@ class AdicionarFotoGaleriaUseCaseTest {
   }
 
   private Modelo criarModelo() {
-    return Modelo.criar("COD-01", "Desc", null, "FBOX", 1, Instant.now());
+    return Modelo.criar("COD-01", "Desc", null, "FBOX", null, 1, Instant.now());
   }
 
   @Test

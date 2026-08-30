@@ -76,6 +76,7 @@ class ModeloControllerTest {
         null,
         true,
         "FBOX",
+        null,
         false,
         agora,
         agora);
