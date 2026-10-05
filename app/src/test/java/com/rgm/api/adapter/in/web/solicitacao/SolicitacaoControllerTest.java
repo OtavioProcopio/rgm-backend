@@ -2,7 +2,9 @@ package com.rgm.api.adapter.in.web.solicitacao;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -23,6 +25,7 @@ import com.rgm.api.adapter.in.web.dto.request.EditarSolicitacaoRequest;
 import com.rgm.api.adapter.in.web.dto.request.EncerrarSolicitacaoRequest;
 import com.rgm.api.adapter.in.web.dto.request.GerenciarResponsaveisRequest;
 import com.rgm.api.adapter.in.web.dto.request.TriarSolicitacaoRequest;
+import com.rgm.api.adapter.in.web.dto.response.SolicitacaoResponse;
 import com.rgm.api.adapter.out.security.JwtAuthenticationFilter;
 import com.rgm.api.core.application.usecases.solicitacao.AbrirSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.CancelarSolicitacaoUseCase;
@@ -37,6 +40,7 @@ import com.rgm.api.core.application.usecases.solicitacao.ObterMetricasSolicitaco
 import com.rgm.api.core.application.usecases.solicitacao.ObterSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.RegistrarComentarioUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.TriarSolicitacaoUseCase;
+import com.rgm.api.core.domain.exceptions.NaoAutorizadoException;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
 import com.rgm.api.core.domain.model.entities.AtividadeSolicitacao;
@@ -297,11 +301,12 @@ class SolicitacaoControllerTest {
   void buscarPorId() throws Exception {
     final UUID solId = UUID.randomUUID();
     final Solicitacao sol = criarSolicitacao();
-    when(obterUseCase.execute(solId))
-        .thenReturn(new ObterSolicitacaoUseCase.Output(sol, List.of()));
+    final UUID userId = UUID.randomUUID();
+    when(obterUseCase.execute(new ObterSolicitacaoUseCase.Input(solId, userId)))
+        .thenReturn(new ObterSolicitacaoUseCase.Output(sol, List.of(), java.util.Set.of()));
 
     mockMvc
-        .perform(get("/api/solicitacoes/{id}", solId).with(user("u")))
+        .perform(get("/api/solicitacoes/{id}", solId).with(user(userId.toString())))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.titulo").value("Titulo"));
   }
@@ -309,11 +314,12 @@ class SolicitacaoControllerTest {
   @Test
   void buscarPorId_naoEncontrado() throws Exception {
     final UUID solId = UUID.randomUUID();
-    when(obterUseCase.execute(solId))
+    final UUID userId = UUID.randomUUID();
+    when(obterUseCase.execute(new ObterSolicitacaoUseCase.Input(solId, userId)))
         .thenThrow(new RecursoNaoEncontradoException("Solicitacao nao encontrada"));
 
     mockMvc
-        .perform(get("/api/solicitacoes/{id}", solId).with(user("u")))
+        .perform(get("/api/solicitacoes/{id}", solId).with(user(userId.toString())))
         .andExpect(status().isNotFound());
   }
 
@@ -546,5 +552,226 @@ class SolicitacaoControllerTest {
                         new GerenciarResponsaveisRequest(List.of(UUID.randomUUID())))))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.id").value(sol.getId().toString()));
+  }
+
+  @Test
+  void shouldPublishAbertaEventWhenSolicitacaoIsOpened() throws Exception {
+    // Arrange
+    final Solicitacao sol = criarSolicitacao();
+    final UUID userId = UUID.randomUUID();
+    final UUID modeloId = UUID.randomUUID();
+    final AbrirSolicitacaoUseCase.Input entrada =
+        new AbrirSolicitacaoUseCase.Input(
+            "Titulo", "Desc", TipoSolicitacao.REPARO, modeloId, null, null, null, userId);
+    when(abrirUseCase.execute(entrada)).thenReturn(sol);
+
+    // Act
+    final var resposta =
+        mockMvc.perform(
+            post("/api/solicitacoes")
+                .with(user(userId.toString()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        new AbrirSolicitacaoRequest(
+                            "Titulo", "Desc", "REPARO", modeloId, null, null, null))));
+
+    // Assert
+    resposta.andExpect(status().isCreated());
+    verify(abrirUseCase, times(1)).execute(entrada);
+    verify(eventPublisher, times(1))
+        .publish("solicitacao", new SolicitacaoEvent("aberta", SolicitacaoResponse.from(sol)));
+    verifyNoMoreInteractions(abrirUseCase, eventPublisher);
+  }
+
+  @Test
+  void shouldPublishEditadaEventWhenSolicitacaoIsEdited() throws Exception {
+    // Arrange
+    final Solicitacao sol = criarSolicitacao();
+    final UUID userId = UUID.randomUUID();
+    final EditarSolicitacaoUseCase.Input entrada =
+        new EditarSolicitacaoUseCase.Input(
+            sol.getId(), "Novo Titulo", "Nova Desc", TipoSolicitacao.REPARO, userId);
+    when(editarUseCase.execute(entrada)).thenReturn(sol);
+
+    // Act
+    final var resposta =
+        mockMvc.perform(
+            put("/api/solicitacoes/{id}", sol.getId())
+                .with(user(userId.toString()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        new EditarSolicitacaoRequest("Novo Titulo", "Nova Desc", "REPARO"))));
+
+    // Assert
+    resposta.andExpect(status().isOk());
+    verify(editarUseCase, times(1)).execute(entrada);
+    verify(eventPublisher, times(1))
+        .publish("solicitacao", new SolicitacaoEvent("editada", SolicitacaoResponse.from(sol)));
+    verifyNoMoreInteractions(editarUseCase, eventPublisher);
+  }
+
+  @Test
+  void shouldPublishResponsaveisAlteradosEventWhenAssigneesChange() throws Exception {
+    // Arrange
+    final Solicitacao sol = criarSolicitacao();
+    final UUID gestorId = UUID.randomUUID();
+    final List<UUID> responsaveis = List.of(UUID.randomUUID());
+    final GerenciarResponsaveisUseCase.Input entrada =
+        new GerenciarResponsaveisUseCase.Input(sol.getId(), responsaveis, gestorId);
+    when(gerenciarResponsaveisUseCase.execute(entrada)).thenReturn(sol);
+
+    // Act
+    final var resposta =
+        mockMvc.perform(
+            patch("/api/solicitacoes/{id}/responsaveis", sol.getId())
+                .with(user(gestorId.toString()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        new GerenciarResponsaveisRequest(responsaveis))));
+
+    // Assert
+    resposta.andExpect(status().isOk());
+    verify(gerenciarResponsaveisUseCase, times(1)).execute(entrada);
+    verify(eventPublisher, times(1))
+        .publish(
+            "solicitacao",
+            new SolicitacaoEvent(
+                "responsaveis_alterados", SolicitacaoResponse.from(sol, responsaveis)));
+    verifyNoMoreInteractions(gerenciarResponsaveisUseCase, eventPublisher);
+  }
+
+  @Test
+  void shouldReturnAllowedActionsWhenSolicitacaoIsFetchedById() throws Exception {
+    // Arrange
+    final Solicitacao sol = criarSolicitacao();
+    final UUID userId = UUID.randomUUID();
+    final ObterSolicitacaoUseCase.Input entrada =
+        new ObterSolicitacaoUseCase.Input(sol.getId(), userId);
+    when(obterUseCase.execute(entrada))
+        .thenReturn(
+            new ObterSolicitacaoUseCase.Output(
+                sol,
+                List.of(),
+                java.util.EnumSet.of(
+                    com.rgm.api.core.domain.model.enums.AcaoSolicitacao.EDITAR,
+                    com.rgm.api.core.domain.model.enums.AcaoSolicitacao.COMENTAR)));
+
+    // Act
+    final var resposta =
+        mockMvc.perform(get("/api/solicitacoes/{id}", sol.getId()).with(user(userId.toString())));
+
+    // Assert
+    resposta
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.acoesPermitidas.length()").value(2))
+        .andExpect(jsonPath("$.acoesPermitidas[0]").value("EDITAR"))
+        .andExpect(jsonPath("$.acoesPermitidas[1]").value("COMENTAR"));
+    verify(obterUseCase, times(1)).execute(entrada);
+    verifyNoMoreInteractions(obterUseCase, eventPublisher);
+  }
+
+  @Test
+  void shouldReturnNullAllowedActionsWhenSolicitacoesAreListed() throws Exception {
+    // Arrange
+    final Solicitacao sol = criarSolicitacao();
+    when(listarUseCase.execute(any())).thenReturn(new PageResult<>(List.of(sol), 0, 20, 1, 1));
+    when(obterUseCase.listarResponsaveisBatch(List.of(sol.getId()))).thenReturn(java.util.Map.of());
+
+    // Act
+    final var resposta = mockMvc.perform(get("/api/solicitacoes"));
+
+    // Assert
+    resposta
+        .andExpect(status().isOk())
+        .andExpect(
+            jsonPath("$.content[0].acoesPermitidas").value(org.hamcrest.Matchers.nullValue()));
+    verify(obterUseCase, times(1)).listarResponsaveisBatch(List.of(sol.getId()));
+    verifyNoMoreInteractions(obterUseCase, eventPublisher);
+  }
+
+  @Test
+  void shouldReturnResultingAssigneesWhenAssigneesChange() throws Exception {
+    // Arrange
+    final Solicitacao sol = criarSolicitacao();
+    final UUID gestorId = UUID.randomUUID();
+    final UUID responsavelId = UUID.randomUUID();
+    final GerenciarResponsaveisUseCase.Input entrada =
+        new GerenciarResponsaveisUseCase.Input(sol.getId(), List.of(responsavelId), gestorId);
+    when(gerenciarResponsaveisUseCase.execute(entrada)).thenReturn(sol);
+
+    // Act
+    final var resposta =
+        mockMvc.perform(
+            patch("/api/solicitacoes/{id}/responsaveis", sol.getId())
+                .with(user(gestorId.toString()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        new GerenciarResponsaveisRequest(List.of(responsavelId)))));
+
+    // Assert
+    resposta
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.responsavelIds.length()").value(1))
+        .andExpect(jsonPath("$.responsavelIds[0]").value(responsavelId.toString()));
+    verify(gerenciarResponsaveisUseCase, times(1)).execute(entrada);
+    verify(eventPublisher, times(1))
+        .publish(
+            "solicitacao",
+            new SolicitacaoEvent(
+                "responsaveis_alterados", SolicitacaoResponse.from(sol, List.of(responsavelId))));
+    verifyNoMoreInteractions(gerenciarResponsaveisUseCase, eventPublisher);
+  }
+
+  @Test
+  void shouldPublishComentadaActivityEventWhenCommentIsRegistered() throws Exception {
+    // Arrange
+    final UUID solId = UUID.randomUUID();
+    final UUID autorId = UUID.randomUUID();
+    final RegistrarComentarioUseCase.Input entrada =
+        new RegistrarComentarioUseCase.Input(solId, "Peca trocada", autorId);
+    when(comentarioUseCase.execute(entrada)).thenReturn(null);
+
+    // Act
+    final var resposta =
+        mockMvc.perform(
+            post("/api/solicitacoes/{id}/comentarios", solId)
+                .with(user(autorId.toString()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(new ComentarioRequest("Peca trocada"))));
+
+    // Assert
+    resposta.andExpect(status().isCreated());
+    verify(comentarioUseCase, times(1)).execute(entrada);
+    verify(eventPublisher, times(1))
+        .publish("solicitacao_atividade", new SolicitacaoAtividadeEvent("comentada", solId));
+    verifyNoMoreInteractions(comentarioUseCase, eventPublisher);
+  }
+
+  @Test
+  void shouldNotPublishEventWhenCommentIsDenied() throws Exception {
+    // Arrange
+    final UUID solId = UUID.randomUUID();
+    final UUID autorId = UUID.randomUUID();
+    final RegistrarComentarioUseCase.Input entrada =
+        new RegistrarComentarioUseCase.Input(solId, "Peca trocada", autorId);
+    when(comentarioUseCase.execute(entrada))
+        .thenThrow(new NaoAutorizadoException("Usuario nao tem permissao para comentar"));
+
+    // Act
+    final var resposta =
+        mockMvc.perform(
+            post("/api/solicitacoes/{id}/comentarios", solId)
+                .with(user(autorId.toString()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(new ComentarioRequest("Peca trocada"))));
+
+    // Assert
+    resposta.andExpect(status().isForbidden());
+    verify(comentarioUseCase, times(1)).execute(entrada);
+    verifyNoMoreInteractions(comentarioUseCase, eventPublisher);
   }
 }

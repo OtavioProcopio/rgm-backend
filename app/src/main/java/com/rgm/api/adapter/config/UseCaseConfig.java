@@ -382,8 +382,10 @@ public class UseCaseConfig {
   @Bean
   public ObterSolicitacaoUseCase obterSolicitacaoUseCase(
       final SolicitacaoRepository solicitacaoRepository,
-      final SolicitacaoAtribuicaoRepository atribuicaoRepository) {
-    return new ObterSolicitacaoUseCase(solicitacaoRepository, atribuicaoRepository);
+      final SolicitacaoAtribuicaoRepository atribuicaoRepository,
+      final UsuarioRepository usuarioRepository) {
+    return new ObterSolicitacaoUseCase(
+        solicitacaoRepository, atribuicaoRepository, usuarioRepository);
   }
 
   @Bean

@@ -122,4 +122,39 @@ class LoginUseCaseTest {
     assertThrows(
         NaoAutorizadoException.class, () -> useCase.execute(new LoginUseCase.Input(null, "senha")));
   }
+
+  @Test
+  void shouldReturnUserIdWhenLoginSucceeds() {
+    // Arrange
+    final Instant agora = Instant.now();
+    final UUID usuarioId = UUID.randomUUID();
+    final Usuario usuario =
+        new Usuario(
+            usuarioId,
+            "Joao",
+            "joao@rgm.test",
+            "hashed",
+            PerfilUsuario.OPERADOR,
+            true,
+            agora,
+            agora);
+    when(usuarioRepository.findByEmail("joao@rgm.test")).thenReturn(Optional.of(usuario));
+    when(passwordHasher.matches("senha-correta", "hashed")).thenReturn(true);
+    when(tokenIssuer.issue(usuario)).thenReturn("jwt-token");
+    when(tokenIssuer.issueRefreshToken(usuario)).thenReturn("refresh-token");
+
+    // Act
+    final LoginUseCase.Output output =
+        useCase.execute(new LoginUseCase.Input("joao@rgm.test", "senha-correta"));
+
+    // Assert
+    assertEquals(
+        new LoginUseCase.Output(usuarioId, "jwt-token", "refresh-token", "Joao", "OPERADOR"),
+        output);
+    verify(usuarioRepository, times(1)).findByEmail("joao@rgm.test");
+    verify(passwordHasher, times(1)).matches("senha-correta", "hashed");
+    verify(tokenIssuer, times(1)).issue(usuario);
+    verify(tokenIssuer, times(1)).issueRefreshToken(usuario);
+    verifyNoMoreInteractions(usuarioRepository, passwordHasher, tokenIssuer);
+  }
 }

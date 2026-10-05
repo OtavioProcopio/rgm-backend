@@ -2,7 +2,6 @@ package com.rgm.api.core.application.usecases.evidencia;
 
 import com.rgm.api.core.application.usecases.modelo.AdicionarFotoGaleriaUseCase;
 import com.rgm.api.core.domain.exceptions.BusinessRuleException;
-import com.rgm.api.core.domain.exceptions.NaoAutorizadoException;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.exceptions.ValidationException;
 import com.rgm.api.core.domain.model.aggregates.Evidencia;
@@ -18,6 +17,7 @@ import com.rgm.api.core.domain.ports.repositories.SolicitacaoEvidenciaRepository
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import com.rgm.api.core.domain.ports.services.StorageService;
+import com.rgm.api.core.domain.validation.AcessoEvidenciaSolicitacao;
 import java.io.InputStream;
 import java.time.Instant;
 import java.util.Set;
@@ -140,7 +140,7 @@ public final class AnexarEvidenciaUseCase {
       throw new BusinessRuleException("Nao e possivel anexar evidencia a solicitacao encerrada");
     }
 
-    validarAcesso(input.solicitacaoId(), input.enviadaPorUsuarioId());
+    validarAcesso(solicitacao, input.enviadaPorUsuarioId(), input.tipo());
 
     final String evidenciaPublicUrl =
         storageService.upload(
@@ -228,22 +228,19 @@ public final class AnexarEvidenciaUseCase {
     return rotulo + " — " + titulo;
   }
 
-  private void validarAcesso(final UUID solicitacaoId, final UUID usuarioId) {
+  private void validarAcesso(
+      final Solicitacao solicitacao, final UUID usuarioId, final TipoEvidencia tipo) {
     final Usuario usuario =
         usuarioRepository
             .findById(usuarioId)
             .orElseThrow(() -> new RecursoNaoEncontradoException("Usuario nao encontrado"));
 
-    if (usuario.getPerfil().podeGerenciarModelos()
-        || usuario.getPerfil().podeGerenciarUsuariosEMaquinas()) {
-      return;
-    }
-
-    final boolean atribuido =
-        atribuicaoRepository.existsBySolicitacaoIdAndUsuarioIdAndRemovidoEmIsNull(
-            solicitacaoId, usuarioId);
-    if (!atribuido) {
-      throw new NaoAutorizadoException("Usuario nao tem acesso a esta solicitacao");
-    }
+    AcessoEvidenciaSolicitacao.validarAnexo(
+        usuario,
+        solicitacao,
+        () ->
+            atribuicaoRepository.existsBySolicitacaoIdAndUsuarioIdAndRemovidoEmIsNull(
+                solicitacao.getId(), usuarioId),
+        tipo);
   }
 }

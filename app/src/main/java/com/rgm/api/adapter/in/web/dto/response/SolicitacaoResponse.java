@@ -1,8 +1,10 @@
 package com.rgm.api.adapter.in.web.dto.response;
 
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
+import com.rgm.api.core.domain.model.enums.AcaoSolicitacao;
 import java.time.Instant;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 public record SolicitacaoResponse(
@@ -26,13 +28,22 @@ public record SolicitacaoResponse(
     Instant prazoLimite,
     Long tempoRestanteSegundos,
     boolean atrasada,
-    Long tempoResolucaoSegundos) {
+    Long tempoResolucaoSegundos,
+    List<String> acoesPermitidas) {
 
   public static SolicitacaoResponse from(final Solicitacao s) {
     return from(s, List.of());
   }
 
+  /** Sem acoes calculadas: `acoesPermitidas` sai nulo (listagens, eventos e respostas de acao). */
   public static SolicitacaoResponse from(final Solicitacao s, final List<UUID> responsaveis) {
+    return from(s, responsaveis, null);
+  }
+
+  public static SolicitacaoResponse from(
+      final Solicitacao s,
+      final List<UUID> responsaveis,
+      final Set<AcaoSolicitacao> acoesPermitidas) {
     final Instant agora = Instant.now();
     return new SolicitacaoResponse(
         s.getId(),
@@ -55,6 +66,7 @@ public record SolicitacaoResponse(
         s.getPrazoLimite(),
         s.getTempoRestanteSegundos(agora),
         s.isAtrasada(agora),
-        s.getTempoResolucaoSegundos());
+        s.getTempoResolucaoSegundos(),
+        acoesPermitidas == null ? null : acoesPermitidas.stream().map(Enum::name).toList());
   }
 }

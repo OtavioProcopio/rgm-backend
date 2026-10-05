@@ -1,5 +1,7 @@
 package com.rgm.api.adapter.out.security;
 
+import com.rgm.api.core.domain.model.aggregates.Usuario;
+import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -10,6 +12,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.UUID;
 import javax.crypto.SecretKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,9 +29,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
   private static final Logger log = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
 
   private final SecretKey key;
+  private final UsuarioRepository usuarioRepository;
 
-  public JwtAuthenticationFilter(@Value("${jwt.secret}") final String secret) {
+  public JwtAuthenticationFilter(
+      @Value("${jwt.secret}") final String secret, final UsuarioRepository usuarioRepository) {
     this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+    this.usuarioRepository = usuarioRepository;
   }
 
   @Override
@@ -54,6 +60,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         final String userId = claims.getSubject();
         final String perfil = claims.get("perfil", String.class);
+
+        final boolean usuarioAtivo =
+            usuarioRepository.findById(UUID.fromString(userId)).map(Usuario::isAtivo).orElse(false);
+        if (!usuarioAtivo) {
+          log.debug("Token rejeitado: usuario {} inativo ou inexistente", userId);
+          filterChain.doFilter(request, response);
+          return;
+        }
 
         final UsernamePasswordAuthenticationToken auth =
             new UsernamePasswordAuthenticationToken(

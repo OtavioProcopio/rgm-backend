@@ -352,15 +352,18 @@ public class SolicitacaoController {
                 request.descricao(),
                 request.tipo() != null ? TipoSolicitacao.valueOf(request.tipo()) : null,
                 usuarioId));
-    return ResponseEntity.ok(SolicitacaoResponse.from(salva));
+    return ResponseEntity.ok(publicar("editada", SolicitacaoResponse.from(salva)));
   }
 
   @GetMapping("/{id}")
-  public ResponseEntity<SolicitacaoResponse> buscarPorId(@PathVariable final UUID id) {
+  public ResponseEntity<SolicitacaoResponse> buscarPorId(
+      @PathVariable final UUID id, final Authentication authentication) {
     log.info("SolicitacaoController.buscarPorId id={}", id);
-    final var output = obterUseCase.execute(id);
+    final UUID usuarioId = UUID.fromString(authentication.getName());
+    final var output = obterUseCase.execute(new ObterSolicitacaoUseCase.Input(id, usuarioId));
     return ResponseEntity.ok(
-        SolicitacaoResponse.from(output.solicitacao(), output.responsavelIds()));
+        SolicitacaoResponse.from(
+            output.solicitacao(), output.responsavelIds(), output.acoesPermitidas()));
   }
 
   @GetMapping("/{id}/atividades")
@@ -388,7 +391,8 @@ public class SolicitacaoController {
                 request.modeloMaquina(),
                 request.modeloObservacoes(),
                 usuarioId));
-    return ResponseEntity.status(HttpStatus.CREATED).body(SolicitacaoResponse.from(output));
+    return ResponseEntity.status(HttpStatus.CREATED)
+        .body(publicar("aberta", SolicitacaoResponse.from(output)));
   }
 
   @PatchMapping("/{id}/triar")
@@ -459,6 +463,7 @@ public class SolicitacaoController {
     final UUID autorId = UUID.fromString(authentication.getName());
     comentarioUseCase.execute(
         new RegistrarComentarioUseCase.Input(id, request.comentario(), autorId));
+    eventPublisher.publish("solicitacao_atividade", new SolicitacaoAtividadeEvent("comentada", id));
     return ResponseEntity.status(HttpStatus.CREATED).build();
   }
 
@@ -485,7 +490,9 @@ public class SolicitacaoController {
     final var output =
         gerenciarResponsaveisUseCase.execute(
             new GerenciarResponsaveisUseCase.Input(id, request.responsavelIds(), gestorId));
-    return ResponseEntity.ok(SolicitacaoResponse.from(output));
+    return ResponseEntity.ok(
+        publicar(
+            "responsaveis_alterados", SolicitacaoResponse.from(output, request.responsavelIds())));
   }
 
   private SolicitacaoResponse publicar(final String tipo, final SolicitacaoResponse response) {

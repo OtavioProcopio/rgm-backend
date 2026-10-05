@@ -6,7 +6,8 @@ Referência de todos os casos de uso implementados no sistema.
 - **Atores**: Operador, Gestor, Administrador
 - **Classe**: `LoginUseCase`
 - **Endpoint**: `POST /api/auth/login`
-- **Regras**: EXTERNO não faz login; valida credenciais + status ativo
+- **Sessão de usuário desativado**: toda chamada autenticada consulta o usuário; se ele foi desativado ou removido, a chamada é tratada como não autenticada (401), sem esperar o token vencer. Vale também para a abertura da conexão de eventos
+- **Regras**: EXTERNO não faz login; valida credenciais + status ativo. A resposta traz `id` (identificador do usuário), `token`, `refreshToken`, `nome` e `perfil`
 - **Erros**: 401 (credenciais inválidas ou inativo)
 
 ## UC-02 — Abrir solicitação (A_FAZER)
@@ -54,15 +55,15 @@ Referência de todos os casos de uso implementados no sistema.
 - **Atores**: Operador, Gestor, Administrador
 - **Classe**: `AnexarEvidenciaUseCase`
 - **Endpoint**: `POST /api/solicitacoes/{id}/evidencias`
-- **Regras**: Valida MIME type (imagens, PDF ou vídeo MP4) e tamanho (max 10MB); armazena publicUrl persistente; upload fora da transação DB
-- **Erros**: 422 (tipo/tamanho inválido), 500 (MinIO indisponível)
+- **Regras**: Valida MIME type (imagens, PDF ou vídeo MP4) e tamanho (max 10MB); armazena publicUrl persistente; upload fora da transação DB. **Acesso** (`AcessoEvidenciaSolicitacao`): GESTOR, ADMINISTRADOR e responsável atribuído anexam qualquer tipo; quem abriu a solicitação e não é responsável anexa apenas `ABERTURA` e `GERAL`; usuário inativo é recusado; não se anexa em solicitação encerrada
+- **Erros**: 400 (tipo de evidência, tipo de arquivo ou tamanho inválido), 422 (solicitação encerrada), 403 (sem acesso, tipo não permitido a quem abriu ou usuário inativo), 404 (solicitação ou usuário não encontrado), 500 (MinIO indisponível)
 
 ## UC-09 — Visualizar evidências
 - **Atores**: Operador, Gestor, Administrador
 - **Classe**: `VisualizarEvidenciaUseCase`
 - **Endpoint**: `GET /api/solicitacoes/{id}/evidencias`
-- **Regras**: Valida acesso (GESTOR/ADMIN veem todas; OPERADOR só se atribuído)
-- **Erros**: 404 (solicitação não encontrada), 403 (sem acesso)
+- **Regras**: Valida acesso (`AcessoEvidenciaSolicitacao`): GESTOR/ADMIN veem todas; OPERADOR vê se for responsável atribuído ou se abriu a solicitação, inclusive depois de encerrada; usuário inativo é recusado
+- **Erros**: 404 (solicitação ou usuário não encontrado), 403 (sem acesso ou usuário inativo)
 
 ## UC-10 — Recalcular temPendenciaAberta
 - **Ator**: Sistema
@@ -169,3 +170,55 @@ O `AdminUserInitializer` cria automaticamente o usuário admin (`admin@rgm.com` 
 
 - `POST /api/auth/refresh` — renova access + refresh token
 - JwtFilter rejeita refresh tokens como Bearer (verifica `type=access`)
+
+## Ações permitidas na solicitação
+
+- **Classe**: `AcoesPermitidasSolicitacao` (domínio), usada por `ObterSolicitacaoUseCase`
+- **Endpoint**: `GET /api/solicitacoes/{id}` devolve `acoesPermitidas`, calculado para o usuário autenticado
+- **Fora do detalhe**: em listagens, eventos SSE e respostas de ação o campo vem `null` (não calculado); `null` não significa "nenhuma ação"
+
+| Ação | Permitida quando |
+|---|---|
+| `TRIAR` | GESTOR/ADMIN, status `A_FAZER` |
+| `ENVIAR_VALIDACAO` | status `EM_ANDAMENTO`, para GESTOR/ADMIN ou responsável atribuído |
+| `DEVOLVER` | GESTOR/ADMIN, status `EM_VALIDACAO` |
+| `ENCERRAR` | GESTOR/ADMIN, status `EM_VALIDACAO` (concluir) |
+| `CANCELAR` | GESTOR/ADMIN em qualquer status não encerrado; quem abriu, só em `A_FAZER` e sem responsável |
+| `EDITAR` | status não encerrado, para GESTOR/ADMIN ou quem abriu |
+| `COMENTAR` | GESTOR/ADMIN sempre; quem abriu ou responsável, enquanto não encerrada |
+| `ALTERAR_RESPONSAVEIS` | GESTOR/ADMIN, status não encerrado |
+| `ANEXAR_EVIDENCIA` | status não encerrado, para GESTOR/ADMIN, responsável ou quem abriu (este só `ABERTURA` e `GERAL`) |
+
+- **Regras**: usuário inativo e perfil EXTERNO não têm ação. O cálculo cobre permissão e status; não cobre pré-condições de dados, como a evidência `SERVICO_REALIZADO` exigida para enviar à validação
+- **Erros**: 404 (solicitação ou usuário não encontrado)
+
+## Eventos em tempo real (SSE)
+
+- **Endpoint**: `GET /api/solicitacoes/events?token=<access token>` (`text/event-stream`)
+- **Classes**: `SolicitacaoSseController`, `SolicitacaoEventPublisher`
+- **Ao conectar**: evento `connected` com dado `ok`
+- **Evento `solicitacao`**: dado JSON `{ "tipo": "<tipo>", "solicitacao": <SolicitacaoResponse> }`
+
+| `tipo` | Publicado quando |
+|---|---|
+| `aberta` | uma solicitação é aberta |
+| `editada` | título, descrição ou tipo são editados |
+| `responsaveis_alterados` | os responsáveis são alterados |
+| `triada` | a solicitação é triada |
+| `enviada_validacao` | é enviada para validação |
+| `devolvida` | é devolvida para correção |
+| `encerrada` | é encerrada pelo endpoint de encerramento (concluída ou não) |
+| `cancelada` | é cancelada |
+
+- **Heartbeat**: a cada 25 s o servidor envia o comentário `:ping`, que o cliente ignora e que
+  mantém a conexão viva atrás de proxies com tempo limite de leitura
+- **Tempo limite**: a conexão expira em 30 min; o cliente reconecta
+- **`responsaveis_alterados`**: a solicitação do evento traz `responsavelIds` com a lista resultante
+- **Evento `solicitacao_atividade`**: dado JSON `{ "tipo": "<tipo>", "solicitacaoId": "<id>" }`, para a linha do tempo do detalhe recarregar
+
+| `tipo` | Publicado quando |
+|---|---|
+| `comentada` | um comentário é registrado |
+| `evidencia_adicionada` | uma evidência é anexada |
+
+- **Acesso**: usuário inativo ou inexistente não abre a conexão (401)

@@ -5,8 +5,10 @@ import static org.mockito.Mockito.*;
 
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 class SolicitacaoEventPublisherTest {
@@ -67,5 +69,89 @@ class SolicitacaoEventPublisherTest {
     // onCompletion ran immediately → emitter removed
     // publish should not throw even with empty list
     assertDoesNotThrow(() -> publisher.publish("solicitacao", "payload"));
+  }
+
+  private static String conteudoEnviado(final SseEmitter emitter) throws IOException {
+    final ArgumentCaptor<SseEmitter.SseEventBuilder> evento =
+        ArgumentCaptor.forClass(SseEmitter.SseEventBuilder.class);
+    verify(emitter, times(1)).send(evento.capture());
+    return evento.getValue().build().stream()
+        .map(parte -> String.valueOf(parte.getData()))
+        .collect(Collectors.joining());
+  }
+
+  private static void verificarRegistroDeCallbacks(final SseEmitter emitter) {
+    verify(emitter, times(1)).onCompletion(any());
+    verify(emitter, times(1)).onTimeout(any());
+    verify(emitter, times(1)).onError(any());
+  }
+
+  @Test
+  void shouldSendPingCommentToEveryEmitterWhenHeartbeatRuns() throws IOException {
+    // Arrange
+    final SseEmitter primeiro = mock(SseEmitter.class);
+    final SseEmitter segundo = mock(SseEmitter.class);
+    publisher.addEmitter(primeiro);
+    publisher.addEmitter(segundo);
+
+    // Act
+    publisher.enviarHeartbeat();
+
+    // Assert
+    assertEquals(":ping\n\n", conteudoEnviado(primeiro));
+    assertEquals(":ping\n\n", conteudoEnviado(segundo));
+    verificarRegistroDeCallbacks(primeiro);
+    verificarRegistroDeCallbacks(segundo);
+    verifyNoMoreInteractions(primeiro, segundo);
+  }
+
+  @Test
+  void shouldStopSendingHeartbeatWhenEmitterFailsWithIoError() throws IOException {
+    // Arrange
+    final SseEmitter emitter = mock(SseEmitter.class);
+    doThrow(new IOException("conexao fechada"))
+        .when(emitter)
+        .send(any(SseEmitter.SseEventBuilder.class));
+    publisher.addEmitter(emitter);
+    publisher.enviarHeartbeat();
+
+    // Act
+    publisher.enviarHeartbeat();
+
+    // Assert
+    verify(emitter, times(1)).send(any(SseEmitter.SseEventBuilder.class));
+    verificarRegistroDeCallbacks(emitter);
+    verifyNoMoreInteractions(emitter);
+  }
+
+  @Test
+  void shouldStopSendingHeartbeatWhenEmitterIsAlreadyCompleted() throws IOException {
+    // Arrange
+    final SseEmitter emitter = mock(SseEmitter.class);
+    doThrow(new IllegalStateException("emitter completo"))
+        .when(emitter)
+        .send(any(SseEmitter.SseEventBuilder.class));
+    publisher.addEmitter(emitter);
+    publisher.enviarHeartbeat();
+
+    // Act
+    publisher.enviarHeartbeat();
+
+    // Assert
+    verify(emitter, times(1)).send(any(SseEmitter.SseEventBuilder.class));
+    verificarRegistroDeCallbacks(emitter);
+    verifyNoMoreInteractions(emitter);
+  }
+
+  @Test
+  void shouldDoNothingWhenHeartbeatRunsWithoutEmitters() {
+    // Arrange
+    final SolicitacaoEventPublisher semEmitters = new SolicitacaoEventPublisher();
+
+    // Act
+    assertDoesNotThrow(semEmitters::enviarHeartbeat);
+
+    // Assert
+    assertDoesNotThrow(() -> semEmitters.publish("solicitacao", "payload"));
   }
 }

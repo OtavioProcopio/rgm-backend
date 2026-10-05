@@ -1,6 +1,8 @@
 package com.rgm.api.adapter.in.web.evidencia;
 
 import com.rgm.api.adapter.in.web.dto.response.EvidenciaResponse;
+import com.rgm.api.adapter.in.web.solicitacao.SolicitacaoAtividadeEvent;
+import com.rgm.api.adapter.in.web.solicitacao.SolicitacaoEventPublisher;
 import com.rgm.api.core.application.usecases.evidencia.AnexarEvidenciaUseCase;
 import com.rgm.api.core.application.usecases.evidencia.ExcluirEvidenciaUseCase;
 import com.rgm.api.core.application.usecases.evidencia.VisualizarEvidenciaUseCase;
@@ -32,14 +34,17 @@ public class EvidenciaController {
   private final AnexarEvidenciaUseCase anexarUseCase;
   private final VisualizarEvidenciaUseCase visualizarUseCase;
   private final ExcluirEvidenciaUseCase excluirUseCase;
+  private final SolicitacaoEventPublisher eventPublisher;
 
   public EvidenciaController(
       final AnexarEvidenciaUseCase anexarUseCase,
       final VisualizarEvidenciaUseCase visualizarUseCase,
-      final ExcluirEvidenciaUseCase excluirUseCase) {
+      final ExcluirEvidenciaUseCase excluirUseCase,
+      final SolicitacaoEventPublisher eventPublisher) {
     this.anexarUseCase = anexarUseCase;
     this.visualizarUseCase = visualizarUseCase;
     this.excluirUseCase = excluirUseCase;
+    this.eventPublisher = eventPublisher;
   }
 
   @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -71,6 +76,9 @@ public class EvidenciaController {
 
       final AnexarEvidenciaUseCase.UploadResult uploadResult = anexarUseCase.upload(input);
       final Evidencia evidencia = anexarUseCase.persist(input, uploadResult);
+      eventPublisher.publish(
+          "solicitacao_atividade",
+          new SolicitacaoAtividadeEvent("evidencia_adicionada", solicitacaoId));
       return ResponseEntity.status(HttpStatus.CREATED).body(EvidenciaResponse.from(evidencia));
     } catch (final java.io.IOException e) {
       throw new RuntimeException("Erro ao ler arquivo: " + e.getMessage(), e);

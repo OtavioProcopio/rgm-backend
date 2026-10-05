@@ -6,6 +6,7 @@ import static org.mockito.Mockito.*;
 
 import com.rgm.api.core.application.usecases.modelo.AdicionarFotoGaleriaUseCase;
 import com.rgm.api.core.domain.exceptions.BusinessRuleException;
+import com.rgm.api.core.domain.exceptions.NaoAutorizadoException;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.exceptions.ValidationException;
 import com.rgm.api.core.domain.model.aggregates.Evidencia;
@@ -460,5 +461,247 @@ class AnexarEvidenciaUseCaseTest {
     assertNotNull(resultado);
     assertNull(uploadResult.galeriaPublicUrl());
     verify(adicionarFotoGaleriaUseCase, never()).persist(any(), any());
+  }
+
+  private static final String URL_EVIDENCIA = "http://storage/evidencias/foto.jpg";
+
+  private Usuario operador(final UUID id, final boolean ativo) {
+    final Instant agora = Instant.now();
+    return new Usuario(
+        id, "Operador", "operador@rgm.test", "hash", PerfilUsuario.OPERADOR, ativo, agora, agora);
+  }
+
+  private Solicitacao solicitacaoAbertaPor(final UUID autorId, final StatusSolicitacao status) {
+    final Instant agora = Instant.now();
+    return new Solicitacao(
+        UUID.randomUUID(),
+        "T",
+        "D",
+        TipoSolicitacao.REPARO,
+        status,
+        status.exigePrioridade() ? PrioridadeSolicitacao.ALTA : null,
+        UUID.randomUUID(),
+        null,
+        null,
+        null,
+        autorId,
+        status.isTerminal() ? "Comentario final" : null,
+        agora,
+        agora,
+        status == StatusSolicitacao.CONCLUIDA ? agora : null,
+        status == StatusSolicitacao.CANCELADA ? agora : null);
+  }
+
+  private AnexarEvidenciaUseCase.Input entrada(
+      final UUID solicitacaoId,
+      final UUID usuarioId,
+      final TipoEvidencia tipo,
+      final ByteArrayInputStream conteudo) {
+    return new AnexarEvidenciaUseCase.Input(
+        solicitacaoId,
+        "foto.jpg",
+        "image/jpeg",
+        1024L,
+        conteudo,
+        usuarioId,
+        tipo,
+        "Descricao da evidencia");
+  }
+
+  private void verificarQueNadaMaisFoiChamado() {
+    verifyNoMoreInteractions(
+        solicitacaoRepository,
+        evidenciaRepository,
+        solicitacaoEvidenciaRepository,
+        atividadeRepository,
+        storageService,
+        usuarioRepository,
+        atribuicaoRepository,
+        adicionarFotoGaleriaUseCase);
+  }
+
+  @Test
+  void shouldUploadOpeningEvidenceWhenUserOpenedTheSolicitacao() {
+    // Arrange
+    final UUID autorId = UUID.randomUUID();
+    final Solicitacao sol = solicitacaoAbertaPor(autorId, StatusSolicitacao.A_FAZER);
+    final ByteArrayInputStream conteudo = new ByteArrayInputStream(new byte[1024]);
+    when(solicitacaoRepository.findById(sol.getId())).thenReturn(Optional.of(sol));
+    when(usuarioRepository.findById(autorId)).thenReturn(Optional.of(operador(autorId, true)));
+    when(atribuicaoRepository.existsBySolicitacaoIdAndUsuarioIdAndRemovidoEmIsNull(
+            sol.getId(), autorId))
+        .thenReturn(false);
+    when(storageService.upload("foto.jpg", "image/jpeg", conteudo, 1024L))
+        .thenReturn(URL_EVIDENCIA);
+
+    // Act
+    final AnexarEvidenciaUseCase.UploadResult resultado =
+        useCase.upload(entrada(sol.getId(), autorId, TipoEvidencia.ABERTURA, conteudo));
+
+    // Assert
+    assertEquals(URL_EVIDENCIA, resultado.evidenciaPublicUrl());
+    verify(solicitacaoRepository, times(1)).findById(sol.getId());
+    verify(usuarioRepository, times(1)).findById(autorId);
+    verify(atribuicaoRepository, times(1))
+        .existsBySolicitacaoIdAndUsuarioIdAndRemovidoEmIsNull(sol.getId(), autorId);
+    verify(storageService, times(1)).upload("foto.jpg", "image/jpeg", conteudo, 1024L);
+    verificarQueNadaMaisFoiChamado();
+  }
+
+  @Test
+  void shouldUploadGeneralEvidenceWhenAuthorSendsAfterTriage() {
+    // Arrange
+    final UUID autorId = UUID.randomUUID();
+    final Solicitacao sol = solicitacaoAbertaPor(autorId, StatusSolicitacao.EM_ANDAMENTO);
+    final ByteArrayInputStream conteudo = new ByteArrayInputStream(new byte[1024]);
+    when(solicitacaoRepository.findById(sol.getId())).thenReturn(Optional.of(sol));
+    when(usuarioRepository.findById(autorId)).thenReturn(Optional.of(operador(autorId, true)));
+    when(atribuicaoRepository.existsBySolicitacaoIdAndUsuarioIdAndRemovidoEmIsNull(
+            sol.getId(), autorId))
+        .thenReturn(false);
+    when(storageService.upload("foto.jpg", "image/jpeg", conteudo, 1024L))
+        .thenReturn(URL_EVIDENCIA);
+
+    // Act
+    final AnexarEvidenciaUseCase.UploadResult resultado =
+        useCase.upload(entrada(sol.getId(), autorId, TipoEvidencia.GERAL, conteudo));
+
+    // Assert
+    assertEquals(URL_EVIDENCIA, resultado.evidenciaPublicUrl());
+    verify(solicitacaoRepository, times(1)).findById(sol.getId());
+    verify(usuarioRepository, times(1)).findById(autorId);
+    verify(atribuicaoRepository, times(1))
+        .existsBySolicitacaoIdAndUsuarioIdAndRemovidoEmIsNull(sol.getId(), autorId);
+    verify(storageService, times(1)).upload("foto.jpg", "image/jpeg", conteudo, 1024L);
+    verificarQueNadaMaisFoiChamado();
+  }
+
+  @Test
+  void shouldDenyUploadWhenAuthorSendsServiceEvidenceWithoutBeingAssigned() {
+    // Arrange
+    final UUID autorId = UUID.randomUUID();
+    final Solicitacao sol = solicitacaoAbertaPor(autorId, StatusSolicitacao.EM_ANDAMENTO);
+    final ByteArrayInputStream conteudo = new ByteArrayInputStream(new byte[1024]);
+    when(solicitacaoRepository.findById(sol.getId())).thenReturn(Optional.of(sol));
+    when(usuarioRepository.findById(autorId)).thenReturn(Optional.of(operador(autorId, true)));
+    when(atribuicaoRepository.existsBySolicitacaoIdAndUsuarioIdAndRemovidoEmIsNull(
+            sol.getId(), autorId))
+        .thenReturn(false);
+
+    // Act
+    final NaoAutorizadoException erro =
+        assertThrows(
+            NaoAutorizadoException.class,
+            () ->
+                useCase.upload(
+                    entrada(sol.getId(), autorId, TipoEvidencia.SERVICO_REALIZADO, conteudo)));
+
+    // Assert
+    assertEquals(
+        "Quem abriu a solicitacao so pode anexar evidencia do tipo ABERTURA ou GERAL",
+        erro.getMessage());
+    verify(solicitacaoRepository, times(1)).findById(sol.getId());
+    verify(usuarioRepository, times(1)).findById(autorId);
+    verify(atribuicaoRepository, times(1))
+        .existsBySolicitacaoIdAndUsuarioIdAndRemovidoEmIsNull(sol.getId(), autorId);
+    verificarQueNadaMaisFoiChamado();
+  }
+
+  @Test
+  void shouldUploadServiceEvidenceWhenAuthorIsAlsoAssigned() {
+    // Arrange
+    final UUID autorId = UUID.randomUUID();
+    final Solicitacao sol = solicitacaoAbertaPor(autorId, StatusSolicitacao.EM_ANDAMENTO);
+    final ByteArrayInputStream conteudo = new ByteArrayInputStream(new byte[1024]);
+    when(solicitacaoRepository.findById(sol.getId())).thenReturn(Optional.of(sol));
+    when(usuarioRepository.findById(autorId)).thenReturn(Optional.of(operador(autorId, true)));
+    when(atribuicaoRepository.existsBySolicitacaoIdAndUsuarioIdAndRemovidoEmIsNull(
+            sol.getId(), autorId))
+        .thenReturn(true);
+    when(storageService.upload("foto.jpg", "image/jpeg", conteudo, 1024L))
+        .thenReturn(URL_EVIDENCIA);
+
+    // Act
+    final AnexarEvidenciaUseCase.UploadResult resultado =
+        useCase.upload(entrada(sol.getId(), autorId, TipoEvidencia.SERVICO_REALIZADO, conteudo));
+
+    // Assert
+    assertEquals(URL_EVIDENCIA, resultado.evidenciaPublicUrl());
+    verify(solicitacaoRepository, times(1)).findById(sol.getId());
+    verify(usuarioRepository, times(1)).findById(autorId);
+    verify(atribuicaoRepository, times(1))
+        .existsBySolicitacaoIdAndUsuarioIdAndRemovidoEmIsNull(sol.getId(), autorId);
+    verify(storageService, times(1)).upload("foto.jpg", "image/jpeg", conteudo, 1024L);
+    verificarQueNadaMaisFoiChamado();
+  }
+
+  @Test
+  void shouldDenyUploadWhenOperadorHasNoRelationWithTheSolicitacao() {
+    // Arrange
+    final UUID estranhoId = UUID.randomUUID();
+    final Solicitacao sol = solicitacaoAbertaPor(UUID.randomUUID(), StatusSolicitacao.A_FAZER);
+    final ByteArrayInputStream conteudo = new ByteArrayInputStream(new byte[1024]);
+    when(solicitacaoRepository.findById(sol.getId())).thenReturn(Optional.of(sol));
+    when(usuarioRepository.findById(estranhoId))
+        .thenReturn(Optional.of(operador(estranhoId, true)));
+    when(atribuicaoRepository.existsBySolicitacaoIdAndUsuarioIdAndRemovidoEmIsNull(
+            sol.getId(), estranhoId))
+        .thenReturn(false);
+
+    // Act
+    final NaoAutorizadoException erro =
+        assertThrows(
+            NaoAutorizadoException.class,
+            () -> useCase.upload(entrada(sol.getId(), estranhoId, TipoEvidencia.GERAL, conteudo)));
+
+    // Assert
+    assertEquals("Usuario nao tem acesso a esta solicitacao", erro.getMessage());
+    verify(solicitacaoRepository, times(1)).findById(sol.getId());
+    verify(usuarioRepository, times(1)).findById(estranhoId);
+    verify(atribuicaoRepository, times(1))
+        .existsBySolicitacaoIdAndUsuarioIdAndRemovidoEmIsNull(sol.getId(), estranhoId);
+    verificarQueNadaMaisFoiChamado();
+  }
+
+  @Test
+  void shouldRejectUploadWhenAuthorSendsToClosedSolicitacao() {
+    // Arrange
+    final UUID autorId = UUID.randomUUID();
+    final Solicitacao sol = solicitacaoAbertaPor(autorId, StatusSolicitacao.CANCELADA);
+    final ByteArrayInputStream conteudo = new ByteArrayInputStream(new byte[1024]);
+    when(solicitacaoRepository.findById(sol.getId())).thenReturn(Optional.of(sol));
+
+    // Act
+    final BusinessRuleException erro =
+        assertThrows(
+            BusinessRuleException.class,
+            () -> useCase.upload(entrada(sol.getId(), autorId, TipoEvidencia.GERAL, conteudo)));
+
+    // Assert
+    assertEquals("Nao e possivel anexar evidencia a solicitacao encerrada", erro.getMessage());
+    verify(solicitacaoRepository, times(1)).findById(sol.getId());
+    verificarQueNadaMaisFoiChamado();
+  }
+
+  @Test
+  void shouldDenyUploadWhenAuthorIsInactive() {
+    // Arrange
+    final UUID autorId = UUID.randomUUID();
+    final Solicitacao sol = solicitacaoAbertaPor(autorId, StatusSolicitacao.A_FAZER);
+    final ByteArrayInputStream conteudo = new ByteArrayInputStream(new byte[1024]);
+    when(solicitacaoRepository.findById(sol.getId())).thenReturn(Optional.of(sol));
+    when(usuarioRepository.findById(autorId)).thenReturn(Optional.of(operador(autorId, false)));
+
+    // Act
+    final NaoAutorizadoException erro =
+        assertThrows(
+            NaoAutorizadoException.class,
+            () -> useCase.upload(entrada(sol.getId(), autorId, TipoEvidencia.ABERTURA, conteudo)));
+
+    // Assert
+    assertEquals("Usuario inativo", erro.getMessage());
+    verify(solicitacaoRepository, times(1)).findById(sol.getId());
+    verify(usuarioRepository, times(1)).findById(autorId);
+    verificarQueNadaMaisFoiChamado();
   }
 }
