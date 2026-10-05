@@ -46,3 +46,8 @@ Thumbs.db
 # Tool and session logs
 .claude-flow/
 
+
+### Byte Union ###
+/.specify/memory/constitution.md
+/CLAUDE.md
+/.claude/.bu-state.json
