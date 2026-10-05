@@ -1,10 +1,13 @@
 package com.rgm.api.adapter.in.web.solicitacao;
 
+import com.rgm.api.core.domain.model.aggregates.Usuario;
+import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.UUID;
 import javax.crypto.SecretKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,15 +26,19 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 public class SolicitacaoSseController {
 
   private static final Logger log = LoggerFactory.getLogger(SolicitacaoSseController.class);
-  private static final long TIMEOUT_MS = 300_000L;
+  private static final long TIMEOUT_MS = 30L * 60L * 1000L;
 
   private final SolicitacaoEventPublisher publisher;
   private final SecretKey key;
+  private final UsuarioRepository usuarioRepository;
 
   public SolicitacaoSseController(
-      final SolicitacaoEventPublisher publisher, @Value("${jwt.secret}") final String secret) {
+      final SolicitacaoEventPublisher publisher,
+      @Value("${jwt.secret}") final String secret,
+      final UsuarioRepository usuarioRepository) {
     this.publisher = publisher;
     this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+    this.usuarioRepository = usuarioRepository;
   }
 
   @GetMapping(produces = MediaType.TEXT_EVENT_STREAM_VALUE)
@@ -57,6 +64,14 @@ public class SolicitacaoSseController {
           Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload();
       if (!"access".equals(claims.get("type", String.class))) {
         throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Token inválido");
+      }
+      final boolean usuarioAtivo =
+          usuarioRepository
+              .findById(UUID.fromString(claims.getSubject()))
+              .map(Usuario::isAtivo)
+              .orElse(false);
+      if (!usuarioAtivo) {
+        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuário inativo");
       }
     } catch (final ResponseStatusException e) {
       throw e;
