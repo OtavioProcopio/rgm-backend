@@ -5,7 +5,7 @@
 
 ## Completude
 
-- [ ] RF-01 a RF-08 têm cenário que os exercita
+- [ ] RF-01 a RF-08 e RF-10 a RF-12 têm cenário que os exercita
 - [ ] A spec diz como RF-09 é verificado
 - [ ] RNF-01 a RNF-03 têm número e unidade
 - [ ] "Fora de escopo" cita o limite de tamanho de página (rgm-backend#89)
@@ -26,5 +26,5 @@
 ## Testabilidade
 
 - [ ] Há cenário para o filtro ligado, desligado e combinado com outro filtro
-- [ ] Há cenário para modelo sem solicitações concluídas e para modelo inexistente
+- [ ] Há cenário para modelo sem solicitações concluídas, com uma única concluída e para modelo inexistente
 - [ ] RNF-01 pode ser verificado contando consultas num teste

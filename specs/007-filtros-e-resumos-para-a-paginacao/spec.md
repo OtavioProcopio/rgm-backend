@@ -37,6 +37,7 @@ tela precise trazer uma lista inteira.
 - Busca de usuário por nome.
 - Mudar o que as listagens devolvem quando os filtros novos não são usados.
 - Mudar o cálculo do ranking de modelos por tempo, que já existe.
+- Mudar o restante da ficha em PDF do modelo; só os dois tempos dela mudam (RF-12).
 
 ## Personas e cenários de uso
 
@@ -60,6 +61,9 @@ tela precise trazer uma lista inteira.
 | RF-06 | O sistema deve oferecer um resumo das solicitações de um modelo com: total, em aberto, concluídas, canceladas, tempo médio de resolução e intervalo médio entre solicitações | obrigatório |
 | RF-07 | O resumo de um modelo que não existe deve responder "não encontrado" | obrigatório |
 | RF-08 | Os dois resumos devem exigir as mesmas permissões da consulta de modelos | obrigatório |
+| RF-10 | O tempo médio de resolução do resumo de um modelo deve ser a média das solicitações concluídas dele, informado a partir de 1 concluída; sem concluída, vem vazio | obrigatório |
+| RF-11 | O intervalo médio entre solicitações do resumo de um modelo deve considerar a data de abertura de todas as solicitações dele, em qualquer status, informado a partir de 2 solicitações; com menos de 2, vem vazio | obrigatório |
+| RF-12 | A ficha em PDF do modelo deve mostrar os mesmos dois tempos do resumo (RF-10 e RF-11) | obrigatório |
 | RF-09 | O relatório em PDF de solicitações, que usa os mesmos filtros da listagem, deve aceitar o filtro "em aberto" e seguir a regra de RF-04 | desejável |
 
 ## Requisitos não funcionais
@@ -122,10 +126,29 @@ Funcionalidade: Filtros e resumos para a paginação
     Então recebo total 6, em aberto 2, concluídas 3 e canceladas 1
     E recebo o tempo médio de resolução das concluídas
 
+  Cenário: Tempos do resumo seguem a regra do ranking
+    Dado que um modelo tem solicitações abertas nos dias 1, 11, 21 e 31
+    E a do dia 1 foi concluída em 2 dias e a do dia 21 em 4 dias
+    E a do dia 11 foi cancelada e a do dia 31 continua em aberto
+    Quando consulto o resumo das solicitações desse modelo
+    Então o tempo médio de resolução é de 3 dias
+    E o intervalo médio entre solicitações é de 10 dias
+
+  Cenário: Uma única solicitação concluída
+    Dado que um modelo tem uma única solicitação, concluída em 2 dias
+    Quando consulto o resumo das solicitações desse modelo
+    Então o tempo médio de resolução é de 2 dias
+    E o intervalo médio entre solicitações vem vazio
+
   Cenário: Modelo sem solicitações concluídas
     Dado que um modelo só tem solicitações em aberto
     Quando consulto o resumo das solicitações desse modelo
     Então o tempo médio de resolução vem vazio
+
+  Cenário: Ficha em PDF usa os tempos do resumo
+    Dado que um modelo tem uma única solicitação concluída
+    Quando gero a ficha em PDF desse modelo
+    Então a ficha mostra o tempo médio de resolução dessa solicitação
 
   Cenário: Modelo que não existe
     Quando consulto o resumo das solicitações de um modelo que não existe
@@ -138,11 +161,7 @@ Funcionalidade: Filtros e resumos para a paginação
 
 ## Ambiguidades
 
-- **Tempos no resumo do modelo:** [NECESSITA ESCLARECIMENTO] a ficha do modelo calcula hoje
-  os dois tempos só com as solicitações concluídas e só quando há pelo menos duas; o
-  ranking de modelos, que já existe na API, calcula o tempo de resolução com uma concluída
-  ou mais e o intervalo com todas as solicitações do modelo. O resumo novo precisa escolher
-  uma das duas regras.
+Nenhuma em aberto.
 
 Decisões registradas em 2026-10-05:
 
@@ -153,6 +172,20 @@ Decisões registradas em 2026-10-05:
   hoje.
 - **Ordem do "por máquina":** da maior para a menor quantidade; empate em ordem alfabética.
 - **Endpoints agregados em vez de paginar na tela:** resposta do usuário em 2026-10-05.
+
+Decisões registradas em 2026-10-06:
+
+- **Tempos no resumo do modelo:** a ficha do modelo calculava os dois tempos só com as
+  solicitações concluídas e só com 2 ou mais; o ranking de modelos calcula o tempo de
+  resolução com 1 concluída ou mais e o intervalo com todas as solicitações do modelo.
+  Resposta do usuário: o resumo segue a regra do ranking (RF-10 e RF-11). Os números da
+  ficha mudam em relação à v1.5.0: o intervalo tende a diminuir e modelo com uma única
+  concluída passa a mostrar tempo de resolução.
+- **Ficha em PDF:** passa a usar os mesmos tempos do resumo (RF-12), para a tela e o PDF do
+  mesmo modelo não divergirem. Isso substitui a decisão do OpenSpec
+  `metricas-tempo-por-modelo`, que mantinha a ficha com critério próprio. Inferência do
+  agente a partir do motivo da escolha (mesmo número em ficha, ranking e PDF); não foi
+  perguntada em separado.
 
 ## Métricas de sucesso
 
