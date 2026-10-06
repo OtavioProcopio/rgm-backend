@@ -44,6 +44,7 @@ public interface SolicitacaoRepository {
       UUID responsavelId,
       String maquina,
       Boolean atrasada,
+      boolean emAberto,
       int page,
       int size);
 
@@ -68,4 +69,10 @@ public interface SolicitacaoRepository {
    */
   PageResult<MetricaModeloRow> findMetricasPorModelo(
       OrdenacaoMetricaModelo sort, boolean ascendente, int page, int size);
+
+  /**
+   * Resumo das solicitacoes de um modelo, agregado no banco - nunca carrega solicitacoes em
+   * memoria.
+   */
+  ResumoSolicitacoesModelo resumirPorModelo(UUID modeloId);
 }

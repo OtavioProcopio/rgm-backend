@@ -5,6 +5,8 @@ import com.rgm.api.adapter.out.persistence.repository.ModeloJpaRepository;
 import com.rgm.api.core.domain.model.aggregates.Modelo;
 import com.rgm.api.core.domain.ports.repositories.ModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.PageResult;
+import com.rgm.api.core.domain.ports.repositories.QuantidadePorMaquina;
+import com.rgm.api.core.domain.ports.repositories.ResumoModelos;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
@@ -73,5 +75,18 @@ public class ModeloRepositoryAdapter implements ModeloRepository {
   @Override
   public long count() {
     return jpa.count();
+  }
+
+  @Override
+  public ResumoModelos resumir() {
+    final Object[] contagens = jpa.resumirContagens().get(0);
+    final long total = ((Number) contagens[0]).longValue();
+    final long ativos = ((Number) contagens[1]).longValue();
+    final var porMaquina =
+        jpa.contarPorMaquina().stream()
+            .map(row -> new QuantidadePorMaquina((String) row[0], ((Number) row[1]).longValue()))
+            .toList();
+    return new ResumoModelos(
+        total, ativos, total - ativos, ((Number) contagens[2]).longValue(), porMaquina);
   }
 }

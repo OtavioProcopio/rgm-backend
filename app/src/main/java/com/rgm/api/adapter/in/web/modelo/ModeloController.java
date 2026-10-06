@@ -5,14 +5,16 @@ import com.rgm.api.adapter.in.web.dto.request.EditarModeloRequest;
 import com.rgm.api.adapter.in.web.dto.response.EventoModeloResponse;
 import com.rgm.api.adapter.in.web.dto.response.ModeloResponse;
 import com.rgm.api.adapter.in.web.dto.response.PageResponse;
+import com.rgm.api.adapter.in.web.dto.response.ResumoModelosResponse;
+import com.rgm.api.adapter.in.web.dto.response.ResumoSolicitacoesModeloResponse;
 import com.rgm.api.adapter.out.report.ModeloPdfService;
 import com.rgm.api.core.application.usecases.modelo.GerenciarModelosUseCase;
 import com.rgm.api.core.application.usecases.modelo.ListarModelosUseCase;
+import com.rgm.api.core.application.usecases.modelo.ObterResumoModelosUseCase;
+import com.rgm.api.core.application.usecases.modelo.ObterResumoSolicitacoesModeloUseCase;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.exceptions.ValidationException;
 import com.rgm.api.core.domain.model.aggregates.Modelo;
-import com.rgm.api.core.domain.model.aggregates.Solicitacao;
-import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
 import com.rgm.api.core.domain.model.enums.TipoModelo;
 import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.EventoModeloRepository;
@@ -57,6 +59,8 @@ public class ModeloController {
   private final ModeloPdfService modeloPdfService;
   private final UsuarioRepository usuarioRepository;
   private final FotoGaleriaModeloRepository fotoGaleriaModeloRepository;
+  private final ObterResumoModelosUseCase resumoModelosUseCase;
+  private final ObterResumoSolicitacoesModeloUseCase resumoSolicitacoesUseCase;
 
   public ModeloController(
       final GerenciarModelosUseCase gerenciarUseCase,
@@ -67,7 +71,9 @@ public class ModeloController {
       final AtividadeSolicitacaoRepository atividadeRepository,
       final ModeloPdfService modeloPdfService,
       final UsuarioRepository usuarioRepository,
-      final FotoGaleriaModeloRepository fotoGaleriaModeloRepository) {
+      final FotoGaleriaModeloRepository fotoGaleriaModeloRepository,
+      final ObterResumoModelosUseCase resumoModelosUseCase,
+      final ObterResumoSolicitacoesModeloUseCase resumoSolicitacoesUseCase) {
     this.gerenciarUseCase = gerenciarUseCase;
     this.listarUseCase = listarUseCase;
     this.modeloRepository = modeloRepository;
@@ -77,6 +83,8 @@ public class ModeloController {
     this.modeloPdfService = modeloPdfService;
     this.usuarioRepository = usuarioRepository;
     this.fotoGaleriaModeloRepository = fotoGaleriaModeloRepository;
+    this.resumoModelosUseCase = resumoModelosUseCase;
+    this.resumoSolicitacoesUseCase = resumoSolicitacoesUseCase;
   }
 
   @GetMapping
@@ -95,6 +103,18 @@ public class ModeloController {
             result.content().stream().map(Modelo::getId).toList());
     return ResponseEntity.ok(
         PageResponse.from(result, m -> ModeloResponse.from(m, fotosCapa.get(m.getId()))));
+  }
+
+  @GetMapping("/resumo")
+  public ResponseEntity<ResumoModelosResponse> resumir() {
+    return ResponseEntity.ok(ResumoModelosResponse.from(resumoModelosUseCase.execute()));
+  }
+
+  @GetMapping("/{id}/solicitacoes/resumo")
+  public ResponseEntity<ResumoSolicitacoesModeloResponse> resumirSolicitacoes(
+      @PathVariable final UUID id) {
+    return ResponseEntity.ok(
+        ResumoSolicitacoesModeloResponse.from(resumoSolicitacoesUseCase.execute(id)));
   }
 
   @GetMapping("/{id}")
@@ -208,6 +228,7 @@ public class ModeloController {
             .orElseThrow(() -> new RecursoNaoEncontradoException("Modelo nao encontrado"));
     final var eventos = eventoModeloRepository.findByModeloId(id);
     final var solicitacoes = solicitacaoRepository.findByModeloId(id);
+    final var resumo = solicitacaoRepository.resumirPorModelo(id);
     final var atividadesPorSolicitacao =
         solicitacoes.stream()
             .collect(
@@ -229,8 +250,6 @@ public class ModeloController {
             .collect(Collectors.toMap(u -> u.getId(), u -> u.getNome()));
 
     final String geradoPorNome = resolveNome(authentication);
-    final Double tempoMedioResolucaoSegundos = calcularTempoMedioResolucaoSegundos(solicitacoes);
-    final Double intervaloMedioSegundos = calcularIntervaloMedioSegundos(solicitacoes);
     final byte[] pdf =
         modeloPdfService.gerarFicha(
             modelo,
@@ -239,53 +258,14 @@ public class ModeloController {
             atividadesPorSolicitacao,
             geradoPorNome,
             nomesPorUsuario,
-            tempoMedioResolucaoSegundos,
-            intervaloMedioSegundos);
+            resumo.tempoMedioResolucaoSegundos(),
+            resumo.intervaloMedioSegundos());
     final var headers = new HttpHeaders();
     headers.setContentType(MediaType.APPLICATION_PDF);
     final String filename =
         "ficha-modelo-" + modelo.getCodigo().replaceAll("[^a-zA-Z0-9]", "-") + ".pdf";
     headers.setContentDispositionFormData("attachment", filename);
     return new ResponseEntity<>(pdf, headers, HttpStatus.OK);
-  }
-
-  /**
-   * Tempo medio de resolucao e intervalo medio entre solicitacoes concluidas deste modelo. Retorna
-   * nulo quando ha menos de 2 solicitacoes concluidas (dados insuficientes).
-   */
-  private Double calcularTempoMedioResolucaoSegundos(final List<Solicitacao> solicitacoes) {
-    final var concluidas =
-        solicitacoes.stream()
-            .filter(s -> s.getStatus() == StatusSolicitacao.CONCLUIDA && s.getConcluidaEm() != null)
-            .toList();
-    if (concluidas.size() < 2) {
-      return null;
-    }
-    return concluidas.stream()
-        .mapToLong(
-            s -> java.time.Duration.between(s.getCriadaEm(), s.getConcluidaEm()).getSeconds())
-        .average()
-        .orElse(0);
-  }
-
-  private Double calcularIntervaloMedioSegundos(final List<Solicitacao> solicitacoes) {
-    final var concluidasOrdenadas =
-        solicitacoes.stream()
-            .filter(s -> s.getStatus() == StatusSolicitacao.CONCLUIDA)
-            .sorted(java.util.Comparator.comparing(Solicitacao::getCriadaEm))
-            .toList();
-    if (concluidasOrdenadas.size() < 2) {
-      return null;
-    }
-    long totalSegundos = 0;
-    for (int i = 1; i < concluidasOrdenadas.size(); i++) {
-      totalSegundos +=
-          java.time.Duration.between(
-                  concluidasOrdenadas.get(i - 1).getCriadaEm(),
-                  concluidasOrdenadas.get(i).getCriadaEm())
-              .getSeconds();
-    }
-    return (double) totalSegundos / (concluidasOrdenadas.size() - 1);
   }
 
   private TipoModelo parseTipo(final String tipo) {

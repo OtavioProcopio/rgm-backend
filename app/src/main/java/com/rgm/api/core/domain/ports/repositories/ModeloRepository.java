@@ -20,4 +20,7 @@ public interface ModeloRepository {
       Boolean ativo, String codigo, String maquina, String descricao, int page, int size);
 
   long count();
+
+  /** Contagens do cadastro, agregadas no banco - nunca carrega a lista de modelos. */
+  ResumoModelos resumir();
 }

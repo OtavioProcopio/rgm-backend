@@ -537,6 +537,58 @@ class SolicitacaoControllerTest {
   }
 
   @Test
+  void shouldLevarEmAbertoAoCasoDeUsoWhenListagemRecebeOFiltro() throws Exception {
+    // Arrange
+    final var captor = org.mockito.ArgumentCaptor.forClass(ListarSolicitacoesUseCase.Input.class);
+    when(listarUseCase.execute(captor.capture()))
+        .thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
+    when(obterUseCase.listarResponsaveisBatch(any())).thenReturn(java.util.Map.of());
+
+    // Act
+    final var resposta = mockMvc.perform(get("/api/solicitacoes").param("emAberto", "true"));
+
+    // Assert
+    resposta.andExpect(status().isOk());
+    org.junit.jupiter.api.Assertions.assertEquals(Boolean.TRUE, captor.getValue().emAberto());
+  }
+
+  @Test
+  void shouldDeixarEmAbertoVazioWhenListagemNaoRecebeOFiltro() throws Exception {
+    // Arrange
+    final var captor = org.mockito.ArgumentCaptor.forClass(ListarSolicitacoesUseCase.Input.class);
+    when(listarUseCase.execute(captor.capture()))
+        .thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
+    when(obterUseCase.listarResponsaveisBatch(any())).thenReturn(java.util.Map.of());
+
+    // Act
+    final var resposta = mockMvc.perform(get("/api/solicitacoes"));
+
+    // Assert
+    resposta.andExpect(status().isOk());
+    org.junit.jupiter.api.Assertions.assertNull(captor.getValue().emAberto());
+  }
+
+  @Test
+  void shouldLevarEmAbertoAoCasoDeUsoWhenRelatorioRecebeOFiltro() throws Exception {
+    // Arrange
+    final var captor = org.mockito.ArgumentCaptor.forClass(ListarSolicitacoesUseCase.Input.class);
+    when(listarUseCase.execute(captor.capture()))
+        .thenReturn(new PageResult<>(List.of(), 0, Integer.MAX_VALUE, 0, 0));
+    when(pdfService.gerar(any(), any(), any())).thenReturn(new byte[] {37, 80, 68, 70});
+    when(usuarioRepository.findAllByIdIn(any())).thenReturn(java.util.List.of());
+    when(usuarioRepository.findById(any())).thenReturn(java.util.Optional.empty());
+
+    // Act
+    final var resposta =
+        mockMvc.perform(
+            get("/api/solicitacoes/relatorio").param("emAberto", "true").with(user("u")));
+
+    // Assert
+    resposta.andExpect(status().isOk());
+    org.junit.jupiter.api.Assertions.assertEquals(Boolean.TRUE, captor.getValue().emAberto());
+  }
+
+  @Test
   void gerenciarResponsaveis() throws Exception {
     final Solicitacao sol = criarSolicitacao();
     final UUID userId = UUID.randomUUID();

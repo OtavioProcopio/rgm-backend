@@ -1,4 +1,4 @@
 {
-  "active": "specs/006-acoes-recusam-usuario-inativo",
-  "title": "Usuário desativado perde o acesso imediatamente"
+  "active": "specs/007-filtros-e-resumos-para-a-paginacao",
+  "title": "Filtros e resumos para a paginação"
 }

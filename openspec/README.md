@@ -21,4 +21,5 @@ entra nesta tabela na mesma entrega.
 |---|---|
 | `evidencias` | `specs/001-autor-da-solicitacao-anexa-e-ve` |
 | `autenticacao` | `specs/002-id-do-usuario-na-resposta-de`, `specs/006-acoes-recusam-usuario-inativo` |
-| `solicitacoes-kanban` | `specs/003-heartbeat-nas-conexoes-sse`, `specs/004-eventos-sse-de-abertura-edicao-e`, `specs/005-acoes-permitidas-na-solicitacao` |
+| `solicitacoes-kanban` | `specs/003-heartbeat-nas-conexoes-sse`, `specs/004-eventos-sse-de-abertura-edicao-e`, `specs/005-acoes-permitidas-na-solicitacao`, `specs/007-filtros-e-resumos-para-a-paginacao` (filtro por data de encerramento inclui canceladas) |
+| `modelos` | `specs/007-filtros-e-resumos-para-a-paginacao` (tempos da ficha em PDF seguem a regra do ranking) |

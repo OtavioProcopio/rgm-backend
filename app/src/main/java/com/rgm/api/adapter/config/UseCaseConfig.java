@@ -17,6 +17,8 @@ import com.rgm.api.core.application.usecases.modelo.EditarFotoGaleriaUseCase;
 import com.rgm.api.core.application.usecases.modelo.GerenciarModelosUseCase;
 import com.rgm.api.core.application.usecases.modelo.ListarGaleriaModeloUseCase;
 import com.rgm.api.core.application.usecases.modelo.ListarModelosUseCase;
+import com.rgm.api.core.application.usecases.modelo.ObterResumoModelosUseCase;
+import com.rgm.api.core.application.usecases.modelo.ObterResumoSolicitacoesModeloUseCase;
 import com.rgm.api.core.application.usecases.modelo.RecalcularPendenciaUseCase;
 import com.rgm.api.core.application.usecases.modelo.RemoverFotoGaleriaUseCase;
 import com.rgm.api.core.application.usecases.modelo.SolicitacaoFinalizadaListener;
@@ -351,6 +353,18 @@ public class UseCaseConfig {
   @Bean
   public ListarModelosUseCase listarModelosUseCase(final ModeloRepository modeloRepository) {
     return new ListarModelosUseCase(modeloRepository);
+  }
+
+  @Bean
+  public ObterResumoModelosUseCase obterResumoModelosUseCase(
+      final ModeloRepository modeloRepository) {
+    return new ObterResumoModelosUseCase(modeloRepository);
+  }
+
+  @Bean
+  public ObterResumoSolicitacoesModeloUseCase obterResumoSolicitacoesModeloUseCase(
+      final ModeloRepository modeloRepository, final SolicitacaoRepository solicitacaoRepository) {
+    return new ObterResumoSolicitacoesModeloUseCase(modeloRepository, solicitacaoRepository);
   }
 
   @Bean
