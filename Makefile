@@ -24,10 +24,10 @@ lint: ## Verificar formatacao com Spotless
 # ── Testes ─────────────────────────────────────────────────
 
 test: ## Rodar testes unitarios e de integracao (sem Testcontainers)
-	cd app && ./mvnw test -Dtest='!FlywayMigrationTest'
+	cd app && ./mvnw test -Dtest='!FlywayMigrationTest,!*PostgresTest'
 
 test-fast: ## Rodar apenas testes unitarios (sem @WebMvcTest e Flyway)
-	cd app && ./mvnw test -Dtest='!FlywayMigrationTest,!*ControllerTest'
+	cd app && ./mvnw test -Dtest='!FlywayMigrationTest,!*PostgresTest,!*ControllerTest'
 
 test-all: ## Rodar TODOS os testes incluindo Flyway/Testcontainers (requer Docker)
 	cd app && ./mvnw test
@@ -38,11 +38,11 @@ check: ## Formatar + compilar + rodar testes (sem cobertura)
 	$(MAKE) test
 
 coverage: ## Rodar testes e gerar relatorio JaCoCo (target/site/jacoco)
-	cd app && ./mvnw verify -Dtest='!FlywayMigrationTest'
+	cd app && ./mvnw verify -Dtest='!FlywayMigrationTest,!*PostgresTest'
 
 validate: ## Pipeline completo XP: lint + testes + coverage 85% + build
 	$(MAKE) lint
-	cd app && ./mvnw clean verify -Dtest='!FlywayMigrationTest'
+	cd app && ./mvnw clean verify -Dtest='!FlywayMigrationTest,!*PostgresTest'
 
 # ── Execucao ───────────────────────────────────────────────
 

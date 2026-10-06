@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -190,7 +191,19 @@ class SolicitacaoRepositoryAdapterTest {
     final SolicitacaoJpaEntity e = criarEntity();
     final Page<SolicitacaoJpaEntity> page = new PageImpl<>(List.of(e), PageRequest.of(0, 10), 1);
     when(jpa.findByFilters(
-            any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            anyBoolean(),
             any()))
         .thenReturn(page);
 
@@ -208,6 +221,7 @@ class SolicitacaoRepositoryAdapterTest {
             null,
             null,
             null,
+            false,
             0,
             10);
 
@@ -218,13 +232,25 @@ class SolicitacaoRepositoryAdapterTest {
   void findByFilters_comNulos_retornaPaginado() {
     final Page<SolicitacaoJpaEntity> page = new PageImpl<>(List.of(), PageRequest.of(0, 10), 0);
     when(jpa.findByFilters(
-            any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            anyBoolean(),
             any()))
         .thenReturn(page);
 
     final PageResult<Solicitacao> result =
         adapter.findByFilters(
-            null, null, null, null, null, null, null, null, null, null, null, null, 0, 10);
+            null, null, null, null, null, null, null, null, null, null, null, null, false, 0, 10);
 
     assertEquals(0, result.content().size());
   }
@@ -345,5 +371,75 @@ class SolicitacaoRepositoryAdapterTest {
         adapter.findByStatusAndCriadaEmBetween(StatusSolicitacao.A_FAZER, inicio, fim);
 
     assertEquals(1, result.size());
+  }
+
+  @Test
+  void shouldRepassarEmAbertoAoJpaWhenFiltroVemLigado() {
+    // Arrange
+    final Page<SolicitacaoJpaEntity> page = new PageImpl<>(List.of(), PageRequest.of(0, 10), 0);
+    final org.mockito.ArgumentCaptor<Boolean> emAberto =
+        org.mockito.ArgumentCaptor.forClass(Boolean.class);
+    when(jpa.findByFilters(
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            emAberto.capture(),
+            any()))
+        .thenReturn(page);
+
+    // Act
+    adapter.findByFilters(
+        null, null, null, null, null, null, null, null, null, null, null, null, true, 0, 10);
+
+    // Assert
+    assertEquals(Boolean.TRUE, emAberto.getValue());
+  }
+
+  @Test
+  void shouldMontarOResumoComOIntervaloCalculadoWhenResumePorModelo() {
+    // Arrange
+    final UUID modeloId = UUID.randomUUID();
+    final Instant primeira = Instant.parse("2026-09-01T12:00:00Z");
+    final Instant ultima = primeira.plusSeconds(300);
+    final List<Object[]> linhas = new ArrayList<>();
+    linhas.add(new Object[] {4L, 1L, 2L, 1L, primeira, ultima, 259200.0});
+    when(jpa.resumirPorModelo(modeloId)).thenReturn(linhas);
+    final var esperado =
+        new com.rgm.api.core.domain.ports.repositories.ResumoSolicitacoesModelo(
+            4, 1, 2, 1, 259200.0, 100.0);
+
+    // Act
+    final var resumo = adapter.resumirPorModelo(modeloId);
+
+    // Assert
+    assertEquals(esperado, resumo);
+    verify(jpa, org.mockito.Mockito.times(1)).resumirPorModelo(modeloId);
+  }
+
+  @Test
+  void shouldDeixarOsTemposVaziosWhenModeloNaoTemSolicitacao() {
+    // Arrange
+    final UUID modeloId = UUID.randomUUID();
+    final List<Object[]> linhas = new ArrayList<>();
+    linhas.add(new Object[] {0L, 0L, 0L, 0L, null, null, null});
+    when(jpa.resumirPorModelo(modeloId)).thenReturn(linhas);
+    final var esperado =
+        new com.rgm.api.core.domain.ports.repositories.ResumoSolicitacoesModelo(
+            0, 0, 0, 0, null, null);
+
+    // Act
+    final var resumo = adapter.resumirPorModelo(modeloId);
+
+    // Assert
+    assertEquals(esperado, resumo);
   }
 }

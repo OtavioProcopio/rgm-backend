@@ -1,12 +1,17 @@
 package com.rgm.api.adapter.in.web.modelo;
 
+import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -19,6 +24,9 @@ import com.rgm.api.adapter.out.report.ModeloPdfService;
 import com.rgm.api.adapter.out.security.JwtAuthenticationFilter;
 import com.rgm.api.core.application.usecases.modelo.GerenciarModelosUseCase;
 import com.rgm.api.core.application.usecases.modelo.ListarModelosUseCase;
+import com.rgm.api.core.application.usecases.modelo.ObterResumoModelosUseCase;
+import com.rgm.api.core.application.usecases.modelo.ObterResumoSolicitacoesModeloUseCase;
+import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.model.aggregates.EventoModelo;
 import com.rgm.api.core.domain.model.aggregates.Modelo;
 import com.rgm.api.core.domain.model.enums.TipoEventoModelo;
@@ -27,6 +35,9 @@ import com.rgm.api.core.domain.ports.repositories.EventoModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.FotoGaleriaModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.ModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.PageResult;
+import com.rgm.api.core.domain.ports.repositories.QuantidadePorMaquina;
+import com.rgm.api.core.domain.ports.repositories.ResumoModelos;
+import com.rgm.api.core.domain.ports.repositories.ResumoSolicitacoesModelo;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import java.time.Instant;
 import java.util.List;
@@ -54,6 +65,8 @@ class ModeloControllerTest {
   @Autowired private ObjectMapper objectMapper;
   @MockitoBean private GerenciarModelosUseCase gerenciarUseCase;
   @MockitoBean private ListarModelosUseCase listarUseCase;
+  @MockitoBean private ObterResumoModelosUseCase resumoModelosUseCase;
+  @MockitoBean private ObterResumoSolicitacoesModeloUseCase resumoSolicitacoesUseCase;
   @MockitoBean private ModeloRepository modeloRepository;
   @MockitoBean private EventoModeloRepository eventoModeloRepository;
   @MockitoBean private SolicitacaoRepository solicitacaoRepository;
@@ -233,6 +246,8 @@ class ModeloControllerTest {
     when(modeloRepository.findById(modelo.getId())).thenReturn(java.util.Optional.of(modelo));
     when(eventoModeloRepository.findByModeloId(modelo.getId())).thenReturn(List.of());
     when(solicitacaoRepository.findByModeloId(modelo.getId())).thenReturn(List.of());
+    when(solicitacaoRepository.resumirPorModelo(modelo.getId()))
+        .thenReturn(new ResumoSolicitacoesModelo(0, 0, 0, 0, null, null));
     when(modeloPdfService.gerarFicha(any(), any(), any(), any(), any(), any(), any(), any()))
         .thenReturn(new byte[] {1, 2, 3});
 
@@ -243,82 +258,125 @@ class ModeloControllerTest {
         .andExpect(status().isOk());
   }
 
-  private com.rgm.api.core.domain.model.aggregates.Solicitacao criarSolicitacaoConcluida(
-      final UUID modeloId, final Instant criadaEm, final Instant concluidaEm) {
-    return new com.rgm.api.core.domain.model.aggregates.Solicitacao(
-        UUID.randomUUID(),
-        "Titulo",
-        "Descricao",
-        com.rgm.api.core.domain.model.enums.TipoSolicitacao.REPARO,
-        com.rgm.api.core.domain.model.enums.StatusSolicitacao.CONCLUIDA,
-        com.rgm.api.core.domain.model.enums.PrioridadeSolicitacao.ALTA,
-        modeloId,
-        null /* modeloCodigo */,
-        null /* modeloMaquina */,
-        null /* modeloObservacoes */,
-        UUID.randomUUID(),
-        "Concluido",
-        criadaEm,
-        concluidaEm,
-        concluidaEm,
-        null);
+  @Test
+  void shouldRepassarOsTemposDoResumoAoPdfWhenGeraAFichaDoModelo() throws Exception {
+    // Arrange
+    final Modelo modelo = criarModelo();
+    final Double tempoMedio = 172800.0;
+    final Double intervaloMedio = 864000.0;
+    final byte[] pdf = {1, 2, 3};
+    when(modeloRepository.findById(modelo.getId())).thenReturn(java.util.Optional.of(modelo));
+    when(eventoModeloRepository.findByModeloId(modelo.getId())).thenReturn(List.of());
+    when(solicitacaoRepository.findByModeloId(modelo.getId())).thenReturn(List.of());
+    when(solicitacaoRepository.resumirPorModelo(modelo.getId()))
+        .thenReturn(new ResumoSolicitacoesModelo(4, 1, 2, 1, tempoMedio, intervaloMedio));
+    when(modeloPdfService.gerarFicha(
+            eq(modelo), any(), any(), any(), any(), any(), eq(tempoMedio), eq(intervaloMedio)))
+        .thenReturn(pdf);
+
+    // Act
+    final var resposta =
+        mockMvc.perform(
+            get("/api/modelos/{id}/relatorio", modelo.getId())
+                .with(user(UUID.randomUUID().toString())));
+
+    // Assert
+    resposta.andExpect(status().isOk()).andExpect(content().bytes(pdf));
+    verify(solicitacaoRepository, times(1)).resumirPorModelo(modelo.getId());
   }
 
   @Test
-  void exportarFichaModelo_comDuasOuMaisConcluidasCalculaMetricas() throws Exception {
-    final Modelo modelo = criarModelo();
-    final Instant t0 = Instant.parse("2026-01-01T00:00:00Z");
-    final var sol1 = criarSolicitacaoConcluida(modelo.getId(), t0, t0.plusSeconds(3600));
-    final var sol2 =
-        criarSolicitacaoConcluida(
-            modelo.getId(), t0.plusSeconds(7200), t0.plusSeconds(7200 + 7200));
-    when(modeloRepository.findById(modelo.getId())).thenReturn(java.util.Optional.of(modelo));
-    when(eventoModeloRepository.findByModeloId(modelo.getId())).thenReturn(List.of());
-    when(solicitacaoRepository.findByModeloId(modelo.getId())).thenReturn(List.of(sol1, sol2));
-    final var captor = org.mockito.ArgumentCaptor.forClass(Double.class);
-    when(modeloPdfService.gerarFicha(
-            any(), any(), any(), any(), any(), any(), captor.capture(), any()))
-        .thenReturn(new byte[] {1, 2, 3});
+  void shouldResponderContagensEMaquinasWhenConsultaOResumoDeModelos() throws Exception {
+    // Arrange
+    final var resumo =
+        new ResumoModelos(
+            7,
+            5,
+            2,
+            2,
+            List.of(new QuantidadePorMaquina("DISA", 4), new QuantidadePorMaquina("FBOX", 3)));
+    when(resumoModelosUseCase.execute()).thenReturn(resumo);
 
-    mockMvc
-        .perform(
-            get("/api/modelos/{id}/relatorio", modelo.getId())
-                .with(user(UUID.randomUUID().toString())))
-        .andExpect(status().isOk());
+    // Act
+    final var resposta =
+        mockMvc.perform(get("/api/modelos/resumo").with(user(UUID.randomUUID().toString())));
 
-    // media dos tempos de resolucao: sol1=3600s, sol2=7200s -> media 5400s
-    org.junit.jupiter.api.Assertions.assertEquals(5400.0, captor.getValue());
+    // Assert
+    resposta
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.total").value(resumo.total()))
+        .andExpect(jsonPath("$.ativos").value(resumo.ativos()))
+        .andExpect(jsonPath("$.inativos").value(resumo.inativos()))
+        .andExpect(jsonPath("$.comPendenciaAberta").value(resumo.comPendenciaAberta()))
+        .andExpect(jsonPath("$.porMaquina[0].maquina").value("DISA"))
+        .andExpect(jsonPath("$.porMaquina[0].quantidade").value(4))
+        .andExpect(jsonPath("$.porMaquina[1].maquina").value("FBOX"))
+        .andExpect(jsonPath("$.porMaquina[1].quantidade").value(3));
+    verify(resumoModelosUseCase, times(1)).execute();
   }
 
   @Test
-  void exportarFichaModelo_comMenosDeDuasConcluidasOmiteMetricas() throws Exception {
-    final Modelo modelo = criarModelo();
-    final Instant t0 = Instant.parse("2026-01-01T00:00:00Z");
-    final var sol1 = criarSolicitacaoConcluida(modelo.getId(), t0, t0.plusSeconds(3600));
-    when(modeloRepository.findById(modelo.getId())).thenReturn(java.util.Optional.of(modelo));
-    when(eventoModeloRepository.findByModeloId(modelo.getId())).thenReturn(List.of());
-    when(solicitacaoRepository.findByModeloId(modelo.getId())).thenReturn(List.of(sol1));
-    final var tempoCaptor = org.mockito.ArgumentCaptor.forClass(Double.class);
-    final var intervaloCaptor = org.mockito.ArgumentCaptor.forClass(Double.class);
-    when(modeloPdfService.gerarFicha(
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            tempoCaptor.capture(),
-            intervaloCaptor.capture()))
-        .thenReturn(new byte[] {1, 2, 3});
+  void shouldResponderContagensETemposWhenConsultaOResumoDasSolicitacoesDoModelo()
+      throws Exception {
+    // Arrange
+    final UUID modeloId = UUID.randomUUID();
+    final var resumo = new ResumoSolicitacoesModelo(6, 2, 3, 1, 259200.0, 864000.0);
+    when(resumoSolicitacoesUseCase.execute(modeloId)).thenReturn(resumo);
 
-    mockMvc
-        .perform(
-            get("/api/modelos/{id}/relatorio", modelo.getId())
-                .with(user(UUID.randomUUID().toString())))
-        .andExpect(status().isOk());
+    // Act
+    final var resposta =
+        mockMvc.perform(
+            get("/api/modelos/{id}/solicitacoes/resumo", modeloId)
+                .with(user(UUID.randomUUID().toString())));
 
-    org.junit.jupiter.api.Assertions.assertNull(tempoCaptor.getValue());
-    org.junit.jupiter.api.Assertions.assertNull(intervaloCaptor.getValue());
+    // Assert
+    resposta
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.total").value(resumo.total()))
+        .andExpect(jsonPath("$.emAberto").value(resumo.emAberto()))
+        .andExpect(jsonPath("$.concluidas").value(resumo.concluidas()))
+        .andExpect(jsonPath("$.canceladas").value(resumo.canceladas()))
+        .andExpect(
+            jsonPath("$.tempoMedioResolucaoSegundos").value(resumo.tempoMedioResolucaoSegundos()))
+        .andExpect(jsonPath("$.intervaloMedioSegundos").value(resumo.intervaloMedioSegundos()));
+    verify(resumoSolicitacoesUseCase, times(1)).execute(modeloId);
+  }
+
+  @Test
+  void shouldResponderTemposNulosWhenResumoDoModeloNaoTemDado() throws Exception {
+    // Arrange
+    final UUID modeloId = UUID.randomUUID();
+    when(resumoSolicitacoesUseCase.execute(modeloId))
+        .thenReturn(new ResumoSolicitacoesModelo(1, 1, 0, 0, null, null));
+
+    // Act
+    final var resposta =
+        mockMvc.perform(
+            get("/api/modelos/{id}/solicitacoes/resumo", modeloId)
+                .with(user(UUID.randomUUID().toString())));
+
+    // Assert
+    resposta
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.tempoMedioResolucaoSegundos").value(nullValue()))
+        .andExpect(jsonPath("$.intervaloMedioSegundos").value(nullValue()));
+  }
+
+  @Test
+  void shouldResponderNaoEncontradoWhenResumoEDeModeloInexistente() throws Exception {
+    // Arrange
+    final UUID modeloId = UUID.randomUUID();
+    when(resumoSolicitacoesUseCase.execute(modeloId))
+        .thenThrow(new RecursoNaoEncontradoException("Modelo nao encontrado"));
+
+    // Act
+    final var resposta =
+        mockMvc.perform(
+            get("/api/modelos/{id}/solicitacoes/resumo", modeloId)
+                .with(user(UUID.randomUUID().toString())));
+
+    // Assert
+    resposta.andExpect(status().isNotFound());
   }
 
   @Test

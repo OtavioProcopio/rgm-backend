@@ -39,6 +39,7 @@ public final class ListarSolicitacoesUseCase {
       UUID responsavelId,
       String maquina,
       Boolean atrasada,
+      Boolean emAberto,
       UUID usuarioAutenticadoId,
       int page,
       int size) {}
@@ -49,6 +50,7 @@ public final class ListarSolicitacoesUseCase {
     final TipoFiltroData tipoData =
         input.tipoData() != null ? input.tipoData() : TipoFiltroData.CRIACAO;
     final boolean porConclusao = tipoData == TipoFiltroData.CONCLUSAO;
+    final boolean emAberto = Boolean.TRUE.equals(input.emAberto());
 
     final Instant criadaEmInicio = porConclusao ? null : input.dataInicio();
     final Instant criadaEmFim = porConclusao ? null : input.dataFim();
@@ -64,6 +66,7 @@ public final class ListarSolicitacoesUseCase {
         || input.abertaPorUsuarioId() != null
         || input.maquina() != null
         || input.atrasada() != null
+        || emAberto
         || responsavelId != null) {
       return solicitacaoRepository.findByFilters(
           input.status(),
@@ -78,6 +81,7 @@ public final class ListarSolicitacoesUseCase {
           responsavelId,
           input.maquina(),
           input.atrasada(),
+          emAberto,
           input.page(),
           input.size());
     }

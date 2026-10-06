@@ -124,4 +124,78 @@ class ModeloJpaRepositoryTest {
     assertEquals(1, page.getTotalElements());
     assertEquals("MOD-01", page.getContent().get(0).getCodigo());
   }
+
+  private void persistirModeloComPendencia(final String codigo, final String maquina) {
+    final ModeloJpaEntity m = persistirModelo(codigo, maquina, "Com pendencia", true);
+    m.setTemPendenciaAberta(true);
+    repository.save(m);
+  }
+
+  private void persistirCadastroDeSeteModelos() {
+    persistirModelo("M1", "FBOX", "d", true);
+    persistirModelo("M2", "FBOX", "d", false);
+    persistirModeloComPendencia("M3", "FBOX");
+    persistirModelo("M4", "DISA", "d", true);
+    persistirModelo("M5", "DISA", "d", true);
+    persistirModelo("M6", "DISA", "d", false);
+    persistirModeloComPendencia("M7", "DISA");
+  }
+
+  @Test
+  void shouldContarTotalAtivosEComPendenciaWhenResumeContagens() {
+    // Arrange
+    persistirCadastroDeSeteModelos();
+
+    // Act
+    final Object[] row = repository.resumirContagens().get(0);
+
+    // Assert
+    assertEquals(7L, ((Number) row[0]).longValue());
+    assertEquals(5L, ((Number) row[1]).longValue());
+    assertEquals(2L, ((Number) row[2]).longValue());
+  }
+
+  @Test
+  void shouldDevolverContagensZeradasWhenNaoHaModelo() {
+    // Arrange
+    repository.deleteAll();
+
+    // Act
+    final Object[] row = repository.resumirContagens().get(0);
+
+    // Assert
+    assertEquals(0L, ((Number) row[0]).longValue());
+    assertEquals(0L, ((Number) row[1]).longValue());
+    assertEquals(0L, ((Number) row[2]).longValue());
+  }
+
+  @Test
+  void shouldOrdenarDaMaiorParaAMenorQuantidadeWhenContaPorMaquina() {
+    // Arrange
+    persistirCadastroDeSeteModelos();
+
+    // Act
+    final var linhas = repository.contarPorMaquina();
+
+    // Assert
+    assertEquals(2, linhas.size());
+    assertEquals("DISA", linhas.get(0)[0]);
+    assertEquals(4L, ((Number) linhas.get(0)[1]).longValue());
+    assertEquals("FBOX", linhas.get(1)[0]);
+    assertEquals(3L, ((Number) linhas.get(1)[1]).longValue());
+  }
+
+  @Test
+  void shouldDesempatarEmOrdemAlfabeticaWhenMaquinasTemAMesmaQuantidade() {
+    // Arrange
+    persistirModelo("M1", "SINTO", "d", true);
+    persistirModelo("M2", "DISA", "d", true);
+    persistirModelo("M3", "FBOX", "d", false);
+
+    // Act
+    final var maquinas = repository.contarPorMaquina().stream().map(l -> l[0]).toList();
+
+    // Assert
+    assertEquals(java.util.List.of("DISA", "FBOX", "SINTO"), maquinas);
+  }
 }

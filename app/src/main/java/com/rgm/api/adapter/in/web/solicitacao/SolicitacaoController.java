@@ -198,6 +198,7 @@ public class SolicitacaoController {
       @RequestParam(required = false) final UUID responsavelId,
       @RequestParam(required = false) final String maquina,
       @RequestParam(required = false) final Boolean atrasada,
+      @RequestParam(required = false) final Boolean emAberto,
       final Authentication authentication) {
     log.info("SolicitacaoController.gerarRelatorio iniciado");
     final var input =
@@ -215,6 +216,7 @@ public class SolicitacaoController {
             responsavelId,
             maquina,
             atrasada,
+            emAberto,
             usuarioAutenticadoId(authentication),
             0,
             Integer.MAX_VALUE);
@@ -256,6 +258,7 @@ public class SolicitacaoController {
       @RequestParam(required = false) final UUID responsavelId,
       @RequestParam(required = false) final String maquina,
       @RequestParam(required = false) final Boolean atrasada,
+      @RequestParam(required = false) final Boolean emAberto,
       final Authentication authentication) {
     final var result =
         listarUseCase.execute(
@@ -273,6 +276,7 @@ public class SolicitacaoController {
                 responsavelId,
                 maquina,
                 atrasada,
+                emAberto,
                 usuarioAutenticadoId(authentication),
                 page,
                 size));
@@ -302,6 +306,7 @@ public class SolicitacaoController {
       final UUID responsavelId,
       final String maquina,
       final Boolean atrasada,
+      final Boolean emAberto,
       final UUID usuarioAutenticadoId,
       final int page,
       final int size) {
@@ -321,6 +326,7 @@ public class SolicitacaoController {
         responsavelId,
         maquina,
         atrasada,
+        emAberto,
         usuarioAutenticadoId,
         page,
         size);

@@ -163,4 +163,34 @@ class ModeloRepositoryAdapterTest {
     assertEquals("MOD-001", result.content().get(0).getCodigo());
     verify(jpa).findByFilters(any(), any(), any(), any(), any(PageRequest.class));
   }
+
+  @Test
+  void shouldMontarOResumoComInativosCalculadosWhenResume() {
+    // Arrange
+    final List<Object[]> contagens = new java.util.ArrayList<>();
+    contagens.add(new Object[] {7L, 5L, 2L});
+    final List<Object[]> porMaquina = new java.util.ArrayList<>();
+    porMaquina.add(new Object[] {"DISA", 4L});
+    porMaquina.add(new Object[] {"FBOX", 3L});
+    when(jpa.resumirContagens()).thenReturn(contagens);
+    when(jpa.contarPorMaquina()).thenReturn(porMaquina);
+    final var esperado =
+        new com.rgm.api.core.domain.ports.repositories.ResumoModelos(
+            7,
+            5,
+            2,
+            2,
+            List.of(
+                new com.rgm.api.core.domain.ports.repositories.QuantidadePorMaquina("DISA", 4),
+                new com.rgm.api.core.domain.ports.repositories.QuantidadePorMaquina("FBOX", 3)));
+
+    // Act
+    final var resumo = adapter.resumir();
+
+    // Assert
+    assertEquals(esperado, resumo);
+    verify(jpa, org.mockito.Mockito.times(1)).resumirContagens();
+    verify(jpa, org.mockito.Mockito.times(1)).contarPorMaquina();
+    org.mockito.Mockito.verifyNoMoreInteractions(jpa);
+  }
 }

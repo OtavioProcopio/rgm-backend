@@ -9,6 +9,7 @@ import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
 import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
 import com.rgm.api.core.domain.ports.repositories.MetricaModeloRow;
 import com.rgm.api.core.domain.ports.repositories.PageResult;
+import com.rgm.api.core.domain.ports.repositories.ResumoSolicitacoesModelo;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import java.time.Instant;
 import java.util.HashMap;
@@ -104,6 +105,7 @@ public class SolicitacaoRepositoryAdapter implements SolicitacaoRepository {
       final UUID responsavelId,
       final String maquina,
       final Boolean atrasada,
+      final boolean emAberto,
       final int page,
       final int size) {
     final var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "criada_em"));
@@ -121,6 +123,7 @@ public class SolicitacaoRepositoryAdapter implements SolicitacaoRepository {
             responsavelId,
             maquina,
             atrasada,
+            emAberto,
             pageable);
     return new PageResult<>(
         result.getContent().stream().map(SolicitacaoMapper::toDomain).toList(),
@@ -206,5 +209,18 @@ public class SolicitacaoRepositoryAdapter implements SolicitacaoRepository {
         result.getSize(),
         result.getTotalElements(),
         result.getTotalPages());
+  }
+
+  @Override
+  public ResumoSolicitacoesModelo resumirPorModelo(final UUID modeloId) {
+    final Object[] row = jpa.resumirPorModelo(modeloId).get(0);
+    return ResumoSolicitacoesModelo.of(
+        ((Number) row[0]).longValue(),
+        ((Number) row[1]).longValue(),
+        ((Number) row[2]).longValue(),
+        ((Number) row[3]).longValue(),
+        row[6] != null ? ((Number) row[6]).doubleValue() : null,
+        (Instant) row[4],
+        (Instant) row[5]);
   }
 }

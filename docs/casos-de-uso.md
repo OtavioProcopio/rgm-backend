@@ -115,7 +115,7 @@ Referência de todos os casos de uso implementados no sistema.
 - **Endpoints**: `GET /api/solicitacoes/metricas/por-modelo`, `GET /api/solicitacoes/metricas/por-modelo/pdf`
 - **Regras**: Agregação via SQL nativo (CTEs + `LAG()`), nunca carrega solicitações em memória; retorna, por modelo com ao menos 1 solicitação CONCLUIDA, o tempo médio de resolução e o intervalo médio entre solicitações consecutivas (nulo se houver menos de 2); ordenação (`sort=TEMPO_RESOLUCAO|INTERVALO`, `dir=asc|desc`) validada contra whitelist antes de virar SQL; exportação em PDF separada do relatório de lista de modelos
 - **Erros**: 400 (`sort`/`dir` inválidos)
-- **Nota**: A ficha PDF individual do modelo (`GET /api/modelos/{id}/pdf`) também passou a exibir as mesmas duas métricas, calculadas em memória a partir das solicitações já carregadas do modelo (exige 2+ solicitações CONCLUIDA); o critério difere levemente do ranking (que considera intervalos entre TODAS as solicitações, não só as concluídas), decisão documentada no OpenSpec change `metricas-tempo-por-modelo`.
+- **Nota**: A ficha PDF individual do modelo (`GET /api/modelos/{id}/relatorio`) exibe as mesmas duas métricas, com a mesma regra do ranking, vindas do resumo das solicitações do modelo (UC-20). Até a v1.5.0 a ficha exigia 2+ solicitações CONCLUIDA e media o intervalo só entre as concluídas; a feature `specs/007-filtros-e-resumos-para-a-paginacao` unificou o critério.
 
 ## UC-17 — SLA de solicitações (SOL-007)
 - **Classe**: `Solicitacao` (agregado) — `getPrazoLimite()`, `getTempoRestanteSegundos(agora)`, `isAtrasada(agora)`, `getTempoResolucaoSegundos()`
@@ -140,16 +140,25 @@ Referência de todos os casos de uso implementados no sistema.
 - **Schema**: `V8__solicitacao_tipo_criacao.sql` torna `solicitacoes.modelo_id` nullable, adiciona `modelo_codigo`/`modelo_maquina`/`modelo_observacoes` (nullable) e um `CHECK` garantindo que só `CRIACAO` pode ter `modelo_id` nulo, e só antes de concluída
 - **Erros**: 403 (perfil sem permissão para abrir CRIACAO), 422 (dados do modelo inválidos, ex. máquina inativa)
 
+## UC-20 — Resumos de modelos
+- **Atores**: qualquer usuário autenticado
+- **Classes**: `ObterResumoModelosUseCase`, `ObterResumoSolicitacoesModeloUseCase`
+- **Endpoints**: `GET /api/modelos/resumo`, `GET /api/modelos/{id}/solicitacoes/resumo`
+- **Regras**: agregados no banco, nunca carregam a lista de modelos ou de solicitações. O resumo de modelos devolve `total`, `ativos`, `inativos`, `comPendenciaAberta` e `porMaquina` (da maior para a menor quantidade; empate em ordem alfabética); pendência e máquina contam modelos ativos e inativos. O resumo de um modelo devolve `total`, `emAberto`, `concluidas`, `canceladas`, `tempoMedioResolucaoSegundos` (média das concluídas; nulo sem concluída) e `intervaloMedioSegundos` (aberturas de todas as solicitações do modelo; nulo com menos de 2), a mesma regra do UC-16
+- **Erros**: 404 (modelo inexistente no resumo de um modelo)
+
 ---
 
 ## Endpoints de Listagem (com filtros)
 
 | Endpoint | Filtros | Paginação |
 |----------|---------|-----------|
-| `GET /api/solicitacoes` | `status`, `modeloId`, `tipo`, `prioridade`, `criadaEmInicio`/`criadaEmFim`, `abertaPorUsuarioId`, `responsavelId`, `maquina`, `atrasada` | `page`, `size` |
+| `GET /api/solicitacoes` | `status`, `modeloId`, `tipo`, `prioridade`, `criadaEmInicio`/`criadaEmFim`, `abertaPorUsuarioId`, `responsavelId`, `maquina`, `atrasada`, `emAberto` | `page`, `size` |
 | `GET /api/solicitacoes/relatorio` | mesmos filtros de `GET /api/solicitacoes` | — (Exportação em PDF) |
 | `GET /api/admin/usuarios` | `perfil`, `ativo` | `page`, `size` |
 | `GET /api/modelos` | `ativo`, `codigo` | `page`, `size` |
+
+`emAberto=true` devolve só A_FAZER, EM_ANDAMENTO e EM_VALIDACAO e se soma aos outros filtros (com um `status` encerrado, a lista vem vazia); ausente ou `false` não filtra. Com `tipoData=CONCLUSAO`, `dataInicio`/`dataFim` comparam a data de encerramento: conclusão das concluídas e cancelamento das canceladas.
 
 ## Endpoints de Consulta por ID
 

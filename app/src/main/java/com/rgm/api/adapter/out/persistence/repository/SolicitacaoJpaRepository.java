@@ -34,6 +34,13 @@ public interface SolicitacaoJpaRepository extends JpaRepository<SolicitacaoJpaEn
           + " "
           + "END) = :atrasada))";
 
+  /** Data de encerramento: conclusao das concluidas, cancelamento das canceladas. */
+  String ENCERRADA_EM_EXPR = "COALESCE(s.concluida_em, s.cancelada_em)";
+
+  /** "Em aberto" espelha StatusSolicitacao#isNaoTerminal; desligado nao filtra. */
+  String EM_ABERTO_FILTRO =
+      "(:emAberto = false OR s.status IN ('A_FAZER', 'EM_ANDAMENTO', 'EM_VALIDACAO'))";
+
   boolean existsByModeloIdAndStatusIn(UUID modeloId, List<StatusSolicitacao> statuses);
 
   boolean existsByModeloId(UUID modeloId);
@@ -54,12 +61,18 @@ public interface SolicitacaoJpaRepository extends JpaRepository<SolicitacaoJpaEn
               + "(CAST(:prioridade AS text) IS NULL OR s.prioridade = :prioridade) AND "
               + "(CAST(:criadaEmInicio AS timestamptz) IS NULL OR s.criada_em >= :criadaEmInicio) AND "
               + "(CAST(:criadaEmFim AS timestamptz) IS NULL OR s.criada_em <= :criadaEmFim) AND "
-              + "(CAST(:concluidaEmInicio AS timestamptz) IS NULL OR s.concluida_em >= :concluidaEmInicio) AND "
-              + "(CAST(:concluidaEmFim AS timestamptz) IS NULL OR s.concluida_em <= :concluidaEmFim) AND "
+              + "(CAST(:concluidaEmInicio AS timestamptz) IS NULL OR "
+              + ENCERRADA_EM_EXPR
+              + " >= :concluidaEmInicio) AND "
+              + "(CAST(:concluidaEmFim AS timestamptz) IS NULL OR "
+              + ENCERRADA_EM_EXPR
+              + " <= :concluidaEmFim) AND "
               + "(CAST(:abertaPorUsuarioId AS uuid) IS NULL OR s.aberta_por_usuario_id = :abertaPorUsuarioId) AND "
               + "(CAST(:responsavelId AS uuid) IS NULL OR EXISTS (SELECT 1 FROM solicitacao_atribuicoes a WHERE a.solicitacao_id = s.id AND a.usuario_id = :responsavelId AND a.removido_em IS NULL)) AND "
               + "(CAST(:maquina AS text) IS NULL OR mo.maquina = :maquina) AND "
-              + ATRASADA_FILTRO,
+              + ATRASADA_FILTRO
+              + " AND "
+              + EM_ABERTO_FILTRO,
       countQuery =
           "SELECT COUNT(s.*) FROM solicitacoes s "
               + "LEFT JOIN modelos mo ON mo.id = s.modelo_id WHERE "
@@ -69,12 +82,18 @@ public interface SolicitacaoJpaRepository extends JpaRepository<SolicitacaoJpaEn
               + "(CAST(:prioridade AS text) IS NULL OR s.prioridade = :prioridade) AND "
               + "(CAST(:criadaEmInicio AS timestamptz) IS NULL OR s.criada_em >= :criadaEmInicio) AND "
               + "(CAST(:criadaEmFim AS timestamptz) IS NULL OR s.criada_em <= :criadaEmFim) AND "
-              + "(CAST(:concluidaEmInicio AS timestamptz) IS NULL OR s.concluida_em >= :concluidaEmInicio) AND "
-              + "(CAST(:concluidaEmFim AS timestamptz) IS NULL OR s.concluida_em <= :concluidaEmFim) AND "
+              + "(CAST(:concluidaEmInicio AS timestamptz) IS NULL OR "
+              + ENCERRADA_EM_EXPR
+              + " >= :concluidaEmInicio) AND "
+              + "(CAST(:concluidaEmFim AS timestamptz) IS NULL OR "
+              + ENCERRADA_EM_EXPR
+              + " <= :concluidaEmFim) AND "
               + "(CAST(:abertaPorUsuarioId AS uuid) IS NULL OR s.aberta_por_usuario_id = :abertaPorUsuarioId) AND "
               + "(CAST(:responsavelId AS uuid) IS NULL OR EXISTS (SELECT 1 FROM solicitacao_atribuicoes a WHERE a.solicitacao_id = s.id AND a.usuario_id = :responsavelId AND a.removido_em IS NULL)) AND "
               + "(CAST(:maquina AS text) IS NULL OR mo.maquina = :maquina) AND "
-              + ATRASADA_FILTRO,
+              + ATRASADA_FILTRO
+              + " AND "
+              + EM_ABERTO_FILTRO,
       nativeQuery = true)
   Page<SolicitacaoJpaEntity> findByFilters(
       @org.springframework.data.repository.query.Param("status") String status,
@@ -91,6 +110,7 @@ public interface SolicitacaoJpaRepository extends JpaRepository<SolicitacaoJpaEn
       @org.springframework.data.repository.query.Param("responsavelId") UUID responsavelId,
       @org.springframework.data.repository.query.Param("maquina") String maquina,
       @org.springframework.data.repository.query.Param("atrasada") Boolean atrasada,
+      @org.springframework.data.repository.query.Param("emAberto") boolean emAberto,
       Pageable pageable);
 
   @Query("SELECT s.modeloId, COUNT(s) FROM SolicitacaoJpaEntity s GROUP BY s.modeloId")
@@ -136,4 +156,22 @@ public interface SolicitacaoJpaRepository extends JpaRepository<SolicitacaoJpaEn
               + "SELECT COUNT(*) FROM modelos m JOIN resolucao r ON r.modelo_id = m.id",
       nativeQuery = true)
   Page<Object[]> findMetricasPorModelo(Pageable pageable);
+
+  /**
+   * Uma linha: total, em aberto, concluidas, canceladas, primeira abertura, ultima abertura e media
+   * em segundos do tempo de resolucao das concluidas (nulo sem concluida).
+   */
+  @Query(
+      "SELECT COUNT(s), "
+          + "COALESCE(SUM(CASE WHEN s.status IN (com.rgm.api.core.domain.model.enums.StatusSolicitacao.A_FAZER, "
+          + "com.rgm.api.core.domain.model.enums.StatusSolicitacao.EM_ANDAMENTO, "
+          + "com.rgm.api.core.domain.model.enums.StatusSolicitacao.EM_VALIDACAO) THEN 1 ELSE 0 END), 0), "
+          + "COALESCE(SUM(CASE WHEN s.status = com.rgm.api.core.domain.model.enums.StatusSolicitacao.CONCLUIDA THEN 1 ELSE 0 END), 0), "
+          + "COALESCE(SUM(CASE WHEN s.status = com.rgm.api.core.domain.model.enums.StatusSolicitacao.CANCELADA THEN 1 ELSE 0 END), 0), "
+          + "MIN(s.criadaEm), MAX(s.criadaEm), "
+          + "AVG(CASE WHEN s.status = com.rgm.api.core.domain.model.enums.StatusSolicitacao.CONCLUIDA "
+          + "THEN ((s.concluidaEm - s.criadaEm) BY SECOND) END) "
+          + "FROM SolicitacaoJpaEntity s WHERE s.modeloId = :modeloId")
+  List<Object[]> resumirPorModelo(
+      @org.springframework.data.repository.query.Param("modeloId") UUID modeloId);
 }
