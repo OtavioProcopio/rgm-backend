@@ -1,7 +1,6 @@
 package com.rgm.api.core.domain.ports.services;
 
 import com.rgm.api.core.domain.model.aggregates.Usuario;
-import java.util.UUID;
 
 public interface AccessTokenIssuer {
 
@@ -9,5 +8,9 @@ public interface AccessTokenIssuer {
 
   String issueRefreshToken(Usuario usuario);
 
-  UUID validateRefreshToken(String refreshToken);
+  /** Le um token de acesso; lanca excecao se for invalido, expirado ou de outro tipo. */
+  CredencialToken validateAccessToken(String accessToken);
+
+  /** Le um token de renovacao; lanca excecao se for invalido, expirado ou de outro tipo. */
+  CredencialToken validateRefreshToken(String refreshToken);
 }

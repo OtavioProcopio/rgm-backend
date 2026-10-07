@@ -3,6 +3,7 @@ package com.rgm.api.core.domain.model.aggregates;
 import static com.rgm.api.core.domain.validation.DomainValidations.optionalTrimToNull;
 import static com.rgm.api.core.domain.validation.DomainValidations.requireNonBlank;
 import static com.rgm.api.core.domain.validation.DomainValidations.requireNonNull;
+import static com.rgm.api.core.domain.validation.DomainValidations.requirePositiveOrZero;
 
 import com.rgm.api.core.domain.exceptions.ValidationException;
 import com.rgm.api.core.domain.model.enums.PerfilUsuario;
@@ -20,7 +21,9 @@ public final class Usuario {
   private final boolean ativo;
   private final Instant criadoEm;
   private final Instant atualizadoEm;
+  private final int versaoCredencial;
 
+  /** Usuario cujas credenciais nunca foram invalidadas (versao 0). */
   public Usuario(
       final UUID id,
       final String nome,
@@ -30,12 +33,26 @@ public final class Usuario {
       final boolean ativo,
       final Instant criadoEm,
       final Instant atualizadoEm) {
+    this(id, nome, email, senhaHash, perfil, ativo, criadoEm, atualizadoEm, 0);
+  }
+
+  public Usuario(
+      final UUID id,
+      final String nome,
+      final String email,
+      final String senhaHash,
+      final PerfilUsuario perfil,
+      final boolean ativo,
+      final Instant criadoEm,
+      final Instant atualizadoEm,
+      final int versaoCredencial) {
     this.id = requireNonNull(id, "id");
     this.nome = requireNonBlank(nome, "nome");
     this.perfil = requireNonNull(perfil, "perfil");
     this.ativo = ativo;
     this.criadoEm = requireNonNull(criadoEm, "criadoEm");
     this.atualizadoEm = requireNonNull(atualizadoEm, "atualizadoEm");
+    this.versaoCredencial = requirePositiveOrZero(versaoCredencial, "versaoCredencial");
 
     this.email = optionalTrimToNull(email);
     this.senhaHash = optionalTrimToNull(senhaHash);
@@ -78,19 +95,32 @@ public final class Usuario {
   }
 
   public Usuario editar(final String novoNome, final String novoEmail, final Instant agora) {
-    return new Usuario(id, novoNome, novoEmail, senhaHash, perfil, ativo, criadoEm, agora);
+    return new Usuario(
+        id, novoNome, novoEmail, senhaHash, perfil, ativo, criadoEm, agora, versaoCredencial);
   }
 
   public Usuario withAtivo(final boolean novoAtivo, final Instant novoAtualizadoEm) {
-    return new Usuario(id, nome, email, senhaHash, perfil, novoAtivo, criadoEm, novoAtualizadoEm);
+    return new Usuario(
+        id,
+        nome,
+        email,
+        senhaHash,
+        perfil,
+        novoAtivo,
+        criadoEm,
+        novoAtualizadoEm,
+        versaoCredencial);
   }
 
   public Usuario alterarPerfil(final PerfilUsuario novoPerfil, final Instant agora) {
-    return new Usuario(id, nome, email, senhaHash, novoPerfil, ativo, criadoEm, agora);
+    return new Usuario(
+        id, nome, email, senhaHash, novoPerfil, ativo, criadoEm, agora, versaoCredencial);
   }
 
+  /** Troca a senha e invalida as credenciais emitidas ate aqui. */
   public Usuario withSenha(final String novaSenhaHash, final Instant agora) {
-    return new Usuario(id, nome, email, novaSenhaHash, perfil, ativo, criadoEm, agora);
+    return new Usuario(
+        id, nome, email, novaSenhaHash, perfil, ativo, criadoEm, agora, versaoCredencial + 1);
   }
 
   public UUID getId() {
@@ -123,5 +153,10 @@ public final class Usuario {
 
   public Instant getAtualizadoEm() {
     return atualizadoEm;
+  }
+
+  /** Numero que as credenciais emitidas carregam; muda quando a senha muda. */
+  public int getVersaoCredencial() {
+    return versaoCredencial;
   }
 }

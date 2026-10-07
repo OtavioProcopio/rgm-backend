@@ -20,6 +20,6 @@ entra nesta tabela na mesma entrega.
 | Capacidade (`openspec/specs/`) | Feature que altera o comportamento |
 |---|---|
 | `evidencias` | `specs/001-autor-da-solicitacao-anexa-e-ve` |
-| `autenticacao` | `specs/002-id-do-usuario-na-resposta-de`, `specs/006-acoes-recusam-usuario-inativo` |
-| `solicitacoes-kanban` | `specs/003-heartbeat-nas-conexoes-sse`, `specs/004-eventos-sse-de-abertura-edicao-e`, `specs/005-acoes-permitidas-na-solicitacao`, `specs/007-filtros-e-resumos-para-a-paginacao` (filtro por data de encerramento inclui canceladas) |
-| `modelos` | `specs/007-filtros-e-resumos-para-a-paginacao` (tempos da ficha em PDF seguem a regra do ranking) |
+| `autenticacao` | `specs/002-id-do-usuario-na-resposta-de`, `specs/006-acoes-recusam-usuario-inativo`, `specs/008-visibilidade-do-operador-senha-e-sessao` (senha mínima de 8; trocar a senha invalida os tokens anteriores; o perfil de cada chamada é o atual) |
+| `solicitacoes-kanban` | `specs/003-heartbeat-nas-conexoes-sse`, `specs/004-eventos-sse-de-abertura-edicao-e`, `specs/005-acoes-permitidas-na-solicitacao`, `specs/007-filtros-e-resumos-para-a-paginacao` (filtro por data de encerramento inclui canceladas), `specs/008-visibilidade-do-operador-senha-e-sessao` (operador lista, lê e recebe eventos só do que abriu ou de que é responsável; limites de tamanho nos textos) |
+| `modelos` | `specs/007-filtros-e-resumos-para-a-paginacao` (tempos da ficha em PDF seguem a regra do ranking), `specs/008-visibilidade-do-operador-senha-e-sessao` (limites de tamanho nos textos) |

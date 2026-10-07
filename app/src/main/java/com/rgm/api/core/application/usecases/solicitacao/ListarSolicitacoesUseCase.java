@@ -3,7 +3,6 @@ package com.rgm.api.core.application.usecases.solicitacao;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
 import com.rgm.api.core.domain.model.aggregates.Usuario;
-import com.rgm.api.core.domain.model.enums.PerfilUsuario;
 import com.rgm.api.core.domain.model.enums.PrioridadeSolicitacao;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
 import com.rgm.api.core.domain.model.enums.TipoFiltroData;
@@ -11,6 +10,7 @@ import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
 import com.rgm.api.core.domain.ports.repositories.PageResult;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
+import com.rgm.api.core.domain.validation.AcessoSolicitacao;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -45,7 +45,7 @@ public final class ListarSolicitacoesUseCase {
       int size) {}
 
   public PageResult<Solicitacao> execute(final Input input) {
-    final UUID responsavelId = resolverResponsavel(input);
+    final UUID visivelParaUsuarioId = resolverVisibilidade(input);
 
     final TipoFiltroData tipoData =
         input.tipoData() != null ? input.tipoData() : TipoFiltroData.CRIACAO;
@@ -67,7 +67,8 @@ public final class ListarSolicitacoesUseCase {
         || input.maquina() != null
         || input.atrasada() != null
         || emAberto
-        || responsavelId != null) {
+        || input.responsavelId() != null
+        || visivelParaUsuarioId != null) {
       return solicitacaoRepository.findByFilters(
           input.status(),
           input.modeloId(),
@@ -78,27 +79,26 @@ public final class ListarSolicitacoesUseCase {
           concluidaEmInicio,
           concluidaEmFim,
           input.abertaPorUsuarioId(),
-          responsavelId,
+          input.responsavelId(),
           input.maquina(),
           input.atrasada(),
           emAberto,
+          visivelParaUsuarioId,
           input.page(),
           input.size());
     }
     return solicitacaoRepository.findAll(input.page(), input.size());
   }
 
-  private UUID resolverResponsavel(final Input input) {
+  /** Operador so lista o que abriu ou de que e responsavel; os demais perfis listam tudo. */
+  private UUID resolverVisibilidade(final Input input) {
     if (input.usuarioAutenticadoId() == null) {
-      return input.responsavelId();
+      return null;
     }
     final Usuario usuario =
         usuarioRepository
             .findById(input.usuarioAutenticadoId())
             .orElseThrow(() -> new RecursoNaoEncontradoException("Usuario nao encontrado"));
-    if (usuario.getPerfil() == PerfilUsuario.OPERADOR) {
-      return input.usuarioAutenticadoId();
-    }
-    return input.responsavelId();
+    return AcessoSolicitacao.veTodas(usuario) ? null : input.usuarioAutenticadoId();
   }
 }

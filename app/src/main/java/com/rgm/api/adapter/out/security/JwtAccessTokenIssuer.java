@@ -2,6 +2,7 @@ package com.rgm.api.adapter.out.security;
 
 import com.rgm.api.core.domain.model.aggregates.Usuario;
 import com.rgm.api.core.domain.ports.services.AccessTokenIssuer;
+import com.rgm.api.core.domain.ports.services.CredencialToken;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -16,6 +17,13 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class JwtAccessTokenIssuer implements AccessTokenIssuer {
+
+  private static final String TIPO = "type";
+  private static final String TIPO_ACESSO = "access";
+  private static final String TIPO_RENOVACAO = "refresh";
+
+  /** Versao da credencial do usuario quando o token foi emitido. */
+  private static final String VERSAO = "ver";
 
   private final SecretKey key;
   private final long expirationHours;
@@ -37,7 +45,8 @@ public class JwtAccessTokenIssuer implements AccessTokenIssuer {
         .subject(usuario.getId().toString())
         .claim("perfil", usuario.getPerfil().name())
         .claim("nome", usuario.getNome())
-        .claim("type", "access")
+        .claim(TIPO, TIPO_ACESSO)
+        .claim(VERSAO, usuario.getVersaoCredencial())
         .issuedAt(Date.from(now))
         .expiration(Date.from(now.plus(expirationHours, ChronoUnit.HOURS)))
         .signWith(key)
@@ -49,7 +58,8 @@ public class JwtAccessTokenIssuer implements AccessTokenIssuer {
     final Instant now = Instant.now();
     return Jwts.builder()
         .subject(usuario.getId().toString())
-        .claim("type", "refresh")
+        .claim(TIPO, TIPO_RENOVACAO)
+        .claim(VERSAO, usuario.getVersaoCredencial())
         .issuedAt(Date.from(now))
         .expiration(Date.from(now.plus(refreshExpirationDays, ChronoUnit.DAYS)))
         .signWith(key)
@@ -57,13 +67,25 @@ public class JwtAccessTokenIssuer implements AccessTokenIssuer {
   }
 
   @Override
-  public UUID validateRefreshToken(final String refreshToken) {
+  public CredencialToken validateAccessToken(final String accessToken) {
+    return validar(accessToken, TIPO_ACESSO);
+  }
+
+  @Override
+  public CredencialToken validateRefreshToken(final String refreshToken) {
+    return validar(refreshToken, TIPO_RENOVACAO);
+  }
+
+  private CredencialToken validar(final String token, final String tipoEsperado) {
     final Claims claims =
-        Jwts.parser().verifyWith(key).build().parseSignedClaims(refreshToken).getPayload();
-    final String type = claims.get("type", String.class);
-    if (!"refresh".equals(type)) {
-      throw new IllegalArgumentException("Token nao e do tipo refresh");
+        Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload();
+    final String tipo = claims.get(TIPO, String.class);
+    if (!tipoEsperado.equals(tipo)) {
+      throw new IllegalArgumentException(
+          "Token do tipo '" + tipo + "' onde se esperava '" + tipoEsperado + "'");
     }
-    return UUID.fromString(claims.getSubject());
+    // Token emitido antes de a versao existir nao traz o campo e vale como versao 0.
+    final Integer versao = claims.get(VERSAO, Integer.class);
+    return new CredencialToken(UUID.fromString(claims.getSubject()), versao != null ? versao : 0);
   }
 }

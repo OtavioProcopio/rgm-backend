@@ -239,7 +239,9 @@ class EvidenciaControllerTest {
     verify(anexarUseCase, times(1)).persist(any(), any());
     verify(eventPublisher, times(1))
         .publish(
-            "solicitacao_atividade", new SolicitacaoAtividadeEvent("evidencia_adicionada", solId));
+            "solicitacao_atividade",
+            new SolicitacaoAtividadeEvent("evidencia_adicionada", solId),
+            solId);
     verifyNoMoreInteractions(anexarUseCase, eventPublisher);
   }
 
@@ -312,7 +314,9 @@ class EvidenciaControllerTest {
     verify(anexarUseCase, times(1)).persist(any(), any());
     verify(eventPublisher, times(1))
         .publish(
-            "solicitacao_atividade", new SolicitacaoAtividadeEvent("evidencia_adicionada", solId));
+            "solicitacao_atividade",
+            new SolicitacaoAtividadeEvent("evidencia_adicionada", solId),
+            solId);
     verifyNoMoreInteractions(anexarUseCase, eventPublisher);
   }
 
@@ -364,7 +368,9 @@ class EvidenciaControllerTest {
     verify(anexarUseCase, times(1)).persist(any(), any());
     verify(eventPublisher, times(1))
         .publish(
-            "solicitacao_atividade", new SolicitacaoAtividadeEvent("evidencia_adicionada", solId));
+            "solicitacao_atividade",
+            new SolicitacaoAtividadeEvent("evidencia_adicionada", solId),
+            solId);
     verifyNoMoreInteractions(anexarUseCase, eventPublisher);
   }
 

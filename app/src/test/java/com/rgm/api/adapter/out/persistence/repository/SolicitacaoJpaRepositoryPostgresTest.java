@@ -143,7 +143,173 @@ class SolicitacaoJpaRepositoryPostgresTest {
         null,
         null,
         emAberto,
+        null,
         pageable);
+  }
+
+  private Page<SolicitacaoJpaEntity> filtrarVisivelPara(
+      final UUID visivelPara, final UUID abertaPor, final UUID responsavel) {
+    return repository.findByFilters(
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        abertaPor,
+        responsavel,
+        null,
+        null,
+        false,
+        visivelPara,
+        PRIMEIRA_PAGINA);
+  }
+
+  private SolicitacaoJpaEntity persistirAbertaPor(final UUID abertaPor) {
+    return persistir(StatusSolicitacao.A_FAZER, agora, null, abertaPor, modeloId, null);
+  }
+
+  private void atribuir(
+      final SolicitacaoJpaEntity solicitacao, final UUID responsavel, final Instant removidoEm) {
+    jdbc.update(
+        "INSERT INTO solicitacao_atribuicoes "
+            + "(id, solicitacao_id, usuario_id, atribuido_por_usuario_id, removido_em) "
+            + "VALUES (?, ?, ?, ?, ?)",
+        UUID.randomUUID(),
+        solicitacao.getId(),
+        responsavel,
+        usuarioId,
+        removidoEm != null ? java.sql.Timestamp.from(removidoEm) : null);
+  }
+
+  private static List<UUID> ids(final Page<SolicitacaoJpaEntity> page) {
+    return page.getContent().stream().map(SolicitacaoJpaEntity::getId).sorted().toList();
+  }
+
+  @Test
+  void shouldDevolverTodasWhenVisibilidadeVemVazia() {
+    // Arrange
+    final int total = 3;
+    for (int i = 0; i < total; i++) {
+      persistirAbertaPor(criarUsuario());
+    }
+
+    // Act
+    final var page = filtrarVisivelPara(null, null, null);
+
+    // Assert
+    assertEquals(total, page.getTotalElements());
+  }
+
+  @Test
+  void shouldDevolverAsQueAbriuEAsDeQueEResponsavelWhenVisibilidadeEDoOperador() {
+    // Arrange
+    final UUID operador = criarUsuario();
+    final UUID outro = criarUsuario();
+    final int abertasPorEle = 3;
+    final int atribuidasAEle = 2;
+    final int alheias = 4;
+    final List<UUID> esperadas = new java.util.ArrayList<>();
+    for (int i = 0; i < abertasPorEle; i++) {
+      esperadas.add(persistirAbertaPor(operador).getId());
+    }
+    for (int i = 0; i < atribuidasAEle; i++) {
+      final SolicitacaoJpaEntity s = persistirAbertaPor(outro);
+      atribuir(s, operador, null);
+      esperadas.add(s.getId());
+    }
+    for (int i = 0; i < alheias; i++) {
+      atribuir(persistirAbertaPor(outro), outro, null);
+    }
+
+    // Act
+    final var page = filtrarVisivelPara(operador, null, null);
+
+    // Assert
+    assertEquals(abertasPorEle + atribuidasAEle, page.getTotalElements());
+    assertEquals(esperadas.stream().sorted().toList(), ids(page));
+  }
+
+  @Test
+  void shouldContarUmaVezWhenOperadorAbriuEEResponsavelDaMesmaSolicitacao() {
+    // Arrange
+    final UUID operador = criarUsuario();
+    final SolicitacaoJpaEntity s = persistirAbertaPor(operador);
+    atribuir(s, operador, null);
+
+    // Act
+    final var page = filtrarVisivelPara(operador, null, null);
+
+    // Assert
+    assertEquals(List.of(s.getId()), ids(page));
+    assertEquals(1, page.getTotalElements());
+  }
+
+  @Test
+  void shouldDeixarDeForaWhenOperadorFoiRemovidoDeResponsavel() {
+    // Arrange
+    final UUID operador = criarUsuario();
+    atribuir(persistirAbertaPor(criarUsuario()), operador, agora);
+
+    // Act
+    final var page = filtrarVisivelPara(operador, null, null);
+
+    // Assert
+    assertEquals(0, page.getTotalElements());
+  }
+
+  @Test
+  void shouldDevolverListaVaziaWhenOperadorFiltraPorOutroUsuarioSemRelacaoComEle() {
+    // Arrange
+    final UUID operador = criarUsuario();
+    final UUID outro = criarUsuario();
+    persistirAbertaPor(operador);
+    for (int i = 0; i < 4; i++) {
+      persistirAbertaPor(outro);
+    }
+
+    // Act
+    final var page = filtrarVisivelPara(operador, outro, null);
+
+    // Assert
+    assertEquals(0, page.getTotalElements());
+  }
+
+  @Test
+  void shouldRestringirAsQueAbriuWhenOperadorFiltraPorSiMesmo() {
+    // Arrange
+    final UUID operador = criarUsuario();
+    final int abertasPorEle = 3;
+    final List<UUID> esperadas = new java.util.ArrayList<>();
+    for (int i = 0; i < abertasPorEle; i++) {
+      esperadas.add(persistirAbertaPor(operador).getId());
+    }
+    for (int i = 0; i < 2; i++) {
+      atribuir(persistirAbertaPor(criarUsuario()), operador, null);
+    }
+
+    // Act
+    final var page = filtrarVisivelPara(operador, operador, null);
+
+    // Assert
+    assertEquals(esperadas.stream().sorted().toList(), ids(page));
+  }
+
+  @Test
+  void shouldRestringirAsDeQueEResponsavelWhenOperadorFiltraPorResponsavel() {
+    // Arrange
+    final UUID operador = criarUsuario();
+    persistirAbertaPor(operador);
+    final SolicitacaoJpaEntity atribuida = persistirAbertaPor(criarUsuario());
+    atribuir(atribuida, operador, null);
+
+    // Act
+    final var page = filtrarVisivelPara(operador, null, operador);
+
+    // Assert
+    assertEquals(List.of(atribuida.getId()), ids(page));
   }
 
   @Test

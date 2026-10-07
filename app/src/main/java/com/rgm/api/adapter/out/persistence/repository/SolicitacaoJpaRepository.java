@@ -41,6 +41,15 @@ public interface SolicitacaoJpaRepository extends JpaRepository<SolicitacaoJpaEn
   String EM_ABERTO_FILTRO =
       "(:emAberto = false OR s.status IN ('A_FAZER', 'EM_ANDAMENTO', 'EM_VALIDACAO'))";
 
+  /**
+   * Visibilidade do operador: nulo nao restringe; preenchido traz so o que o usuario abriu ou de
+   * que e responsavel ativo. Espelha AcessoSolicitacao#podeVer.
+   */
+  String VISIVEL_PARA_FILTRO =
+      "(CAST(:visivelPara AS uuid) IS NULL OR s.aberta_por_usuario_id = :visivelPara OR EXISTS ("
+          + "SELECT 1 FROM solicitacao_atribuicoes v WHERE v.solicitacao_id = s.id "
+          + "AND v.usuario_id = :visivelPara AND v.removido_em IS NULL))";
+
   boolean existsByModeloIdAndStatusIn(UUID modeloId, List<StatusSolicitacao> statuses);
 
   boolean existsByModeloId(UUID modeloId);
@@ -72,7 +81,9 @@ public interface SolicitacaoJpaRepository extends JpaRepository<SolicitacaoJpaEn
               + "(CAST(:maquina AS text) IS NULL OR mo.maquina = :maquina) AND "
               + ATRASADA_FILTRO
               + " AND "
-              + EM_ABERTO_FILTRO,
+              + EM_ABERTO_FILTRO
+              + " AND "
+              + VISIVEL_PARA_FILTRO,
       countQuery =
           "SELECT COUNT(s.*) FROM solicitacoes s "
               + "LEFT JOIN modelos mo ON mo.id = s.modelo_id WHERE "
@@ -93,7 +104,9 @@ public interface SolicitacaoJpaRepository extends JpaRepository<SolicitacaoJpaEn
               + "(CAST(:maquina AS text) IS NULL OR mo.maquina = :maquina) AND "
               + ATRASADA_FILTRO
               + " AND "
-              + EM_ABERTO_FILTRO,
+              + EM_ABERTO_FILTRO
+              + " AND "
+              + VISIVEL_PARA_FILTRO,
       nativeQuery = true)
   Page<SolicitacaoJpaEntity> findByFilters(
       @org.springframework.data.repository.query.Param("status") String status,
@@ -111,6 +124,7 @@ public interface SolicitacaoJpaRepository extends JpaRepository<SolicitacaoJpaEn
       @org.springframework.data.repository.query.Param("maquina") String maquina,
       @org.springframework.data.repository.query.Param("atrasada") Boolean atrasada,
       @org.springframework.data.repository.query.Param("emAberto") boolean emAberto,
+      @org.springframework.data.repository.query.Param("visivelPara") UUID visivelParaUsuarioId,
       Pageable pageable);
 
   @Query("SELECT s.modeloId, COUNT(s) FROM SolicitacaoJpaEntity s GROUP BY s.modeloId")

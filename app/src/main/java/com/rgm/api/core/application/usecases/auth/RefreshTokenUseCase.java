@@ -4,7 +4,7 @@ import com.rgm.api.core.domain.exceptions.NaoAutorizadoException;
 import com.rgm.api.core.domain.model.aggregates.Usuario;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import com.rgm.api.core.domain.ports.services.AccessTokenIssuer;
-import java.util.UUID;
+import com.rgm.api.core.domain.ports.services.CredencialToken;
 
 /** Renovar access token usando um refresh token valido. */
 public final class RefreshTokenUseCase {
@@ -23,20 +23,24 @@ public final class RefreshTokenUseCase {
   public record Output(String token, String refreshToken) {}
 
   public Output execute(final Input input) {
-    final UUID usuarioId;
+    final CredencialToken credencial;
     try {
-      usuarioId = tokenIssuer.validateRefreshToken(input.refreshToken());
+      credencial = tokenIssuer.validateRefreshToken(input.refreshToken());
     } catch (final Exception e) {
       throw new NaoAutorizadoException("Refresh token invalido ou expirado");
     }
 
     final Usuario usuario =
         usuarioRepository
-            .findById(usuarioId)
+            .findById(credencial.usuarioId())
             .orElseThrow(() -> new NaoAutorizadoException("Usuario nao encontrado"));
 
     if (!usuario.isAtivo()) {
       throw new NaoAutorizadoException("Usuario inativo");
+    }
+
+    if (credencial.versaoCredencial() != usuario.getVersaoCredencial()) {
+      throw new NaoAutorizadoException("Refresh token invalido ou expirado");
     }
 
     final String newAccessToken = tokenIssuer.issue(usuario);

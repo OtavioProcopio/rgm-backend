@@ -7,6 +7,7 @@ import com.rgm.api.core.domain.model.aggregates.Usuario;
 import com.rgm.api.core.domain.model.enums.PerfilUsuario;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import com.rgm.api.core.domain.ports.services.PasswordHasher;
+import com.rgm.api.core.domain.validation.PoliticaSenha;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -42,6 +43,8 @@ public final class GerenciarUsuariosUseCase {
     if (input.perfil() == PerfilUsuario.EXTERNO) {
       throw new BusinessRuleException("Use o caso de uso de cadastrar prestador externo");
     }
+
+    PoliticaSenha.validar(input.senha());
 
     if (usuarioRepository.existsByEmail(input.email())) {
       throw new BusinessRuleException("Email ja cadastrado");
@@ -106,9 +109,7 @@ public final class GerenciarUsuariosUseCase {
     final Instant agora = Instant.now();
     validarPermissao(input.adminId());
 
-    if (input.novaSenha() == null || input.novaSenha().isBlank()) {
-      throw new BusinessRuleException("Nova senha e obrigatoria");
-    }
+    PoliticaSenha.validar(input.novaSenha());
 
     final Usuario usuario =
         usuarioRepository

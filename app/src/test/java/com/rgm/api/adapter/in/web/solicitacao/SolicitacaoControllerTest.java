@@ -48,10 +48,15 @@ import com.rgm.api.core.domain.model.enums.PrioridadeSolicitacao;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
 import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
 import com.rgm.api.core.domain.ports.repositories.PageResult;
+import com.rgm.api.core.domain.validation.LimitesTexto;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.ComponentScan;
@@ -60,6 +65,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 @WebMvcTest(
     controllers = SolicitacaoController.class,
@@ -324,20 +330,28 @@ class SolicitacaoControllerTest {
   }
 
   @Test
-  void listarAtividades() throws Exception {
+  void shouldReturnHistoryWithAuthorNameWhenUserHasAccess() throws Exception {
+    // Arrange
     final UUID solId = UUID.randomUUID();
     final UUID autorId = UUID.randomUUID();
     final AtividadeSolicitacao atividade =
         AtividadeSolicitacao.abertura(solId, autorId, Instant.now());
-
-    when(listarAtividadesUseCase.execute(solId))
+    final ListarAtividadesUseCase.Input entrada = new ListarAtividadesUseCase.Input(solId, autorId);
+    when(listarAtividadesUseCase.execute(entrada))
         .thenReturn(List.of(new ListarAtividadesUseCase.AtividadeComAutor(atividade, "Alice")));
 
-    mockMvc
-        .perform(get("/api/solicitacoes/{id}/atividades", solId).with(user("u")))
+    // Act
+    final var resposta =
+        mockMvc.perform(
+            get("/api/solicitacoes/{id}/atividades", solId).with(user(autorId.toString())));
+
+    // Assert
+    resposta
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$").isArray())
+        .andExpect(jsonPath("$.length()").value(1))
         .andExpect(jsonPath("$[0].autorNome").value("Alice"));
+    verify(listarAtividadesUseCase, times(1)).execute(entrada);
+    verifyNoMoreInteractions(listarAtividadesUseCase, eventPublisher);
   }
 
   @Test
@@ -589,24 +603,6 @@ class SolicitacaoControllerTest {
   }
 
   @Test
-  void gerenciarResponsaveis() throws Exception {
-    final Solicitacao sol = criarSolicitacao();
-    final UUID userId = UUID.randomUUID();
-    when(gerenciarResponsaveisUseCase.execute(any())).thenReturn(sol);
-
-    mockMvc
-        .perform(
-            patch("/api/solicitacoes/{id}/responsaveis", sol.getId())
-                .with(user(userId.toString()))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(
-                    objectMapper.writeValueAsString(
-                        new GerenciarResponsaveisRequest(List.of(UUID.randomUUID())))))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.id").value(sol.getId().toString()));
-  }
-
-  @Test
   void shouldPublishAbertaEventWhenSolicitacaoIsOpened() throws Exception {
     // Arrange
     final Solicitacao sol = criarSolicitacao();
@@ -632,7 +628,11 @@ class SolicitacaoControllerTest {
     resposta.andExpect(status().isCreated());
     verify(abrirUseCase, times(1)).execute(entrada);
     verify(eventPublisher, times(1))
-        .publish("solicitacao", new SolicitacaoEvent("aberta", SolicitacaoResponse.from(sol)));
+        .publish(
+            "solicitacao",
+            new SolicitacaoEvent("aberta", SolicitacaoResponse.from(sol)),
+            sol.getId(),
+            List.of());
     verifyNoMoreInteractions(abrirUseCase, eventPublisher);
   }
 
@@ -660,7 +660,11 @@ class SolicitacaoControllerTest {
     resposta.andExpect(status().isOk());
     verify(editarUseCase, times(1)).execute(entrada);
     verify(eventPublisher, times(1))
-        .publish("solicitacao", new SolicitacaoEvent("editada", SolicitacaoResponse.from(sol)));
+        .publish(
+            "solicitacao",
+            new SolicitacaoEvent("editada", SolicitacaoResponse.from(sol)),
+            sol.getId(),
+            List.of());
     verifyNoMoreInteractions(editarUseCase, eventPublisher);
   }
 
@@ -672,7 +676,8 @@ class SolicitacaoControllerTest {
     final List<UUID> responsaveis = List.of(UUID.randomUUID());
     final GerenciarResponsaveisUseCase.Input entrada =
         new GerenciarResponsaveisUseCase.Input(sol.getId(), responsaveis, gestorId);
-    when(gerenciarResponsaveisUseCase.execute(entrada)).thenReturn(sol);
+    when(gerenciarResponsaveisUseCase.execute(entrada))
+        .thenReturn(new GerenciarResponsaveisUseCase.Output(sol, List.of()));
 
     // Act
     final var resposta =
@@ -691,7 +696,9 @@ class SolicitacaoControllerTest {
         .publish(
             "solicitacao",
             new SolicitacaoEvent(
-                "responsaveis_alterados", SolicitacaoResponse.from(sol, responsaveis)));
+                "responsaveis_alterados", SolicitacaoResponse.from(sol, responsaveis)),
+            sol.getId(),
+            List.of());
     verifyNoMoreInteractions(gerenciarResponsaveisUseCase, eventPublisher);
   }
 
@@ -752,7 +759,8 @@ class SolicitacaoControllerTest {
     final UUID responsavelId = UUID.randomUUID();
     final GerenciarResponsaveisUseCase.Input entrada =
         new GerenciarResponsaveisUseCase.Input(sol.getId(), List.of(responsavelId), gestorId);
-    when(gerenciarResponsaveisUseCase.execute(entrada)).thenReturn(sol);
+    when(gerenciarResponsaveisUseCase.execute(entrada))
+        .thenReturn(new GerenciarResponsaveisUseCase.Output(sol, List.of()));
 
     // Act
     final var resposta =
@@ -774,7 +782,9 @@ class SolicitacaoControllerTest {
         .publish(
             "solicitacao",
             new SolicitacaoEvent(
-                "responsaveis_alterados", SolicitacaoResponse.from(sol, List.of(responsavelId))));
+                "responsaveis_alterados", SolicitacaoResponse.from(sol, List.of(responsavelId))),
+            sol.getId(),
+            List.of());
     verifyNoMoreInteractions(gerenciarResponsaveisUseCase, eventPublisher);
   }
 
@@ -799,7 +809,7 @@ class SolicitacaoControllerTest {
     resposta.andExpect(status().isCreated());
     verify(comentarioUseCase, times(1)).execute(entrada);
     verify(eventPublisher, times(1))
-        .publish("solicitacao_atividade", new SolicitacaoAtividadeEvent("comentada", solId));
+        .publish("solicitacao_atividade", new SolicitacaoAtividadeEvent("comentada", solId), solId);
     verifyNoMoreInteractions(comentarioUseCase, eventPublisher);
   }
 
@@ -825,5 +835,252 @@ class SolicitacaoControllerTest {
     resposta.andExpect(status().isForbidden());
     verify(comentarioUseCase, times(1)).execute(entrada);
     verifyNoMoreInteractions(comentarioUseCase, eventPublisher);
+  }
+
+  @Test
+  void shouldAnswerForbiddenWhenOperatorReadsSolicitacaoOfSomeoneElse() throws Exception {
+    // Arrange
+    final UUID solId = UUID.randomUUID();
+    final UUID operadorId = UUID.randomUUID();
+    final ObterSolicitacaoUseCase.Input entrada =
+        new ObterSolicitacaoUseCase.Input(solId, operadorId);
+    when(obterUseCase.execute(entrada))
+        .thenThrow(new NaoAutorizadoException("Usuario nao tem acesso a esta solicitacao"));
+
+    // Act
+    final var resposta =
+        mockMvc.perform(get("/api/solicitacoes/{id}", solId).with(user(operadorId.toString())));
+
+    // Assert
+    resposta
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.message").value("Usuario nao tem acesso a esta solicitacao"));
+    verify(obterUseCase, times(1)).execute(entrada);
+    verifyNoMoreInteractions(obterUseCase, eventPublisher);
+  }
+
+  @Test
+  void shouldAnswerForbiddenWhenOperatorReadsHistoryOfSomeoneElse() throws Exception {
+    // Arrange
+    final UUID solId = UUID.randomUUID();
+    final UUID operadorId = UUID.randomUUID();
+    final ListarAtividadesUseCase.Input entrada =
+        new ListarAtividadesUseCase.Input(solId, operadorId);
+    when(listarAtividadesUseCase.execute(entrada))
+        .thenThrow(new NaoAutorizadoException("Usuario nao tem acesso a esta solicitacao"));
+
+    // Act
+    final var resposta =
+        mockMvc.perform(
+            get("/api/solicitacoes/{id}/atividades", solId).with(user(operadorId.toString())));
+
+    // Assert
+    resposta
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.message").value("Usuario nao tem acesso a esta solicitacao"));
+    verify(listarAtividadesUseCase, times(1)).execute(entrada);
+    verifyNoMoreInteractions(listarAtividadesUseCase, eventPublisher);
+  }
+
+  @Test
+  void shouldTellPublisherWhoLostAccessWhenAssigneesAreRemoved() throws Exception {
+    // Arrange
+    final Solicitacao sol = criarSolicitacao();
+    final UUID gestorId = UUID.randomUUID();
+    final UUID removido = UUID.randomUUID();
+    final List<UUID> responsaveis = List.of(UUID.randomUUID());
+    final GerenciarResponsaveisUseCase.Input entrada =
+        new GerenciarResponsaveisUseCase.Input(sol.getId(), responsaveis, gestorId);
+    when(gerenciarResponsaveisUseCase.execute(entrada))
+        .thenReturn(new GerenciarResponsaveisUseCase.Output(sol, List.of(removido)));
+
+    // Act
+    final var resposta =
+        mockMvc.perform(
+            patch("/api/solicitacoes/{id}/responsaveis", sol.getId())
+                .with(user(gestorId.toString()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        new GerenciarResponsaveisRequest(responsaveis))));
+
+    // Assert
+    resposta.andExpect(status().isOk());
+    verify(gerenciarResponsaveisUseCase, times(1)).execute(entrada);
+    verify(eventPublisher, times(1))
+        .publish(
+            "solicitacao",
+            new SolicitacaoEvent(
+                "responsaveis_alterados", SolicitacaoResponse.from(sol, responsaveis)),
+            sol.getId(),
+            List.of(removido));
+    verifyNoMoreInteractions(gerenciarResponsaveisUseCase, eventPublisher);
+  }
+
+  private static String texto(final int tamanho) {
+    return "x".repeat(tamanho);
+  }
+
+  private static Stream<Arguments> textosAcimaDoLimite() {
+    final UUID id = UUID.randomUUID();
+    final UUID modeloId = UUID.randomUUID();
+    return Stream.of(
+        Arguments.of(
+            post("/api/solicitacoes"),
+            new AbrirSolicitacaoRequest(
+                texto(LimitesTexto.SOLICITACAO_TITULO + 1),
+                "D",
+                "REPARO",
+                modeloId,
+                null,
+                null,
+                null),
+            "titulo",
+            LimitesTexto.SOLICITACAO_TITULO),
+        Arguments.of(
+            post("/api/solicitacoes"),
+            new AbrirSolicitacaoRequest(
+                "T",
+                texto(LimitesTexto.SOLICITACAO_DESCRICAO + 1),
+                "REPARO",
+                modeloId,
+                null,
+                null,
+                null),
+            "descricao",
+            LimitesTexto.SOLICITACAO_DESCRICAO),
+        Arguments.of(
+            post("/api/solicitacoes"),
+            new AbrirSolicitacaoRequest(
+                "T",
+                "D",
+                "CRIACAO",
+                null,
+                texto(LimitesTexto.MODELO_PRETENDIDO_CODIGO + 1),
+                "FBOX",
+                null),
+            "modeloCodigo",
+            LimitesTexto.MODELO_PRETENDIDO_CODIGO),
+        Arguments.of(
+            post("/api/solicitacoes"),
+            new AbrirSolicitacaoRequest(
+                "T",
+                "D",
+                "CRIACAO",
+                null,
+                "COD",
+                texto(LimitesTexto.MODELO_PRETENDIDO_MAQUINA + 1),
+                null),
+            "modeloMaquina",
+            LimitesTexto.MODELO_PRETENDIDO_MAQUINA),
+        Arguments.of(
+            post("/api/solicitacoes"),
+            new AbrirSolicitacaoRequest(
+                "T",
+                "D",
+                "CRIACAO",
+                null,
+                "COD",
+                "FBOX",
+                texto(LimitesTexto.MODELO_PRETENDIDO_OBSERVACOES + 1)),
+            "modeloObservacoes",
+            LimitesTexto.MODELO_PRETENDIDO_OBSERVACOES),
+        Arguments.of(
+            put("/api/solicitacoes/{id}", id),
+            new EditarSolicitacaoRequest(texto(LimitesTexto.SOLICITACAO_TITULO + 1), "D", "REPARO"),
+            "titulo",
+            LimitesTexto.SOLICITACAO_TITULO),
+        Arguments.of(
+            put("/api/solicitacoes/{id}", id),
+            new EditarSolicitacaoRequest(
+                "T", texto(LimitesTexto.SOLICITACAO_DESCRICAO + 1), "REPARO"),
+            "descricao",
+            LimitesTexto.SOLICITACAO_DESCRICAO),
+        Arguments.of(
+            post("/api/solicitacoes/{id}/comentarios", id),
+            new ComentarioRequest(texto(LimitesTexto.COMENTARIO + 1)),
+            "comentario",
+            LimitesTexto.COMENTARIO),
+        Arguments.of(
+            patch("/api/solicitacoes/{id}/cancelar", id),
+            new CancelarSolicitacaoRequest(texto(LimitesTexto.COMENTARIO + 1)),
+            "motivo",
+            LimitesTexto.COMENTARIO),
+        Arguments.of(
+            patch("/api/solicitacoes/{id}/devolver", id),
+            new DevolverSolicitacaoRequest(texto(LimitesTexto.COMENTARIO + 1), null),
+            "motivo",
+            LimitesTexto.COMENTARIO),
+        Arguments.of(
+            patch("/api/solicitacoes/{id}/encerrar", id),
+            new EncerrarSolicitacaoRequest(true, texto(LimitesTexto.COMENTARIO + 1)),
+            "comentario",
+            LimitesTexto.COMENTARIO));
+  }
+
+  @ParameterizedTest
+  @MethodSource("textosAcimaDoLimite")
+  void shouldAnswerBadRequestNamingFieldAndLimitWhenTextIsOneCharacterAboveLimit(
+      final MockHttpServletRequestBuilder chamada,
+      final Object corpo,
+      final String campo,
+      final int limite)
+      throws Exception {
+    // Arrange
+    final String mensagem = campo + ": deve ter no máximo " + limite + " caracteres";
+
+    // Act
+    final var resposta =
+        mockMvc.perform(
+            chamada
+                .with(user(UUID.randomUUID().toString()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(corpo)));
+
+    // Assert
+    resposta.andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value(mensagem));
+    verifyNoMoreInteractions(
+        abrirUseCase,
+        editarUseCase,
+        comentarioUseCase,
+        cancelarUseCase,
+        devolverUseCase,
+        encerrarUseCase,
+        eventPublisher);
+  }
+
+  @Test
+  void shouldOpenSolicitacaoWhenTitleIsExactlyAtLimit() throws Exception {
+    // Arrange
+    final Solicitacao sol = criarSolicitacao();
+    final UUID userId = UUID.randomUUID();
+    final UUID modeloId = UUID.randomUUID();
+    final String noLimite = texto(LimitesTexto.SOLICITACAO_TITULO);
+    final AbrirSolicitacaoUseCase.Input entrada =
+        new AbrirSolicitacaoUseCase.Input(
+            noLimite, "Desc", TipoSolicitacao.REPARO, modeloId, null, null, null, userId);
+    when(abrirUseCase.execute(entrada)).thenReturn(sol);
+
+    // Act
+    final var resposta =
+        mockMvc.perform(
+            post("/api/solicitacoes")
+                .with(user(userId.toString()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        new AbrirSolicitacaoRequest(
+                            noLimite, "Desc", "REPARO", modeloId, null, null, null))));
+
+    // Assert
+    resposta.andExpect(status().isCreated());
+    verify(abrirUseCase, times(1)).execute(entrada);
+    verify(eventPublisher, times(1))
+        .publish(
+            "solicitacao",
+            new SolicitacaoEvent("aberta", SolicitacaoResponse.from(sol)),
+            sol.getId(),
+            List.of());
+    verifyNoMoreInteractions(abrirUseCase, eventPublisher);
   }
 }

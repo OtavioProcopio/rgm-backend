@@ -147,6 +147,31 @@ Referência de todos os casos de uso implementados no sistema.
 - **Regras**: agregados no banco, nunca carregam a lista de modelos ou de solicitações. O resumo de modelos devolve `total`, `ativos`, `inativos`, `comPendenciaAberta` e `porMaquina` (da maior para a menor quantidade; empate em ordem alfabética); pendência e máquina contam modelos ativos e inativos. O resumo de um modelo devolve `total`, `emAberto`, `concluidas`, `canceladas`, `tempoMedioResolucaoSegundos` (média das concluídas; nulo sem concluída) e `intervaloMedioSegundos` (aberturas de todas as solicitações do modelo; nulo com menos de 2), a mesma regra do UC-16
 - **Erros**: 404 (modelo inexistente no resumo de um modelo)
 
+## UC-21 — Visibilidade do operador
+- **Atores**: Operador
+- **Classes**: `AcessoSolicitacao` (domínio), `ListarSolicitacoesUseCase`, `ObterSolicitacaoUseCase`, `ListarAtividadesUseCase`, `ResolverDestinatariosEventoUseCase`
+- **Regras**: o operador tem acesso à solicitação que abriu ou da qual é responsável ativo; gestor e administrador têm acesso a todas. A mesma regra vale na listagem, no relatório em PDF, no detalhe, no histórico, nas evidências e nos eventos de tempo real. Na listagem, os filtros `abertaPorUsuarioId` e `responsavelId` enviados pelo operador restringem dentro desse conjunto, sem ampliá-lo. Nos eventos, quem é removido de responsável recebe o evento dessa mudança e mais nenhum
+- **Erros**: 403 (operador consulta detalhe ou histórico de solicitação alheia)
+
+## UC-22 — Senha e sessão
+- **Atores**: qualquer usuário que faz login; Administrador na redefinição
+- **Classes**: `PoliticaSenha` (domínio), `AutenticarAcessoUseCase`, `AlterarSenhaPropriaUseCase`, `GerenciarUsuariosUseCase`, `RefreshTokenUseCase`
+- **Regras**: senha com no mínimo 8 caracteres ao criar usuário, trocar a própria senha e redefinir a de outro; perfil que faz login não é criado sem senha. Cada usuário tem uma versão de credencial (`usuarios.versao_credencial`, migração `V10`) que os tokens de acesso e de renovação carregam; trocar ou redefinir a senha soma 1, e token com versão diferente da atual é recusado na chamada comum, na abertura do tempo real e na renovação. Token emitido antes da `V10` vale como versão 0. As conexões de tempo real abertas do usuário são encerradas na troca. `PATCH /api/usuarios/me/senha` devolve `token` e `refreshToken` novos, para a sessão que trocou continuar. Mudar o perfil não invalida tokens: a autoridade de cada chamada vem do perfil atual do usuário, não do perfil gravado no token
+- **Erros**: 400 (senha curta ou ausente), 401 (token de versão antiga)
+
+## Limites de texto
+
+Declarados em `LimitesTexto` (domínio) e aplicados nos requests; texto acima do limite responde 400 com o campo e o limite.
+
+| Campo | Limite |
+|---|---|
+| Título da solicitação | 255 |
+| Descrição da solicitação; comentário; motivo de cancelamento e de devolução; comentário de encerramento | 2000 |
+| Comentário do envio para validação | 1000 |
+| Modelo: código / descrição / máquina / observações | 100 / 255 / 255 / 2000 |
+| Modelo pretendido (solicitação de criação): código / máquina / observações | 50 / 100 / 2000 |
+| Nome da máquina; nome e e-mail do usuário | 255 |
+
 ---
 
 ## Endpoints de Listagem (com filtros)
@@ -179,6 +204,7 @@ O `AdminUserInitializer` cria automaticamente o usuário admin (`admin@rgm.com` 
 
 - `POST /api/auth/refresh` — renova access + refresh token
 - JwtFilter rejeita refresh tokens como Bearer (verifica `type=access`)
+- Token de renovação emitido antes da última troca de senha é recusado (ver UC-22)
 
 ## Ações permitidas na solicitação
 

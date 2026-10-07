@@ -1,8 +1,13 @@
 package com.rgm.api.adapter.in.web.solicitacao;
 
+import com.rgm.api.core.application.usecases.solicitacao.ResolverDestinatariosEventoUseCase;
 import java.io.IOException;
+import java.util.Collection;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -15,17 +20,70 @@ public class SolicitacaoEventPublisher {
   private static final Logger log = LoggerFactory.getLogger(SolicitacaoEventPublisher.class);
   private static final long INTERVALO_HEARTBEAT_MS = 25_000L;
 
-  private final CopyOnWriteArrayList<SseEmitter> emitters = new CopyOnWriteArrayList<>();
+  /** Uma conexao de tempo real e o usuario que a abriu. */
+  private record Conexao(UUID usuarioId, SseEmitter emitter) {}
 
-  public void addEmitter(final SseEmitter emitter) {
-    emitters.add(emitter);
-    emitter.onCompletion(() -> emitters.remove(emitter));
-    emitter.onTimeout(() -> emitters.remove(emitter));
-    emitter.onError(e -> emitters.remove(emitter));
+  private final CopyOnWriteArrayList<Conexao> conexoes = new CopyOnWriteArrayList<>();
+  private final ResolverDestinatariosEventoUseCase resolverDestinatariosUseCase;
+
+  public SolicitacaoEventPublisher(
+      final ResolverDestinatariosEventoUseCase resolverDestinatariosUseCase) {
+    this.resolverDestinatariosUseCase = resolverDestinatariosUseCase;
   }
 
-  public void publish(final String eventType, final Object data) {
-    enviarParaTodos(() -> SseEmitter.event().name(eventType).data(data));
+  public void addEmitter(final UUID usuarioId, final SseEmitter emitter) {
+    final Conexao conexao = new Conexao(usuarioId, emitter);
+    conexoes.add(conexao);
+    emitter.onCompletion(() -> conexoes.remove(conexao));
+    emitter.onTimeout(() -> conexoes.remove(conexao));
+    emitter.onError(e -> conexoes.remove(conexao));
+  }
+
+  /** Envia o evento de uma solicitacao a quem, entre os conectados, tem acesso a ela. */
+  public void publish(final String eventType, final Object data, final UUID solicitacaoId) {
+    publish(eventType, data, solicitacaoId, Set.of());
+  }
+
+  /**
+   * Envia o evento de uma solicitacao a quem tem acesso a ela e a quem tinha acesso antes da
+   * mudanca que o evento descreve ({@code comAcessoAnterior}).
+   */
+  public void publish(
+      final String eventType,
+      final Object data,
+      final UUID solicitacaoId,
+      final Collection<UUID> comAcessoAnterior) {
+    final Set<UUID> conectados =
+        conexoes.stream().map(Conexao::usuarioId).collect(Collectors.toSet());
+    if (conectados.isEmpty()) {
+      return;
+    }
+    final Set<UUID> destinatarios;
+    try {
+      destinatarios =
+          resolverDestinatariosUseCase.execute(
+              new ResolverDestinatariosEventoUseCase.Input(
+                  solicitacaoId, conectados, Set.copyOf(comAcessoAnterior)));
+    } catch (final RuntimeException e) {
+      // A mudanca ja foi gravada: perder o aviso e melhor que responder erro a quem a fez.
+      log.warn("Evento {} da solicitacao {} nao enviado", eventType, solicitacaoId, e);
+      return;
+    }
+    for (final Conexao conexao : conexoes) {
+      if (destinatarios.contains(conexao.usuarioId())) {
+        enviar(conexao, () -> SseEmitter.event().name(eventType).data(data));
+      }
+    }
+  }
+
+  /** Encerra as conexoes abertas de um usuario; usado quando a senha dele muda. */
+  public void encerrarConexoes(final UUID usuarioId) {
+    for (final Conexao conexao : conexoes) {
+      if (conexao.usuarioId().equals(usuarioId)) {
+        conexoes.remove(conexao);
+        conexao.emitter().complete();
+      }
+    }
   }
 
   /**
@@ -34,17 +92,17 @@ public class SolicitacaoEventPublisher {
    */
   @Scheduled(fixedRate = INTERVALO_HEARTBEAT_MS)
   public void enviarHeartbeat() {
-    enviarParaTodos(() -> SseEmitter.event().comment("ping"));
+    for (final Conexao conexao : conexoes) {
+      enviar(conexao, () -> SseEmitter.event().comment("ping"));
+    }
   }
 
-  private void enviarParaTodos(final Supplier<SseEmitter.SseEventBuilder> evento) {
-    for (final SseEmitter emitter : emitters) {
-      try {
-        emitter.send(evento.get());
-      } catch (final IOException | IllegalStateException e) {
-        log.debug("Removendo emitter SSE inativo: {}", e.getMessage());
-        emitters.remove(emitter);
-      }
+  private void enviar(final Conexao conexao, final Supplier<SseEmitter.SseEventBuilder> evento) {
+    try {
+      conexao.emitter().send(evento.get());
+    } catch (final IOException | IllegalStateException e) {
+      log.debug("Removendo emitter SSE inativo: {}", e.getMessage());
+      conexoes.remove(conexao);
     }
   }
 }

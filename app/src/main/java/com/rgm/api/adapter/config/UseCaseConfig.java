@@ -6,6 +6,7 @@ import com.rgm.api.core.application.usecases.admin.GerenciarMaquinasUseCase;
 import com.rgm.api.core.application.usecases.admin.GerenciarUsuariosUseCase;
 import com.rgm.api.core.application.usecases.admin.ListarUsuariosUseCase;
 import com.rgm.api.core.application.usecases.auth.AlterarSenhaPropriaUseCase;
+import com.rgm.api.core.application.usecases.auth.AutenticarAcessoUseCase;
 import com.rgm.api.core.application.usecases.auth.LoginUseCase;
 import com.rgm.api.core.application.usecases.auth.RefreshTokenUseCase;
 import com.rgm.api.core.application.usecases.evidencia.AnexarEvidenciaUseCase;
@@ -36,6 +37,7 @@ import com.rgm.api.core.application.usecases.solicitacao.ObterMetricasPorModeloU
 import com.rgm.api.core.application.usecases.solicitacao.ObterMetricasSolicitacoesUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ObterSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.RegistrarComentarioUseCase;
+import com.rgm.api.core.application.usecases.solicitacao.ResolverDestinatariosEventoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.TriarSolicitacaoUseCase;
 import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.EventoModeloRepository;
@@ -73,8 +75,16 @@ public class UseCaseConfig {
 
   @Bean
   public AlterarSenhaPropriaUseCase alterarSenhaPropriaUseCase(
-      final UsuarioRepository usuarioRepository, final PasswordHasher passwordHasher) {
-    return new AlterarSenhaPropriaUseCase(usuarioRepository, passwordHasher);
+      final UsuarioRepository usuarioRepository,
+      final PasswordHasher passwordHasher,
+      final AccessTokenIssuer tokenIssuer) {
+    return new AlterarSenhaPropriaUseCase(usuarioRepository, passwordHasher, tokenIssuer);
+  }
+
+  @Bean
+  public AutenticarAcessoUseCase autenticarAcessoUseCase(
+      final UsuarioRepository usuarioRepository, final AccessTokenIssuer tokenIssuer) {
+    return new AutenticarAcessoUseCase(usuarioRepository, tokenIssuer);
   }
 
   @Bean
@@ -406,8 +416,18 @@ public class UseCaseConfig {
   public ListarAtividadesUseCase listarAtividadesUseCase(
       final SolicitacaoRepository solicitacaoRepository,
       final AtividadeSolicitacaoRepository atividadeRepository,
-      final UsuarioRepository usuarioRepository) {
+      final UsuarioRepository usuarioRepository,
+      final SolicitacaoAtribuicaoRepository atribuicaoRepository) {
     return new ListarAtividadesUseCase(
-        solicitacaoRepository, atividadeRepository, usuarioRepository);
+        solicitacaoRepository, atividadeRepository, usuarioRepository, atribuicaoRepository);
+  }
+
+  @Bean
+  public ResolverDestinatariosEventoUseCase resolverDestinatariosEventoUseCase(
+      final SolicitacaoRepository solicitacaoRepository,
+      final SolicitacaoAtribuicaoRepository atribuicaoRepository,
+      final UsuarioRepository usuarioRepository) {
+    return new ResolverDestinatariosEventoUseCase(
+        solicitacaoRepository, atribuicaoRepository, usuarioRepository);
   }
 }
