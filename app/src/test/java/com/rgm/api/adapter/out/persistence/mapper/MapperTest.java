@@ -38,7 +38,7 @@ class MapperTest {
     final UUID id = UUID.randomUUID();
     final UsuarioJpaEntity e =
         new UsuarioJpaEntity(
-            id, "Bob", "bob@x.com", "hash456", PerfilUsuario.GESTOR, false, NOW, NOW);
+            id, "Bob", "bob@x.com", "hash456", PerfilUsuario.GESTOR, false, NOW, NOW, 0);
     final Usuario u = UsuarioMapper.toDomain(e);
 
     assertEquals(id, u.getId());

@@ -8,6 +8,7 @@ import com.rgm.api.adapter.config.RateLimitFilter;
 import com.rgm.api.adapter.config.SecurityConfig;
 import com.rgm.api.adapter.out.report.ModeloPdfService;
 import com.rgm.api.adapter.out.security.JwtAuthenticationFilter;
+import com.rgm.api.core.application.usecases.auth.AutenticarAcessoUseCase;
 import com.rgm.api.core.application.usecases.modelo.GerenciarModelosUseCase;
 import com.rgm.api.core.application.usecases.modelo.ListarModelosUseCase;
 import com.rgm.api.core.application.usecases.modelo.ObterResumoModelosUseCase;
@@ -45,6 +46,7 @@ class ModeloControllerSegurancaTest {
   @MockitoBean private ModeloPdfService modeloPdfService;
   @MockitoBean private FotoGaleriaModeloRepository fotoGaleriaModeloRepository;
   @MockitoBean private UsuarioRepository usuarioRepository;
+  @MockitoBean private AutenticarAcessoUseCase autenticarAcessoUseCase;
 
   @Test
   void shouldRecusarOAcessoWhenConsultaOResumoDeModelosSemAutenticacao() throws Exception {

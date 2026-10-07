@@ -7,6 +7,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
+import com.rgm.api.core.domain.exceptions.NaoAutorizadoException;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
 import com.rgm.api.core.domain.model.aggregates.Usuario;
@@ -178,6 +179,117 @@ class ObterSolicitacaoUseCaseTest {
     assertThat(erro.getMessage()).isEqualTo("Usuario nao encontrado");
     verify(solicitacaoRepository, times(1)).findById(sol.getId());
     verify(usuarioRepository, times(1)).findById(usuarioId);
+    verifyNoMoreInteractions(solicitacaoRepository, usuarioRepository, atribuicaoRepository);
+  }
+
+  private static Usuario usuario(final UUID id, final PerfilUsuario perfil) {
+    final Instant agora = Instant.now();
+    return new Usuario(id, "Usuario", "usuario@rgm.test", "hash", perfil, true, agora, agora);
+  }
+
+  @Test
+  void shouldDenyWhenOperatorNeitherOpenedNorIsAssigned() {
+    // Arrange
+    final UUID operadorId = UUID.randomUUID();
+    final Solicitacao sol =
+        Solicitacao.abrir(
+            "T", "D", TipoSolicitacao.REPARO, UUID.randomUUID(), UUID.randomUUID(), Instant.now());
+    when(solicitacaoRepository.findById(sol.getId())).thenReturn(Optional.of(sol));
+    when(usuarioRepository.findById(operadorId)).thenReturn(Optional.of(operador(operadorId)));
+    when(atribuicaoRepository.findBySolicitacaoId(sol.getId())).thenReturn(List.of());
+
+    // Act
+    final var erro =
+        org.junit.jupiter.api.Assertions.assertThrows(
+            NaoAutorizadoException.class,
+            () -> useCase.execute(new ObterSolicitacaoUseCase.Input(sol.getId(), operadorId)));
+
+    // Assert
+    assertThat(erro.getMessage()).isEqualTo("Usuario nao tem acesso a esta solicitacao");
+    verify(solicitacaoRepository, times(1)).findById(sol.getId());
+    verify(usuarioRepository, times(1)).findById(operadorId);
+    verify(atribuicaoRepository, times(1)).findBySolicitacaoId(sol.getId());
+    verifyNoMoreInteractions(solicitacaoRepository, usuarioRepository, atribuicaoRepository);
+  }
+
+  @Test
+  void shouldReturnSolicitacaoWhenOperatorIsAssignedButDidNotOpenIt() {
+    // Arrange
+    final UUID operadorId = UUID.randomUUID();
+    final Solicitacao sol =
+        Solicitacao.abrir(
+            "T", "D", TipoSolicitacao.REPARO, UUID.randomUUID(), UUID.randomUUID(), Instant.now());
+    final SolicitacaoAtribuicao atribuicao =
+        new SolicitacaoAtribuicao(
+            UUID.randomUUID(), sol.getId(), operadorId, UUID.randomUUID(), Instant.now(), null);
+    when(solicitacaoRepository.findById(sol.getId())).thenReturn(Optional.of(sol));
+    when(usuarioRepository.findById(operadorId)).thenReturn(Optional.of(operador(operadorId)));
+    when(atribuicaoRepository.findBySolicitacaoId(sol.getId())).thenReturn(List.of(atribuicao));
+
+    // Act
+    final var output = useCase.execute(new ObterSolicitacaoUseCase.Input(sol.getId(), operadorId));
+
+    // Assert
+    assertThat(output.solicitacao()).isSameAs(sol);
+    verify(solicitacaoRepository, times(1)).findById(sol.getId());
+    verify(usuarioRepository, times(1)).findById(operadorId);
+    verify(atribuicaoRepository, times(1)).findBySolicitacaoId(sol.getId());
+    verifyNoMoreInteractions(solicitacaoRepository, usuarioRepository, atribuicaoRepository);
+  }
+
+  @Test
+  void shouldDenyWhenOperatorWasRemovedFromTheSolicitacao() {
+    // Arrange
+    final UUID operadorId = UUID.randomUUID();
+    final Solicitacao sol =
+        Solicitacao.abrir(
+            "T", "D", TipoSolicitacao.REPARO, UUID.randomUUID(), UUID.randomUUID(), Instant.now());
+    final SolicitacaoAtribuicao removida =
+        new SolicitacaoAtribuicao(
+            UUID.randomUUID(),
+            sol.getId(),
+            operadorId,
+            UUID.randomUUID(),
+            Instant.now(),
+            Instant.now());
+    when(solicitacaoRepository.findById(sol.getId())).thenReturn(Optional.of(sol));
+    when(usuarioRepository.findById(operadorId)).thenReturn(Optional.of(operador(operadorId)));
+    when(atribuicaoRepository.findBySolicitacaoId(sol.getId())).thenReturn(List.of(removida));
+
+    // Act
+    final var erro =
+        org.junit.jupiter.api.Assertions.assertThrows(
+            NaoAutorizadoException.class,
+            () -> useCase.execute(new ObterSolicitacaoUseCase.Input(sol.getId(), operadorId)));
+
+    // Assert
+    assertThat(erro.getMessage()).isEqualTo("Usuario nao tem acesso a esta solicitacao");
+    verify(solicitacaoRepository, times(1)).findById(sol.getId());
+    verify(usuarioRepository, times(1)).findById(operadorId);
+    verify(atribuicaoRepository, times(1)).findBySolicitacaoId(sol.getId());
+    verifyNoMoreInteractions(solicitacaoRepository, usuarioRepository, atribuicaoRepository);
+  }
+
+  @Test
+  void shouldReturnSolicitacaoWhenManagerReadsSolicitacaoOfSomeoneElse() {
+    // Arrange
+    final UUID gestorId = UUID.randomUUID();
+    final Solicitacao sol =
+        Solicitacao.abrir(
+            "T", "D", TipoSolicitacao.REPARO, UUID.randomUUID(), UUID.randomUUID(), Instant.now());
+    when(solicitacaoRepository.findById(sol.getId())).thenReturn(Optional.of(sol));
+    when(usuarioRepository.findById(gestorId))
+        .thenReturn(Optional.of(usuario(gestorId, PerfilUsuario.GESTOR)));
+    when(atribuicaoRepository.findBySolicitacaoId(sol.getId())).thenReturn(List.of());
+
+    // Act
+    final var output = useCase.execute(new ObterSolicitacaoUseCase.Input(sol.getId(), gestorId));
+
+    // Assert
+    assertThat(output.solicitacao()).isSameAs(sol);
+    verify(solicitacaoRepository, times(1)).findById(sol.getId());
+    verify(usuarioRepository, times(1)).findById(gestorId);
+    verify(atribuicaoRepository, times(1)).findBySolicitacaoId(sol.getId());
     verifyNoMoreInteractions(solicitacaoRepository, usuarioRepository, atribuicaoRepository);
   }
 }

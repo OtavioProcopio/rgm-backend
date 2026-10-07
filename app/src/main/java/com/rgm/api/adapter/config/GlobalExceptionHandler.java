@@ -6,6 +6,7 @@ import com.rgm.api.core.domain.exceptions.NaoAutorizadoException;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.exceptions.TransicaoStatusInvalidaException;
 import com.rgm.api.core.domain.exceptions.ValidationException;
+import java.sql.SQLException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -21,6 +22,7 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 public class GlobalExceptionHandler {
 
   private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+  private static final String SQLSTATE_VALOR_LONGO = "22001";
 
   @ExceptionHandler(RecursoNaoEncontradoException.class)
   public ResponseEntity<ErrorResponse> handleNotFound(final RecursoNaoEncontradoException ex) {
@@ -78,8 +80,22 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(DataIntegrityViolationException.class)
   public ResponseEntity<ErrorResponse> handleDataIntegrity(
       final DataIntegrityViolationException ex) {
+    if (valorLongoDemais(ex)) {
+      return ResponseEntity.badRequest()
+          .body(ErrorResponse.of(400, "Validation Error", "Texto acima do limite do campo"));
+    }
     return ResponseEntity.status(HttpStatus.CONFLICT)
         .body(ErrorResponse.of(409, "Conflict", "Registro duplicado ou violacao de integridade"));
+  }
+
+  /** SQLSTATE 22001: o banco recusou um texto maior que a coluna. */
+  private static boolean valorLongoDemais(final DataIntegrityViolationException ex) {
+    for (Throwable causa = ex.getCause(); causa != null; causa = causa.getCause()) {
+      if (causa instanceof SQLException sql && SQLSTATE_VALOR_LONGO.equals(sql.getSQLState())) {
+        return true;
+      }
+    }
+    return false;
   }
 
   @ExceptionHandler(MaxUploadSizeExceededException.class)

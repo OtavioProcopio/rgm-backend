@@ -1,6 +1,10 @@
 package com.rgm.api.adapter.in.web.admin;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -19,6 +23,7 @@ import com.rgm.api.adapter.in.web.dto.request.CriarUsuarioRequest;
 import com.rgm.api.adapter.in.web.dto.request.EditarUsuarioRequest;
 import com.rgm.api.adapter.in.web.dto.request.ExcluirRegistroRequest;
 import com.rgm.api.adapter.in.web.dto.request.RedefinirSenhaRequest;
+import com.rgm.api.adapter.in.web.solicitacao.SolicitacaoEventPublisher;
 import com.rgm.api.adapter.out.security.JwtAuthenticationFilter;
 import com.rgm.api.core.application.usecases.admin.CadastrarPrestadorExternoUseCase;
 import com.rgm.api.core.application.usecases.admin.ExcluirRegistroUseCase;
@@ -28,10 +33,15 @@ import com.rgm.api.core.domain.model.aggregates.Usuario;
 import com.rgm.api.core.domain.model.enums.PerfilUsuario;
 import com.rgm.api.core.domain.ports.repositories.PageResult;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
+import com.rgm.api.core.domain.validation.LimitesTexto;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.ComponentScan;
@@ -40,6 +50,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 @WebMvcTest(
     controllers = AdminController.class,
@@ -57,6 +68,7 @@ class AdminControllerTest {
   @MockitoBean private ExcluirRegistroUseCase excluirRegistroUseCase;
   @MockitoBean private ListarUsuariosUseCase listarUsuariosUseCase;
   @MockitoBean private UsuarioRepository usuarioRepository;
+  @MockitoBean private SolicitacaoEventPublisher eventPublisher;
 
   @Test
   void listarUsuarios() throws Exception {
@@ -229,5 +241,115 @@ class AdminControllerTest {
                     objectMapper.writeValueAsString(
                         new ExcluirRegistroRequest("SOLICITACAO", UUID.randomUUID()))))
         .andExpect(status().isNoContent());
+  }
+
+  @Test
+  void shouldCloseLiveConnectionsOfTheTargetWhenPasswordIsReset() throws Exception {
+    // Arrange
+    final Instant agora = Instant.now();
+    final UUID alvoId = UUID.randomUUID();
+    final UUID adminId = UUID.randomUUID();
+    final Usuario alvo =
+        new Usuario(
+            alvoId, "Alvo", "alvo@t.com", "hashed", PerfilUsuario.OPERADOR, true, agora, agora);
+    final GerenciarUsuariosUseCase.RedefinirSenhaInput entrada =
+        new GerenciarUsuariosUseCase.RedefinirSenhaInput(alvoId, "senhaTemporaria", adminId);
+    when(gerenciarUsuariosUseCase.redefinirSenha(entrada)).thenReturn(alvo);
+
+    // Act
+    final var resposta =
+        mockMvc.perform(
+            patch("/api/admin/usuarios/{id}/senha", alvoId)
+                .with(user(adminId.toString()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(new RedefinirSenhaRequest("senhaTemporaria"))));
+
+    // Assert
+    resposta.andExpect(status().isOk());
+    verify(gerenciarUsuariosUseCase, times(1)).redefinirSenha(entrada);
+    verify(eventPublisher, times(1)).encerrarConexoes(alvoId);
+    verifyNoMoreInteractions(gerenciarUsuariosUseCase, eventPublisher);
+  }
+
+  private static Stream<Arguments> usuariosInvalidos() {
+    final UUID id = UUID.randomUUID();
+    final String nomeLongo = "x".repeat(LimitesTexto.USUARIO_NOME + 1);
+    final String emailLongo = "x".repeat(LimitesTexto.USUARIO_EMAIL) + "@t.com";
+    final String limiteNome = "nome: deve ter no máximo " + LimitesTexto.USUARIO_NOME;
+    final String limiteEmail = "email: deve ter no máximo " + LimitesTexto.USUARIO_EMAIL;
+    return Stream.of(
+        Arguments.of(
+            post("/api/admin/usuarios"),
+            new CriarUsuarioRequest(nomeLongo, "n@t.com", "senha-de-8", "OPERADOR", true),
+            limiteNome),
+        Arguments.of(
+            post("/api/admin/usuarios"),
+            new CriarUsuarioRequest("Novo", emailLongo, "senha-de-8", "OPERADOR", true),
+            limiteEmail),
+        Arguments.of(
+            post("/api/admin/usuarios"),
+            new CriarUsuarioRequest("Novo", "fulano-sem-arroba", "senha-de-8", "OPERADOR", true),
+            "email: "),
+        Arguments.of(
+            put("/api/admin/usuarios/{id}", id),
+            new EditarUsuarioRequest(nomeLongo, "n@t.com"),
+            limiteNome),
+        Arguments.of(
+            put("/api/admin/usuarios/{id}", id),
+            new EditarUsuarioRequest("Novo", emailLongo),
+            limiteEmail),
+        Arguments.of(
+            put("/api/admin/usuarios/{id}", id),
+            new EditarUsuarioRequest("Novo", "fulano-sem-arroba"),
+            "email: "));
+  }
+
+  @ParameterizedTest
+  @MethodSource("usuariosInvalidos")
+  void shouldAnswerBadRequestWhenUserFieldIsTooLongOrEmailIsMalformed(
+      final MockHttpServletRequestBuilder chamada, final Object corpo, final String trecho)
+      throws Exception {
+    // Arrange
+    final String adminId = UUID.randomUUID().toString();
+
+    // Act
+    final var resposta =
+        mockMvc.perform(
+            chamada
+                .with(user(adminId))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(corpo)));
+
+    // Assert
+    resposta
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.message").value(containsString(trecho)));
+    verifyNoMoreInteractions(gerenciarUsuariosUseCase, cadastrarExternoUseCase, eventPublisher);
+  }
+
+  @Test
+  void shouldCreateExternalUserWhenEmailAndPasswordAreMissing() throws Exception {
+    // Arrange
+    final UUID adminId = UUID.randomUUID();
+    final Usuario externo = Usuario.criarExterno("Prestador", Instant.now());
+    final CadastrarPrestadorExternoUseCase.Input entrada =
+        new CadastrarPrestadorExternoUseCase.Input("Prestador", adminId);
+    when(cadastrarExternoUseCase.execute(entrada)).thenReturn(externo);
+
+    // Act
+    final var resposta =
+        mockMvc.perform(
+            post("/api/admin/usuarios")
+                .with(user(adminId.toString()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        new CriarUsuarioRequest("Prestador", null, null, "EXTERNO", true))));
+
+    // Assert
+    resposta.andExpect(status().isCreated());
+    verify(cadastrarExternoUseCase, times(1)).execute(entrada);
+    verifyNoMoreInteractions(gerenciarUsuariosUseCase, cadastrarExternoUseCase, eventPublisher);
   }
 }

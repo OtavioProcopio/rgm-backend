@@ -25,9 +25,7 @@ public final class AcessoEvidenciaSolicitacao {
   /** Indica se o usuario pode listar as evidencias da solicitacao. */
   public static boolean podeListar(
       final Usuario usuario, final Solicitacao solicitacao, final BooleanSupplier estaAtribuido) {
-    requireNonNull(usuario, "usuario");
-    return usuario.isAtivo()
-        && (temAcessoPleno(usuario, estaAtribuido) || abriu(usuario, solicitacao));
+    return AcessoSolicitacao.podeVer(usuario, solicitacao, estaAtribuido);
   }
 
   /** Valida se o usuario pode listar as evidencias da solicitacao. */

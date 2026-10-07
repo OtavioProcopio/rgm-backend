@@ -7,6 +7,7 @@ import com.rgm.api.adapter.in.web.dto.request.ExcluirRegistroRequest;
 import com.rgm.api.adapter.in.web.dto.request.RedefinirSenhaRequest;
 import com.rgm.api.adapter.in.web.dto.response.PageResponse;
 import com.rgm.api.adapter.in.web.dto.response.UsuarioResponse;
+import com.rgm.api.adapter.in.web.solicitacao.SolicitacaoEventPublisher;
 import com.rgm.api.core.application.usecases.admin.CadastrarPrestadorExternoUseCase;
 import com.rgm.api.core.application.usecases.admin.ExcluirRegistroUseCase;
 import com.rgm.api.core.application.usecases.admin.GerenciarUsuariosUseCase;
@@ -44,18 +45,21 @@ public class AdminController {
   private final ExcluirRegistroUseCase excluirRegistroUseCase;
   private final ListarUsuariosUseCase listarUsuariosUseCase;
   private final UsuarioRepository usuarioRepository;
+  private final SolicitacaoEventPublisher eventPublisher;
 
   public AdminController(
       final GerenciarUsuariosUseCase gerenciarUsuariosUseCase,
       final CadastrarPrestadorExternoUseCase cadastrarExternoUseCase,
       final ExcluirRegistroUseCase excluirRegistroUseCase,
       final ListarUsuariosUseCase listarUsuariosUseCase,
-      final UsuarioRepository usuarioRepository) {
+      final UsuarioRepository usuarioRepository,
+      final SolicitacaoEventPublisher eventPublisher) {
     this.gerenciarUsuariosUseCase = gerenciarUsuariosUseCase;
     this.cadastrarExternoUseCase = cadastrarExternoUseCase;
     this.excluirRegistroUseCase = excluirRegistroUseCase;
     this.listarUsuariosUseCase = listarUsuariosUseCase;
     this.usuarioRepository = usuarioRepository;
+    this.eventPublisher = eventPublisher;
   }
 
   @GetMapping("/usuarios")
@@ -166,6 +170,7 @@ public class AdminController {
     final Usuario usuario =
         gerenciarUsuariosUseCase.redefinirSenha(
             new GerenciarUsuariosUseCase.RedefinirSenhaInput(id, request.novaSenha(), adminId));
+    eventPublisher.encerrarConexoes(id);
     return ResponseEntity.ok(UsuarioResponse.from(usuario));
   }
 

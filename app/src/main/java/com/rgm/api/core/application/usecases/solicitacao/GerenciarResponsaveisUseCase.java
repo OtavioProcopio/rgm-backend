@@ -12,6 +12,7 @@ import com.rgm.api.core.domain.ports.repositories.SolicitacaoAtribuicaoRepositor
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,7 +39,10 @@ public class GerenciarResponsaveisUseCase {
 
   public record Input(UUID solicitacaoId, List<UUID> responsavelIds, UUID gestorId) {}
 
-  public Solicitacao execute(final Input input) {
+  /** {@code responsaveisRemovidos}: quem deixou de ser responsavel nesta alteracao. */
+  public record Output(Solicitacao solicitacao, List<UUID> responsaveisRemovidos) {}
+
+  public Output execute(final Input input) {
     final Instant agora = Instant.now();
 
     final Usuario gestor =
@@ -82,8 +86,11 @@ public class GerenciarResponsaveisUseCase {
             .filter(a -> a.getRemovidoEm() == null)
             .toList();
 
+    final List<UUID> responsaveisRemovidos = new ArrayList<>();
+
     for (final var atr : atribuicoesAtuais) {
       if (!input.responsavelIds().contains(atr.getUsuarioId())) {
+        responsaveisRemovidos.add(atr.getUsuarioId());
         final var removido = atr.remover(agora);
         atribuicaoRepository.save(removido);
 
@@ -113,6 +120,6 @@ public class GerenciarResponsaveisUseCase {
       }
     }
 
-    return solicitacao;
+    return new Output(solicitacao, List.copyOf(responsaveisRemovidos));
   }
 }

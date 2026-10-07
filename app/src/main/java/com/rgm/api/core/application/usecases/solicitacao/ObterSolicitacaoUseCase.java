@@ -7,6 +7,7 @@ import com.rgm.api.core.domain.model.enums.AcaoSolicitacao;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoAtribuicaoRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
+import com.rgm.api.core.domain.validation.AcessoSolicitacao;
 import com.rgm.api.core.domain.validation.AcoesPermitidasSolicitacao;
 import java.util.List;
 import java.util.Map;
@@ -51,6 +52,9 @@ public final class ObterSolicitacaoUseCase {
             .filter(a -> a.getRemovidoEm() == null)
             .map(a -> a.getUsuarioId())
             .toList();
+
+    AcessoSolicitacao.validarLeitura(
+        usuario, solicitacao, () -> responsavelIds.contains(usuario.getId()));
 
     final Set<AcaoSolicitacao> acoesPermitidas =
         AcoesPermitidasSolicitacao.calcular(

@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -39,10 +40,15 @@ import com.rgm.api.core.domain.ports.repositories.QuantidadePorMaquina;
 import com.rgm.api.core.domain.ports.repositories.ResumoModelos;
 import com.rgm.api.core.domain.ports.repositories.ResumoSolicitacoesModelo;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
+import com.rgm.api.core.domain.validation.LimitesTexto;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.ComponentScan;
@@ -390,5 +396,85 @@ class ModeloControllerTest {
         .perform(get("/api/modelos"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.content[0].fotoCapaUrl").value("http://minio/capa.jpg"));
+  }
+
+  private static String texto(final int tamanho) {
+    return "x".repeat(tamanho);
+  }
+
+  private static Stream<Arguments> textosAcimaDoLimite() {
+    final String codigo = texto(LimitesTexto.MODELO_CODIGO + 1);
+    final String descricao = texto(LimitesTexto.MODELO_DESCRICAO + 1);
+    final String observacoes = texto(LimitesTexto.MODELO_OBSERVACOES + 1);
+    final String maquina = texto(LimitesTexto.MODELO_MAQUINA + 1);
+    return Stream.of(
+        Arguments.of(
+            new CriarModeloRequest(codigo, "D", null, "FBOX", null),
+            new EditarModeloRequest(codigo, "D", null, "FBOX", null),
+            "codigo",
+            LimitesTexto.MODELO_CODIGO),
+        Arguments.of(
+            new CriarModeloRequest("C", descricao, null, "FBOX", null),
+            new EditarModeloRequest("C", descricao, null, "FBOX", null),
+            "descricao",
+            LimitesTexto.MODELO_DESCRICAO),
+        Arguments.of(
+            new CriarModeloRequest("C", "D", observacoes, "FBOX", null),
+            new EditarModeloRequest("C", "D", observacoes, "FBOX", null),
+            "observacoes",
+            LimitesTexto.MODELO_OBSERVACOES),
+        Arguments.of(
+            new CriarModeloRequest("C", "D", null, maquina, null),
+            new EditarModeloRequest("C", "D", null, maquina, null),
+            "maquina",
+            LimitesTexto.MODELO_MAQUINA));
+  }
+
+  @ParameterizedTest
+  @MethodSource("textosAcimaDoLimite")
+  void shouldAnswerBadRequestWhenCreatingModeloWithTextAboveLimit(
+      final CriarModeloRequest criar,
+      final EditarModeloRequest editar,
+      final String campo,
+      final int limite)
+      throws Exception {
+    // Arrange
+    final String mensagem = campo + ": deve ter no máximo " + limite + " caracteres";
+
+    // Act
+    final var resposta =
+        mockMvc.perform(
+            post("/api/modelos")
+                .with(user(UUID.randomUUID().toString()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(criar)));
+
+    // Assert
+    resposta.andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value(mensagem));
+    verifyNoMoreInteractions(gerenciarUseCase);
+  }
+
+  @ParameterizedTest
+  @MethodSource("textosAcimaDoLimite")
+  void shouldAnswerBadRequestWhenEditingModeloWithTextAboveLimit(
+      final CriarModeloRequest criar,
+      final EditarModeloRequest editar,
+      final String campo,
+      final int limite)
+      throws Exception {
+    // Arrange
+    final String mensagem = campo + ": deve ter no máximo " + limite + " caracteres";
+
+    // Act
+    final var resposta =
+        mockMvc.perform(
+            put("/api/modelos/{id}", UUID.randomUUID())
+                .with(user(UUID.randomUUID().toString()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(editar)));
+
+    // Assert
+    resposta.andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value(mensagem));
+    verifyNoMoreInteractions(gerenciarUseCase);
   }
 }

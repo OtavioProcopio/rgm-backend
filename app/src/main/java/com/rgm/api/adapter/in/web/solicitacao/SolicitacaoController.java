@@ -373,9 +373,12 @@ public class SolicitacaoController {
   }
 
   @GetMapping("/{id}/atividades")
-  public ResponseEntity<List<AtividadeResponse>> listarAtividades(@PathVariable final UUID id) {
+  public ResponseEntity<List<AtividadeResponse>> listarAtividades(
+      @PathVariable final UUID id, final Authentication authentication) {
     log.info("SolicitacaoController.listarAtividades id={}", id);
-    final var result = listarAtividadesUseCase.execute(id);
+    final UUID usuarioId = UUID.fromString(authentication.getName());
+    final var result =
+        listarAtividadesUseCase.execute(new ListarAtividadesUseCase.Input(id, usuarioId));
     return ResponseEntity.ok(
         result.stream().map(a -> AtividadeResponse.from(a.atividade(), a.autorNome())).toList());
   }
@@ -469,7 +472,8 @@ public class SolicitacaoController {
     final UUID autorId = UUID.fromString(authentication.getName());
     comentarioUseCase.execute(
         new RegistrarComentarioUseCase.Input(id, request.comentario(), autorId));
-    eventPublisher.publish("solicitacao_atividade", new SolicitacaoAtividadeEvent("comentada", id));
+    eventPublisher.publish(
+        "solicitacao_atividade", new SolicitacaoAtividadeEvent("comentada", id), id);
     return ResponseEntity.status(HttpStatus.CREATED).build();
   }
 
@@ -498,11 +502,20 @@ public class SolicitacaoController {
             new GerenciarResponsaveisUseCase.Input(id, request.responsavelIds(), gestorId));
     return ResponseEntity.ok(
         publicar(
-            "responsaveis_alterados", SolicitacaoResponse.from(output, request.responsavelIds())));
+            "responsaveis_alterados",
+            SolicitacaoResponse.from(output.solicitacao(), request.responsavelIds()),
+            output.responsaveisRemovidos()));
   }
 
   private SolicitacaoResponse publicar(final String tipo, final SolicitacaoResponse response) {
-    eventPublisher.publish("solicitacao", new SolicitacaoEvent(tipo, response));
+    return publicar(tipo, response, List.of());
+  }
+
+  /** {@code comAcessoAnterior}: quem perdeu o acesso nesta mudanca e ainda deve ser avisado. */
+  private SolicitacaoResponse publicar(
+      final String tipo, final SolicitacaoResponse response, final List<UUID> comAcessoAnterior) {
+    eventPublisher.publish(
+        "solicitacao", new SolicitacaoEvent(tipo, response), response.id(), comAcessoAnterior);
     return response;
   }
 

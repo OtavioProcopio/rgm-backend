@@ -96,6 +96,41 @@ class GlobalExceptionHandlerTest {
   }
 
   @Test
+  void shouldAnswerBadRequestWhenDatabaseRefusesValueTooLong() {
+    // Arrange
+    final DataIntegrityViolationException ex =
+        new DataIntegrityViolationException(
+            "could not execute statement",
+            new RuntimeException(
+                new java.sql.SQLException("value too long for type varchar(255)", "22001")));
+
+    // Act
+    final ResponseEntity<ErrorResponse> response = handler.handleDataIntegrity(ex);
+
+    // Assert
+    assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+    assertEquals(
+        ErrorResponse.of(400, "Validation Error", "Texto acima do limite do campo").message(),
+        response.getBody().message());
+  }
+
+  @Test
+  void shouldAnswerConflictWhenDatabaseRefusesDuplicateValue() {
+    // Arrange
+    final DataIntegrityViolationException ex =
+        new DataIntegrityViolationException(
+            "could not execute statement",
+            new java.sql.SQLException("duplicate key value violates unique constraint", "23505"));
+
+    // Act
+    final ResponseEntity<ErrorResponse> response = handler.handleDataIntegrity(ex);
+
+    // Assert
+    assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+    assertEquals("Registro duplicado ou violacao de integridade", response.getBody().message());
+  }
+
+  @Test
   void handleMaxUploadSize_deveRetornar413() {
     final MaxUploadSizeExceededException ex = new MaxUploadSizeExceededException(1000L);
     final ResponseEntity<ErrorResponse> response = handler.handleMaxUploadSize(ex);

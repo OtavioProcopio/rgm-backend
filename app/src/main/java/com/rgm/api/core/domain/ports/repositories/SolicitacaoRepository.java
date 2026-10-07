@@ -31,6 +31,10 @@ public interface SolicitacaoRepository {
 
   PageResult<Solicitacao> findByStatus(StatusSolicitacao status, int page, int size);
 
+  /**
+   * {@code visivelParaUsuarioId} nulo nao restringe; preenchido traz so as solicitacoes que o
+   * usuario abriu ou das quais e responsavel ativo.
+   */
   PageResult<Solicitacao> findByFilters(
       StatusSolicitacao status,
       UUID modeloId,
@@ -45,6 +49,7 @@ public interface SolicitacaoRepository {
       String maquina,
       Boolean atrasada,
       boolean emAberto,
+      UUID visivelParaUsuarioId,
       int page,
       int size);
 

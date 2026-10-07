@@ -43,4 +43,7 @@ public class UsuarioJpaEntity {
 
   @Column(nullable = false)
   private Instant atualizadoEm;
+
+  @Column(nullable = false)
+  private int versaoCredencial;
 }

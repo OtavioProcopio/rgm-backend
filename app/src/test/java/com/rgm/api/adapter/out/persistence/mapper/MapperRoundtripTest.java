@@ -40,10 +40,11 @@ class MapperRoundtripTest {
     final UUID id = UUID.randomUUID();
     final Usuario original =
         new Usuario(
-            id, "Carol", "carol@x.com", "hashXYZ", PerfilUsuario.ADMINISTRADOR, true, T1, T2);
+            id, "Carol", "carol@x.com", "hashXYZ", PerfilUsuario.ADMINISTRADOR, true, T1, T2, 5);
 
     final Usuario result = UsuarioMapper.toDomain(UsuarioMapper.toJpa(original));
 
+    assertEquals(original.getVersaoCredencial(), result.getVersaoCredencial());
     assertEquals(id, result.getId());
     assertEquals("Carol", result.getNome());
     assertEquals("carol@x.com", result.getEmail());

@@ -1,7 +1,9 @@
 package com.rgm.api.adapter.in.web.usuario;
 
 import com.rgm.api.adapter.in.web.dto.request.AlterarSenhaRequest;
+import com.rgm.api.adapter.in.web.dto.response.SenhaAlteradaResponse;
 import com.rgm.api.adapter.in.web.dto.response.UsuarioResponse;
+import com.rgm.api.adapter.in.web.solicitacao.SolicitacaoEventPublisher;
 import com.rgm.api.core.application.usecases.auth.AlterarSenhaPropriaUseCase;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
@@ -25,12 +27,15 @@ public class UsuarioController {
 
   private final AlterarSenhaPropriaUseCase alterarSenhaUseCase;
   private final UsuarioRepository usuarioRepository;
+  private final SolicitacaoEventPublisher eventPublisher;
 
   public UsuarioController(
       final AlterarSenhaPropriaUseCase alterarSenhaUseCase,
-      final UsuarioRepository usuarioRepository) {
+      final UsuarioRepository usuarioRepository,
+      final SolicitacaoEventPublisher eventPublisher) {
     this.alterarSenhaUseCase = alterarSenhaUseCase;
     this.usuarioRepository = usuarioRepository;
+    this.eventPublisher = eventPublisher;
   }
 
   @GetMapping("/me")
@@ -46,14 +51,15 @@ public class UsuarioController {
 
   @Transactional
   @PatchMapping("/me/senha")
-  public ResponseEntity<UsuarioResponse> alterarSenha(
+  public ResponseEntity<SenhaAlteradaResponse> alterarSenha(
       @Valid @RequestBody final AlterarSenhaRequest request, final Authentication authentication) {
     log.info("UsuarioController.alterarSenha iniciado");
     final UUID usuarioId = UUID.fromString(authentication.getName());
-    final var usuario =
+    final var output =
         alterarSenhaUseCase.execute(
             new AlterarSenhaPropriaUseCase.Input(
                 usuarioId, request.senhaAtual(), request.novaSenha()));
-    return ResponseEntity.ok(UsuarioResponse.from(usuario));
+    eventPublisher.encerrarConexoes(usuarioId);
+    return ResponseEntity.ok(SenhaAlteradaResponse.from(output));
   }
 }

@@ -7,10 +7,12 @@ import static org.mockito.Mockito.*;
 import com.rgm.api.core.domain.exceptions.BusinessRuleException;
 import com.rgm.api.core.domain.exceptions.NaoAutorizadoException;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
+import com.rgm.api.core.domain.exceptions.ValidationException;
 import com.rgm.api.core.domain.model.aggregates.Usuario;
 import com.rgm.api.core.domain.model.enums.PerfilUsuario;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import com.rgm.api.core.domain.ports.services.PasswordHasher;
+import com.rgm.api.core.domain.validation.PoliticaSenha;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
@@ -48,13 +50,13 @@ class GerenciarUsuariosUseCaseTest {
     final Usuario admin = criarAdmin();
     when(usuarioRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
     when(usuarioRepository.existsByEmail("novo@test.com")).thenReturn(false);
-    when(passwordHasher.hash("senha")).thenReturn("hashed");
+    when(passwordHasher.hash("senha-de-8")).thenReturn("hashed");
     when(usuarioRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
     final Usuario resultado =
         useCase.criar(
             new GerenciarUsuariosUseCase.CriarInput(
-                "Novo", "novo@test.com", "senha", PerfilUsuario.OPERADOR, admin.getId()));
+                "Novo", "novo@test.com", "senha-de-8", PerfilUsuario.OPERADOR, admin.getId()));
 
     assertNotNull(resultado);
     assertEquals("Novo", resultado.getNome());
@@ -72,7 +74,7 @@ class GerenciarUsuariosUseCaseTest {
         () ->
             useCase.criar(
                 new GerenciarUsuariosUseCase.CriarInput(
-                    "Dup", "dup@test.com", "senha", PerfilUsuario.OPERADOR, admin.getId())));
+                    "Dup", "dup@test.com", "senha-de-8", PerfilUsuario.OPERADOR, admin.getId())));
   }
 
   @Test
@@ -85,7 +87,7 @@ class GerenciarUsuariosUseCaseTest {
         () ->
             useCase.criar(
                 new GerenciarUsuariosUseCase.CriarInput(
-                    "Ext", "ext@test.com", "senha", PerfilUsuario.EXTERNO, admin.getId())));
+                    "Ext", "ext@test.com", "senha-de-8", PerfilUsuario.EXTERNO, admin.getId())));
   }
 
   @Test
@@ -108,7 +110,11 @@ class GerenciarUsuariosUseCaseTest {
         () ->
             useCase.criar(
                 new GerenciarUsuariosUseCase.CriarInput(
-                    "Novo", "novo@test.com", "senha", PerfilUsuario.OPERADOR, gestor.getId())));
+                    "Novo",
+                    "novo@test.com",
+                    "senha-de-8",
+                    PerfilUsuario.OPERADOR,
+                    gestor.getId())));
   }
 
   @Test
@@ -317,11 +323,141 @@ class GerenciarUsuariosUseCaseTest {
     when(usuarioRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
 
     assertThrows(
-        BusinessRuleException.class,
+        ValidationException.class,
         () ->
             useCase.redefinirSenha(
                 new GerenciarUsuariosUseCase.RedefinirSenhaInput(
                     UUID.randomUUID(), "  ", admin.getId())));
+  }
+
+  private static final String MENSAGEM_SENHA =
+      "Senha deve ter no minimo " + PoliticaSenha.TAMANHO_MINIMO + " caracteres";
+
+  private Usuario criarOperador() {
+    final Instant agora = Instant.now();
+    return new Usuario(
+        UUID.randomUUID(),
+        "Alvo",
+        "alvo@test.com",
+        "hash",
+        PerfilUsuario.OPERADOR,
+        true,
+        agora,
+        agora,
+        4);
+  }
+
+  @Test
+  void shouldRejectCreationWhenPasswordIsBelowMinimumLength() {
+    // Arrange
+    final Usuario admin = criarAdmin();
+    final String curta = "s".repeat(PoliticaSenha.TAMANHO_MINIMO - 1);
+    when(usuarioRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+
+    // Act
+    final ValidationException erro =
+        assertThrows(
+            ValidationException.class,
+            () ->
+                useCase.criar(
+                    new GerenciarUsuariosUseCase.CriarInput(
+                        "Novo", "novo@test.com", curta, PerfilUsuario.OPERADOR, admin.getId())));
+
+    // Assert
+    assertEquals(MENSAGEM_SENHA, erro.getMessage());
+    verify(usuarioRepository, times(1)).findById(admin.getId());
+    verifyNoMoreInteractions(usuarioRepository, passwordHasher);
+  }
+
+  @Test
+  void shouldRejectCreationWhenLoginProfileHasNoPassword() {
+    // Arrange
+    final Usuario admin = criarAdmin();
+    when(usuarioRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+
+    // Act
+    final ValidationException erro =
+        assertThrows(
+            ValidationException.class,
+            () ->
+                useCase.criar(
+                    new GerenciarUsuariosUseCase.CriarInput(
+                        "Novo", "novo@test.com", null, PerfilUsuario.GESTOR, admin.getId())));
+
+    // Assert
+    assertEquals(MENSAGEM_SENHA, erro.getMessage());
+    verify(usuarioRepository, times(1)).findById(admin.getId());
+    verifyNoMoreInteractions(usuarioRepository, passwordHasher);
+  }
+
+  @Test
+  void shouldRejectResetWhenPasswordIsBelowMinimumLength() {
+    // Arrange
+    final Usuario admin = criarAdmin();
+    final String curta = "s".repeat(PoliticaSenha.TAMANHO_MINIMO - 1);
+    when(usuarioRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+
+    // Act
+    final ValidationException erro =
+        assertThrows(
+            ValidationException.class,
+            () ->
+                useCase.redefinirSenha(
+                    new GerenciarUsuariosUseCase.RedefinirSenhaInput(
+                        UUID.randomUUID(), curta, admin.getId())));
+
+    // Assert
+    assertEquals(MENSAGEM_SENHA, erro.getMessage());
+    verify(usuarioRepository, times(1)).findById(admin.getId());
+    verifyNoMoreInteractions(usuarioRepository, passwordHasher);
+  }
+
+  @Test
+  void shouldIncrementCredentialVersionWhenPasswordIsReset() {
+    // Arrange
+    final Usuario admin = criarAdmin();
+    final Usuario alvo = criarOperador();
+    final String nova = "s".repeat(PoliticaSenha.TAMANHO_MINIMO);
+    when(usuarioRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+    when(usuarioRepository.findById(alvo.getId())).thenReturn(Optional.of(alvo));
+    when(passwordHasher.hash(nova)).thenReturn("novoHash");
+    when(usuarioRepository.save(any(Usuario.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    // Act
+    final Usuario resultado =
+        useCase.redefinirSenha(
+            new GerenciarUsuariosUseCase.RedefinirSenhaInput(alvo.getId(), nova, admin.getId()));
+
+    // Assert
+    assertEquals(alvo.getVersaoCredencial() + 1, resultado.getVersaoCredencial());
+    verify(usuarioRepository, times(1)).findById(admin.getId());
+    verify(usuarioRepository, times(1)).findById(alvo.getId());
+    verify(passwordHasher, times(1)).hash(nova);
+    verify(usuarioRepository, times(1)).save(resultado);
+    verifyNoMoreInteractions(usuarioRepository, passwordHasher);
+  }
+
+  @Test
+  void shouldKeepCredentialVersionWhenProfileChanges() {
+    // Arrange
+    final Usuario admin = criarAdmin();
+    final Usuario alvo = criarOperador();
+    when(usuarioRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+    when(usuarioRepository.findById(alvo.getId())).thenReturn(Optional.of(alvo));
+    when(usuarioRepository.save(any(Usuario.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    // Act
+    final Usuario resultado =
+        useCase.alterarPerfil(
+            new GerenciarUsuariosUseCase.AlterarPerfilInput(
+                alvo.getId(), PerfilUsuario.GESTOR, admin.getId()));
+
+    // Assert
+    assertEquals(alvo.getVersaoCredencial(), resultado.getVersaoCredencial());
+    verify(usuarioRepository, times(1)).findById(admin.getId());
+    verify(usuarioRepository, times(1)).findById(alvo.getId());
+    verify(usuarioRepository, times(1)).save(resultado);
+    verifyNoMoreInteractions(usuarioRepository, passwordHasher);
   }
 
   @Test

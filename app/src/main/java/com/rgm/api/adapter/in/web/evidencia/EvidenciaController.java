@@ -78,7 +78,8 @@ public class EvidenciaController {
       final Evidencia evidencia = anexarUseCase.persist(input, uploadResult);
       eventPublisher.publish(
           "solicitacao_atividade",
-          new SolicitacaoAtividadeEvent("evidencia_adicionada", solicitacaoId));
+          new SolicitacaoAtividadeEvent("evidencia_adicionada", solicitacaoId),
+          solicitacaoId);
       return ResponseEntity.status(HttpStatus.CREATED).body(EvidenciaResponse.from(evidencia));
     } catch (final java.io.IOException e) {
       throw new RuntimeException("Erro ao ler arquivo: " + e.getMessage(), e);

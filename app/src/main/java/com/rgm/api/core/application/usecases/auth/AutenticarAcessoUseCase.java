@@ -6,28 +6,28 @@ import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import com.rgm.api.core.domain.ports.services.AccessTokenIssuer;
 import com.rgm.api.core.domain.ports.services.CredencialToken;
 
-/** Renovar access token usando um refresh token valido. */
-public final class RefreshTokenUseCase {
+/**
+ * Identifica quem apresenta um token de acesso. Recusa token invalido, de usuario inexistente ou
+ * inativo, e token emitido antes da ultima troca de senha. Devolve o usuario como esta agora, com o
+ * perfil atual.
+ */
+public final class AutenticarAcessoUseCase {
 
   private final UsuarioRepository usuarioRepository;
   private final AccessTokenIssuer tokenIssuer;
 
-  public RefreshTokenUseCase(
+  public AutenticarAcessoUseCase(
       final UsuarioRepository usuarioRepository, final AccessTokenIssuer tokenIssuer) {
     this.usuarioRepository = usuarioRepository;
     this.tokenIssuer = tokenIssuer;
   }
 
-  public record Input(String refreshToken) {}
-
-  public record Output(String token, String refreshToken) {}
-
-  public Output execute(final Input input) {
+  public Usuario execute(final String accessToken) {
     final CredencialToken credencial;
     try {
-      credencial = tokenIssuer.validateRefreshToken(input.refreshToken());
-    } catch (final Exception e) {
-      throw new NaoAutorizadoException("Refresh token invalido ou expirado");
+      credencial = tokenIssuer.validateAccessToken(accessToken);
+    } catch (final RuntimeException e) {
+      throw new NaoAutorizadoException("Token invalido ou expirado");
     }
 
     final Usuario usuario =
@@ -40,11 +40,9 @@ public final class RefreshTokenUseCase {
     }
 
     if (credencial.versaoCredencial() != usuario.getVersaoCredencial()) {
-      throw new NaoAutorizadoException("Refresh token invalido ou expirado");
+      throw new NaoAutorizadoException("Credencial emitida antes da troca de senha");
     }
 
-    final String newAccessToken = tokenIssuer.issue(usuario);
-    final String newRefreshToken = tokenIssuer.issueRefreshToken(usuario);
-    return new Output(newAccessToken, newRefreshToken);
+    return usuario;
   }
 }

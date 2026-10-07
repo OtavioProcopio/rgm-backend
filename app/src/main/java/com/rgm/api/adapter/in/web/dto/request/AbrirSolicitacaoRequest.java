@@ -1,6 +1,8 @@
 package com.rgm.api.adapter.in.web.dto.request;
 
+import com.rgm.api.core.domain.validation.LimitesTexto;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import java.util.UUID;
 
 /**
@@ -9,10 +11,15 @@ import java.util.UUID;
  * ser criado ao concluir a solicitacao.
  */
 public record AbrirSolicitacaoRequest(
-    @NotBlank String titulo,
-    @NotBlank String descricao,
+    @NotBlank @Size(max = LimitesTexto.SOLICITACAO_TITULO, message = LimitesTexto.MENSAGEM)
+        String titulo,
+    @NotBlank @Size(max = LimitesTexto.SOLICITACAO_DESCRICAO, message = LimitesTexto.MENSAGEM)
+        String descricao,
     @NotBlank String tipo,
     UUID modeloId,
-    String modeloCodigo,
-    String modeloMaquina,
-    String modeloObservacoes) {}
+    @Size(max = LimitesTexto.MODELO_PRETENDIDO_CODIGO, message = LimitesTexto.MENSAGEM)
+        String modeloCodigo,
+    @Size(max = LimitesTexto.MODELO_PRETENDIDO_MAQUINA, message = LimitesTexto.MENSAGEM)
+        String modeloMaquina,
+    @Size(max = LimitesTexto.MODELO_PRETENDIDO_OBSERVACOES, message = LimitesTexto.MENSAGEM)
+        String modeloObservacoes) {}
