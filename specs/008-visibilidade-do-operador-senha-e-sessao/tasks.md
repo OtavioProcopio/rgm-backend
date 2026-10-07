@@ -92,3 +92,74 @@ repositório listados abaixo, não por cenários executáveis em Gherkin.
 
 > Seção **append-only**, escrita por `/bu:converge`. Cada rodada acrescenta um bloco;
 > nada é reescrito.
+
+### Rodada 1 — 2026-10-07
+
+Caminhos relativos a `app/src/main/java/com/rgm/api/`.
+
+| Requisito | Estado | Evidência |
+|---|---|---|
+| RF-01 | realizado | `core/domain/validation/AcessoSolicitacao.java:25` (`podeVer`) |
+| RF-02 | realizado | `core/application/usecases/solicitacao/ListarSolicitacoesUseCase.java:94`; `adapter/out/persistence/repository/SolicitacaoJpaRepository.java:48`, na consulta e na contagem |
+| RF-03 | realizado | mesma consulta: os filtros enviados entram como condição a mais; `SolicitacaoJpaRepositoryPostgresTest` cobre filtro por outro usuário, por si mesmo e por responsável |
+| RF-04 | realizado | `core/application/usecases/solicitacao/ObterSolicitacaoUseCase.java:56`; 403 em `SolicitacaoControllerTest` |
+| RF-05 | realizado | `core/application/usecases/solicitacao/ListarAtividadesUseCase.java:51`; 403 em `SolicitacaoControllerTest` |
+| RF-06 | realizado | o relatório chama `ListarSolicitacoesUseCase` com o usuário autenticado; sem teste próprio do PDF com operador |
+| RF-07 | realizado | `AcessoSolicitacao.veTodas`; testes de gestor e administrador nos três casos de uso |
+| RF-08 | realizado | `core/domain/validation/PoliticaSenha.java:13`, chamada em criar, trocar e redefinir |
+| RF-09 | realizado | `core/application/usecases/admin/GerenciarUsuariosUseCase.java:47`; externo sem senha em `AdminControllerTest` |
+| RF-10 | realizado | `adapter/in/web/dto/request/CriarUsuarioRequest.java:11` e `EditarUsuarioRequest` |
+| RF-11 | realizado | `core/application/usecases/auth/AutenticarAcessoUseCase.java:42` (chamada comum e tempo real); `core/application/usecases/auth/RefreshTokenUseCase.java:42` |
+| RF-12 | realizado | `JwtAccessTokenIssuer` grava a versão atual nos dois tokens; `JwtAccessTokenIssuerTest` |
+| RF-13 | realizado | `adapter/out/security/JwtAuthenticationFilter.java:49` |
+| RF-14 | realizado | `core/domain/validation/LimitesTexto.java:6` e os 12 requests; um caso acima do limite por campo nos testes de controller |
+| RF-15 | parcial | provado só para o título (`shouldOpenSolicitacaoWhenTitleIsExactlyAtLimit`); os outros campos usam a mesma anotação |
+| RF-16 | realizado | `GlobalExceptionHandlerTest` (violação de unicidade segue 409) |
+| RF-17 | realizado | `adapter/config/GlobalExceptionHandler.java:83` |
+| RF-18 | realizado | `adapter/in/web/solicitacao/SolicitacaoEventPublisher.java:73`; `ResolverDestinatariosEventoUseCase` |
+| RF-19 | realizado | `core/application/usecases/auth/AlterarSenhaPropriaUseCase.java:58`; `SenhaAlteradaResponse` |
+| RF-20 | realizado | `core/application/usecases/solicitacao/ResolverDestinatariosEventoUseCase.java:62`; `GerenciarResponsaveisUseCase.Output.responsaveisRemovidos` |
+| RF-21 | realizado | `SolicitacaoEventPublisher.java:80`; `adapter/in/web/usuario/UsuarioController.java:62`; `adapter/in/web/admin/AdminController.java:174` |
+| RF-22 | realizado | `core/domain/model/aggregates/Usuario.java:115` preserva a versão; teste em `GerenciarUsuariosUseCaseTest` |
+| RNF-01 | realizado | uma condição na consulta existente; conferido por leitura, sem teste que conte consultas |
+| RNF-02 | realizado | `AutenticarAcessoUseCase` faz uma leitura do usuário; conferido por leitura e pelo `verifyNoMoreInteractions` do teste |
+| RNF-03 | realizado | nenhum campo, endpoint ou evento removido; a troca de senha só ganhou campos |
+| RNF-04 | realizado | todos os arquivos alterados em 95% de linha ou mais; os dois no limite são `Usuario` (95,0%) e `SolicitacaoController` (95,3%) |
+| RNF-05 | realizado | `LimitesTexto` e `PoliticaSenha`; `LimitesTextoTest` fixa os valores da spec |
+| RNF-06 | realizado | autoridade montada a cada chamada com o perfil lido do banco |
+
+Veredito: convergido
+
+Tarefas acrescentadas: nenhuma
+
+- **`make validate`:** verde, 774 testes, cobertura de linha de 96,5% no conjunto.
+  **`make test-all`:** verde, 793 testes, incluindo os 18 de
+  `SolicitacaoJpaRepositoryPostgresTest` e o de migração com a `V10`.
+- **`/bu:review`:** reprovou a primeira entrega com 8 achados, corrigidos no commit
+  `4fbb305`: falha ao resolver destinatários não derruba mais a resposta de quem fez a
+  mudança; as conexões de tempo real passam a cair depois do commit da senha (os dois
+  métodos de troca de senha deixaram de ser `@Transactional` no controller); `LimitesTexto`
+  ganhou teste com os valores da spec; "quem vê todas" ficou numa definição só; os testes
+  legados tocados foram reescritos no Princípio 3. A revisão não foi rodada de novo depois
+  das correções; a conferência foi por script (0 testes alterados fora do padrão de nome e
+  AAA) e pelos gates.
+- **Excesso, fora do que os requisitos pedem:**
+  - `SolicitacaoSseController` saiu da exclusão do JaCoCo e passou a tratar a conexão
+    encerrada antes do primeiro envio (previsto no plano).
+  - Usuário inativo com conexão de tempo real aberta deixa de receber eventos, por
+    consequência da regra de acesso.
+  - Teste novo para o tratador de conflito de versão, que estava sem cobertura no arquivo
+    alterado.
+- **Desvios do processo:**
+  - Sem cenários em `app/tests/bdd` (desvio herdado da feature 001).
+  - Checklists liberados pelo usuário sem revisão item a item.
+  - As tarefas `[P]` foram executadas em sequência, sem subagentes: as assinaturas mudam
+    entre tarefas e o código só compila com a fase inteira.
+  - Teste e implementação foram escritos juntos; o teste não foi visto falhando antes.
+  - Parte das edições em arquivos existentes foi feita por script no shell, sem passar pela
+    trava de estrutura do plugin; os arquivos novos foram criados no caminho espelhado.
+- **Não verificado:** nada foi exercitado com a aplicação no ar nem contra o frontend. O
+  comportamento do tempo real com conexões de verdade (queda na troca de senha, filtro por
+  destinatário) está provado só com emitters simulados.
+- **Pendência no frontend:** guardar `token` e `refreshToken` da resposta de
+  `PATCH /api/usuarios/me/senha`; sem isso, quem troca a própria senha volta ao login.
