@@ -58,10 +58,17 @@ public class SolicitacaoEventPublisher {
     if (conectados.isEmpty()) {
       return;
     }
-    final Set<UUID> destinatarios =
-        resolverDestinatariosUseCase.execute(
-            new ResolverDestinatariosEventoUseCase.Input(
-                solicitacaoId, conectados, Set.copyOf(comAcessoAnterior)));
+    final Set<UUID> destinatarios;
+    try {
+      destinatarios =
+          resolverDestinatariosUseCase.execute(
+              new ResolverDestinatariosEventoUseCase.Input(
+                  solicitacaoId, conectados, Set.copyOf(comAcessoAnterior)));
+    } catch (final RuntimeException e) {
+      // A mudanca ja foi gravada: perder o aviso e melhor que responder erro a quem a fez.
+      log.warn("Evento {} da solicitacao {} nao enviado", eventType, solicitacaoId, e);
+      return;
+    }
     for (final Conexao conexao : conexoes) {
       if (destinatarios.contains(conexao.usuarioId())) {
         enviar(conexao, () -> SseEmitter.event().name(eventType).data(data));

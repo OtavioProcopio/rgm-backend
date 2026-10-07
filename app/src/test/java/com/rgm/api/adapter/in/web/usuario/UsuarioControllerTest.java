@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -14,6 +15,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rgm.api.adapter.config.GlobalExceptionHandler;
 import com.rgm.api.adapter.in.web.WebMvcTestConfig;
 import com.rgm.api.adapter.in.web.dto.request.AlterarSenhaRequest;
+import com.rgm.api.adapter.in.web.dto.response.SenhaAlteradaResponse;
 import com.rgm.api.adapter.in.web.solicitacao.SolicitacaoEventPublisher;
 import com.rgm.api.adapter.out.security.JwtAuthenticationFilter;
 import com.rgm.api.core.application.usecases.auth.AlterarSenhaPropriaUseCase;
@@ -64,41 +66,75 @@ class UsuarioControllerTest {
         .andExpect(jsonPath("$.email").value("me@t.com"));
   }
 
+  private static final String SENHA_ATUAL = "senhaAtual";
+  private static final String SENHA_NOVA = "senhaNova";
+
+  private static Usuario usuario(final UUID id) {
+    final Instant agora = Instant.now();
+    return new Usuario(
+        id, "Me", "me@t.com", "hashNovo", PerfilUsuario.OPERADOR, true, agora, agora);
+  }
+
+  private org.springframework.test.web.servlet.ResultActions trocarSenha(final UUID userId)
+      throws Exception {
+    return mockMvc.perform(
+        patch("/api/usuarios/me/senha")
+            .with(user(userId.toString()))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(
+                objectMapper.writeValueAsString(new AlterarSenhaRequest(SENHA_ATUAL, SENHA_NOVA))));
+  }
+
   @Test
   void shouldReturnUserFieldsAndNewCredentialsWhenPasswordChanges() throws Exception {
     // Arrange
     final UUID userId = UUID.randomUUID();
-    final Instant agora = Instant.now();
-    final Usuario u =
-        new Usuario(
-            userId, "Me", "me@t.com", "hashNovo", PerfilUsuario.OPERADOR, true, agora, agora);
+    final Usuario u = usuario(userId);
     final AlterarSenhaPropriaUseCase.Input entrada =
-        new AlterarSenhaPropriaUseCase.Input(userId, "senhaAtual", "senhaNova");
+        new AlterarSenhaPropriaUseCase.Input(userId, SENHA_ATUAL, SENHA_NOVA);
     when(alterarSenhaUseCase.execute(entrada))
         .thenReturn(new AlterarSenhaPropriaUseCase.Output(u, "novo-acesso", "nova-renovacao"));
 
     // Act
-    final var resposta =
-        mockMvc.perform(
-            patch("/api/usuarios/me/senha")
-                .with(user(userId.toString()))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(
-                    objectMapper.writeValueAsString(
-                        new AlterarSenhaRequest("senhaAtual", "senhaNova"))));
+    final var resposta = trocarSenha(userId);
 
     // Assert
     resposta
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.id").value(userId.toString()))
-        .andExpect(jsonPath("$.nome").value(u.getNome()))
-        .andExpect(jsonPath("$.email").value(u.getEmail()))
-        .andExpect(jsonPath("$.perfil").value(u.getPerfil().name()))
-        .andExpect(jsonPath("$.ativo").value(u.isAtivo()))
-        .andExpect(jsonPath("$.criadoEm").exists())
-        .andExpect(jsonPath("$.atualizadoEm").exists())
-        .andExpect(jsonPath("$.token").value("novo-acesso"))
-        .andExpect(jsonPath("$.refreshToken").value("nova-renovacao"));
+        .andExpect(
+            content()
+                .json(
+                    objectMapper.writeValueAsString(
+                        new SenhaAlteradaResponse(
+                            userId,
+                            u.getNome(),
+                            u.getEmail(),
+                            u.getPerfil().name(),
+                            u.isAtivo(),
+                            u.getCriadoEm(),
+                            u.getAtualizadoEm(),
+                            "novo-acesso",
+                            "nova-renovacao")),
+                    true));
+    verify(alterarSenhaUseCase, times(1)).execute(entrada);
+    verifyNoMoreInteractions(alterarSenhaUseCase);
+  }
+
+  @Test
+  void shouldCloseLiveConnectionsOfTheUserWhenPasswordChanges() throws Exception {
+    // Arrange
+    final UUID userId = UUID.randomUUID();
+    final AlterarSenhaPropriaUseCase.Input entrada =
+        new AlterarSenhaPropriaUseCase.Input(userId, SENHA_ATUAL, SENHA_NOVA);
+    when(alterarSenhaUseCase.execute(entrada))
+        .thenReturn(
+            new AlterarSenhaPropriaUseCase.Output(
+                usuario(userId), "novo-acesso", "nova-renovacao"));
+
+    // Act
+    trocarSenha(userId);
+
+    // Assert
     verify(alterarSenhaUseCase, times(1)).execute(entrada);
     verify(eventPublisher, times(1)).encerrarConexoes(userId);
     verifyNoMoreInteractions(alterarSenhaUseCase, eventPublisher);

@@ -214,41 +214,6 @@ class GerenciarResponsaveisUseCaseTest {
   }
 
   @Test
-  void deveGerenciarResponsaveisComSucesso() {
-    final UUID gestorId = UUID.randomUUID();
-    final Usuario gestor = criarUsuario("Gestor", PerfilUsuario.GESTOR, true);
-    final Solicitacao sol = criarSolicitacao(StatusSolicitacao.EM_ANDAMENTO);
-
-    final Usuario respMantido = criarUsuario("Mantido", PerfilUsuario.OPERADOR, true);
-    final Usuario respRemovido = criarUsuario("Removido", PerfilUsuario.OPERADOR, true);
-    final Usuario respAdicionado = criarUsuario("Adicionado", PerfilUsuario.OPERADOR, true);
-
-    final SolicitacaoAtribuicao atrMantido =
-        SolicitacaoAtribuicao.criar(sol.getId(), respMantido.getId(), gestorId, Instant.now());
-    final SolicitacaoAtribuicao atrRemovido =
-        SolicitacaoAtribuicao.criar(sol.getId(), respRemovido.getId(), gestorId, Instant.now());
-
-    when(usuarioRepository.findById(gestorId)).thenReturn(Optional.of(gestor));
-    when(solicitacaoRepository.findById(sol.getId())).thenReturn(Optional.of(sol));
-    when(usuarioRepository.findAllByIdIn(any())).thenReturn(List.of(respMantido, respAdicionado));
-    when(atribuicaoRepository.findBySolicitacaoId(sol.getId()))
-        .thenReturn(List.of(atrMantido, atrRemovido));
-    when(usuarioRepository.findById(respRemovido.getId())).thenReturn(Optional.of(respRemovido));
-
-    final var result =
-        useCase.execute(
-            new GerenciarResponsaveisUseCase.Input(
-                sol.getId(), List.of(respMantido.getId(), respAdicionado.getId()), gestorId));
-
-    assertNotNull(result);
-    assertEquals(sol.getId(), result.solicitacao().getId());
-
-    verify(atribuicaoRepository).save(argThat(SolicitacaoAtribuicao::isAtiva)); // Novo adicionado
-    verify(atribuicaoRepository).save(argThat(a -> !a.isAtiva())); // Removido
-    verify(atividadeRepository, times(2)).save(any());
-  }
-
-  @Test
   void shouldReturnRemovedResponsaveisWhenSomeoneLeavesTheSolicitacao() {
     // Arrange
     final UUID gestorId = UUID.randomUUID();

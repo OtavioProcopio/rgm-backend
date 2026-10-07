@@ -16,7 +16,7 @@ class PoliticaSenhaTest {
       "Senha deve ter no minimo " + PoliticaSenha.TAMANHO_MINIMO + " caracteres";
 
   @Test
-  void shouldRequireEightCharactersAsMinimum() {
+  void shouldBeEightCharactersWhenMinimumLengthIsRead() {
     // Arrange
     final int esperado = 8;
 

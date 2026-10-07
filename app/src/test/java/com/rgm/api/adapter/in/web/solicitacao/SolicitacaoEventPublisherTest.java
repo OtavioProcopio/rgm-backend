@@ -137,6 +137,24 @@ class SolicitacaoEventPublisherTest {
   }
 
   @Test
+  void shouldSkipTheEventWithoutFailingWhenRecipientsCannotBeResolved() throws IOException {
+    // Arrange
+    final UUID usuarioId = UUID.randomUUID();
+    final SseEmitter emitter = conectar(usuarioId);
+    final var entrada = entrada(Set.of(usuarioId), Set.of());
+    when(resolverDestinatarios.execute(entrada))
+        .thenThrow(new IllegalStateException("banco indisponivel"));
+
+    // Act
+    publisher.publish(TIPO, DADOS, solicitacaoId);
+
+    // Assert
+    verify(resolverDestinatarios, times(1)).execute(entrada);
+    verificarRegistroDeCallbacks(emitter);
+    verifyNoMoreInteractions(resolverDestinatarios, emitter);
+  }
+
+  @Test
   void shouldDropConnectionWhenSendingEventFails() throws IOException {
     // Arrange
     final UUID usuarioId = UUID.randomUUID();

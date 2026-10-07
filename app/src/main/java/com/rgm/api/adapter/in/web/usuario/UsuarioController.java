@@ -13,7 +13,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -49,7 +48,8 @@ public class UsuarioController {
     return ResponseEntity.ok(UsuarioResponse.from(usuario));
   }
 
-  @Transactional
+  // Sem transacao no controller: as conexoes de tempo real so podem cair depois que a senha
+  // nova estiver gravada, senao o token antigo reconecta antes do commit.
   @PatchMapping("/me/senha")
   public ResponseEntity<SenhaAlteradaResponse> alterarSenha(
       @Valid @RequestBody final AlterarSenhaRequest request, final Authentication authentication) {

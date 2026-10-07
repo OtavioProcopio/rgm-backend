@@ -60,17 +60,60 @@ class AlterarSenhaPropriaUseCaseTest {
     verifyNoMoreInteractions(usuarioRepository, passwordHasher, tokenIssuer);
   }
 
-  @Test
-  void shouldSaveNewHashAndReturnNewCredentialsWhenPasswordChanges() {
-    // Arrange
-    final Usuario usuario = criarUsuario();
+  private Usuario verificarTrocaEObterSalvo(final Usuario usuario) {
     final ArgumentCaptor<Usuario> salvo = ArgumentCaptor.forClass(Usuario.class);
+    verify(usuarioRepository, times(1)).findById(usuario.getId());
+    verify(passwordHasher, times(1)).matches(SENHA_ATUAL, usuario.getSenhaHash());
+    verify(passwordHasher, times(1)).hash(NOVA_SENHA);
+    verify(usuarioRepository, times(1)).save(salvo.capture());
+    verify(tokenIssuer, times(1)).issue(salvo.getValue());
+    verify(tokenIssuer, times(1)).issueRefreshToken(salvo.getValue());
+    verificarSemMaisChamadas();
+    return salvo.getValue();
+  }
+
+  private void prepararTroca(final Usuario usuario) {
     when(usuarioRepository.findById(usuario.getId())).thenReturn(Optional.of(usuario));
     when(passwordHasher.matches(SENHA_ATUAL, usuario.getSenhaHash())).thenReturn(true);
     when(passwordHasher.hash(NOVA_SENHA)).thenReturn("novaSenhaHash");
     when(usuarioRepository.save(any(Usuario.class))).thenAnswer(inv -> inv.getArgument(0));
     when(tokenIssuer.issue(any(Usuario.class))).thenReturn("novo-acesso");
     when(tokenIssuer.issueRefreshToken(any(Usuario.class))).thenReturn("nova-renovacao");
+  }
+
+  @Test
+  void shouldSaveTheNewHashWhenPasswordChanges() {
+    // Arrange
+    final Usuario usuario = criarUsuario();
+    prepararTroca(usuario);
+
+    // Act
+    useCase.execute(new AlterarSenhaPropriaUseCase.Input(usuario.getId(), SENHA_ATUAL, NOVA_SENHA));
+
+    // Assert
+    assertEquals("novaSenhaHash", verificarTrocaEObterSalvo(usuario).getSenhaHash());
+  }
+
+  @Test
+  void shouldInvalidatePreviousCredentialsWhenPasswordChanges() {
+    // Arrange
+    final Usuario usuario = criarUsuario();
+    prepararTroca(usuario);
+
+    // Act
+    useCase.execute(new AlterarSenhaPropriaUseCase.Input(usuario.getId(), SENHA_ATUAL, NOVA_SENHA));
+
+    // Assert
+    assertEquals(
+        usuario.getVersaoCredencial() + 1,
+        verificarTrocaEObterSalvo(usuario).getVersaoCredencial());
+  }
+
+  @Test
+  void shouldReturnCredentialsIssuedForTheSavedUserWhenPasswordChanges() {
+    // Arrange
+    final Usuario usuario = criarUsuario();
+    prepararTroca(usuario);
 
     // Act
     final AlterarSenhaPropriaUseCase.Output resultado =
@@ -78,18 +121,10 @@ class AlterarSenhaPropriaUseCaseTest {
             new AlterarSenhaPropriaUseCase.Input(usuario.getId(), SENHA_ATUAL, NOVA_SENHA));
 
     // Assert
-    verify(usuarioRepository, times(1)).findById(usuario.getId());
-    verify(passwordHasher, times(1)).matches(SENHA_ATUAL, usuario.getSenhaHash());
-    verify(passwordHasher, times(1)).hash(NOVA_SENHA);
-    verify(usuarioRepository, times(1)).save(salvo.capture());
-    verify(tokenIssuer, times(1)).issue(salvo.getValue());
-    verify(tokenIssuer, times(1)).issueRefreshToken(salvo.getValue());
-    assertEquals("novaSenhaHash", salvo.getValue().getSenhaHash());
-    assertEquals(usuario.getVersaoCredencial() + 1, salvo.getValue().getVersaoCredencial());
     assertEquals(
-        new AlterarSenhaPropriaUseCase.Output(salvo.getValue(), "novo-acesso", "nova-renovacao"),
+        new AlterarSenhaPropriaUseCase.Output(
+            verificarTrocaEObterSalvo(usuario), "novo-acesso", "nova-renovacao"),
         resultado);
-    verificarSemMaisChamadas();
   }
 
   @Test

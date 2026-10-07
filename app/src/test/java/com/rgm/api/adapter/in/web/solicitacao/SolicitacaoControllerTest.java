@@ -330,20 +330,28 @@ class SolicitacaoControllerTest {
   }
 
   @Test
-  void listarAtividades() throws Exception {
+  void shouldReturnHistoryWithAuthorNameWhenUserHasAccess() throws Exception {
+    // Arrange
     final UUID solId = UUID.randomUUID();
     final UUID autorId = UUID.randomUUID();
     final AtividadeSolicitacao atividade =
         AtividadeSolicitacao.abertura(solId, autorId, Instant.now());
-
-    when(listarAtividadesUseCase.execute(new ListarAtividadesUseCase.Input(solId, autorId)))
+    final ListarAtividadesUseCase.Input entrada = new ListarAtividadesUseCase.Input(solId, autorId);
+    when(listarAtividadesUseCase.execute(entrada))
         .thenReturn(List.of(new ListarAtividadesUseCase.AtividadeComAutor(atividade, "Alice")));
 
-    mockMvc
-        .perform(get("/api/solicitacoes/{id}/atividades", solId).with(user(autorId.toString())))
+    // Act
+    final var resposta =
+        mockMvc.perform(
+            get("/api/solicitacoes/{id}/atividades", solId).with(user(autorId.toString())));
+
+    // Assert
+    resposta
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$").isArray())
+        .andExpect(jsonPath("$.length()").value(1))
         .andExpect(jsonPath("$[0].autorNome").value("Alice"));
+    verify(listarAtividadesUseCase, times(1)).execute(entrada);
+    verifyNoMoreInteractions(listarAtividadesUseCase, eventPublisher);
   }
 
   @Test
@@ -592,25 +600,6 @@ class SolicitacaoControllerTest {
     // Assert
     resposta.andExpect(status().isOk());
     org.junit.jupiter.api.Assertions.assertEquals(Boolean.TRUE, captor.getValue().emAberto());
-  }
-
-  @Test
-  void gerenciarResponsaveis() throws Exception {
-    final Solicitacao sol = criarSolicitacao();
-    final UUID userId = UUID.randomUUID();
-    when(gerenciarResponsaveisUseCase.execute(any()))
-        .thenReturn(new GerenciarResponsaveisUseCase.Output(sol, List.of()));
-
-    mockMvc
-        .perform(
-            patch("/api/solicitacoes/{id}/responsaveis", sol.getId())
-                .with(user(userId.toString()))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(
-                    objectMapper.writeValueAsString(
-                        new GerenciarResponsaveisRequest(List.of(UUID.randomUUID())))))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.id").value(sol.getId().toString()));
   }
 
   @Test

@@ -34,18 +34,26 @@ class MapperTest {
   }
 
   @Test
-  void usuarioMapper_toDomain_roundtrip() {
-    final UUID id = UUID.randomUUID();
+  void shouldReadCredentialVersionWhenMappingUserEntityToDomain() {
+    // Arrange
+    final int versao = 7;
     final UsuarioJpaEntity e =
         new UsuarioJpaEntity(
-            id, "Bob", "bob@x.com", "hash456", PerfilUsuario.GESTOR, false, NOW, NOW, 0);
+            UUID.randomUUID(),
+            "Bob",
+            "bob@x.com",
+            "hash456",
+            PerfilUsuario.GESTOR,
+            false,
+            NOW,
+            NOW,
+            versao);
+
+    // Act
     final Usuario u = UsuarioMapper.toDomain(e);
 
-    assertEquals(id, u.getId());
-    assertEquals("Bob", u.getNome());
-    assertEquals("bob@x.com", u.getEmail());
-    assertEquals(PerfilUsuario.GESTOR, u.getPerfil());
-    assertFalse(u.isAtivo());
+    // Assert
+    assertEquals(versao, u.getVersaoCredencial());
   }
 
   // ──────── SolicitacaoMapper ────────

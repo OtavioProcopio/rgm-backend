@@ -29,26 +29,6 @@ class RefreshTokenUseCaseTest {
   }
 
   @Test
-  void deveRefreshComSucesso() {
-    final UUID userId = UUID.randomUUID();
-    final Instant agora = Instant.now();
-    final Usuario usuario =
-        new Usuario(userId, "Joao", "j@t.com", "hash", PerfilUsuario.OPERADOR, true, agora, agora);
-
-    when(tokenIssuer.validateRefreshToken("old-refresh"))
-        .thenReturn(new CredencialToken(userId, 0));
-    when(usuarioRepository.findById(userId)).thenReturn(Optional.of(usuario));
-    when(tokenIssuer.issue(usuario)).thenReturn("new-access");
-    when(tokenIssuer.issueRefreshToken(usuario)).thenReturn("new-refresh");
-
-    final RefreshTokenUseCase.Output output =
-        useCase.execute(new RefreshTokenUseCase.Input("old-refresh"));
-
-    assertEquals("new-access", output.token());
-    assertEquals("new-refresh", output.refreshToken());
-  }
-
-  @Test
   void deveFalharComTokenInvalido() {
     when(tokenIssuer.validateRefreshToken("bad")).thenThrow(new RuntimeException("invalido"));
 
@@ -57,18 +37,27 @@ class RefreshTokenUseCaseTest {
   }
 
   @Test
-  void deveFalharComUsuarioInativo() {
+  void shouldRejectRefreshWhenUserIsInactive() {
+    // Arrange
     final UUID userId = UUID.randomUUID();
     final Instant agora = Instant.now();
     final Usuario inativo =
         new Usuario(userId, "Joao", "j@t.com", "hash", PerfilUsuario.OPERADOR, false, agora, agora);
-
-    when(tokenIssuer.validateRefreshToken("token")).thenReturn(new CredencialToken(userId, 0));
+    when(tokenIssuer.validateRefreshToken("token"))
+        .thenReturn(new CredencialToken(userId, inativo.getVersaoCredencial()));
     when(usuarioRepository.findById(userId)).thenReturn(Optional.of(inativo));
 
-    assertThrows(
-        NaoAutorizadoException.class,
-        () -> useCase.execute(new RefreshTokenUseCase.Input("token")));
+    // Act
+    final NaoAutorizadoException erro =
+        assertThrows(
+            NaoAutorizadoException.class,
+            () -> useCase.execute(new RefreshTokenUseCase.Input("token")));
+
+    // Assert
+    assertEquals("Usuario inativo", erro.getMessage());
+    verify(tokenIssuer, times(1)).validateRefreshToken("token");
+    verify(usuarioRepository, times(1)).findById(userId);
+    verifyNoMoreInteractions(tokenIssuer, usuarioRepository);
   }
 
   private static Usuario comVersao(final UUID id, final int versao) {

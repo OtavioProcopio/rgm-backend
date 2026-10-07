@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -190,27 +189,30 @@ class SolicitacaoRepositoryAdapterTest {
   }
 
   @Test
-  void findByFilters_retornaPaginado() {
+  void shouldConverterEnumsEmTextoEMapearAPaginaWhenFiltraPorStatusETipo() {
+    // Arrange
     final SolicitacaoJpaEntity e = criarEntity();
-    final Page<SolicitacaoJpaEntity> page = new PageImpl<>(List.of(e), PageRequest.of(0, 10), 1);
+    final var pageable = PageRequest.of(0, 10, Sort.by(Sort.Direction.ASC, "criada_em"));
+    final Page<SolicitacaoJpaEntity> page = new PageImpl<>(List.of(e), pageable, 1);
     when(jpa.findByFilters(
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            anyBoolean(),
-            any(),
-            any()))
+            StatusSolicitacao.A_FAZER.name(),
+            null,
+            TipoSolicitacao.REPARO.name(),
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            false,
+            null,
+            pageable))
         .thenReturn(page);
 
+    // Act
     final PageResult<Solicitacao> result =
         adapter.findByFilters(
             StatusSolicitacao.A_FAZER,
@@ -230,36 +232,26 @@ class SolicitacaoRepositoryAdapterTest {
             0,
             10);
 
-    assertEquals(1, result.content().size());
-  }
-
-  @Test
-  void findByFilters_comNulos_retornaPaginado() {
-    final Page<SolicitacaoJpaEntity> page = new PageImpl<>(List.of(), PageRequest.of(0, 10), 0);
-    when(jpa.findByFilters(
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            anyBoolean(),
-            any(),
-            any()))
-        .thenReturn(page);
-
-    final PageResult<Solicitacao> result =
-        adapter.findByFilters(
-            null, null, null, null, null, null, null, null, null, null, null, null, false, null, 0,
-            10);
-
-    assertEquals(0, result.content().size());
+    // Assert
+    assertEquals(List.of(e.getId()), result.content().stream().map(Solicitacao::getId).toList());
+    verify(jpa, times(1))
+        .findByFilters(
+            StatusSolicitacao.A_FAZER.name(),
+            null,
+            TipoSolicitacao.REPARO.name(),
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            false,
+            null,
+            pageable);
+    verifyNoMoreInteractions(jpa);
   }
 
   @Test
@@ -449,33 +441,26 @@ class SolicitacaoRepositoryAdapterTest {
   @Test
   void shouldRepassarEmAbertoAoJpaWhenFiltroVemLigado() {
     // Arrange
-    final Page<SolicitacaoJpaEntity> page = new PageImpl<>(List.of(), PageRequest.of(0, 10), 0);
-    final org.mockito.ArgumentCaptor<Boolean> emAberto =
-        org.mockito.ArgumentCaptor.forClass(Boolean.class);
+    final var pageable = PageRequest.of(0, 10, Sort.by(Sort.Direction.ASC, "criada_em"));
+    final Page<SolicitacaoJpaEntity> page = new PageImpl<>(List.of(), pageable, 0);
     when(jpa.findByFilters(
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            emAberto.capture(),
-            any(),
-            any()))
+            null, null, null, null, null, null, null, null, null, null, null, null, true, null,
+            pageable))
         .thenReturn(page);
 
     // Act
-    adapter.findByFilters(
-        null, null, null, null, null, null, null, null, null, null, null, null, true, null, 0, 10);
+    final PageResult<Solicitacao> result =
+        adapter.findByFilters(
+            null, null, null, null, null, null, null, null, null, null, null, null, true, null, 0,
+            10);
 
     // Assert
-    assertEquals(Boolean.TRUE, emAberto.getValue());
+    assertEquals(new PageResult<>(List.of(), 0, 10, 0, 0), result);
+    verify(jpa, times(1))
+        .findByFilters(
+            null, null, null, null, null, null, null, null, null, null, null, null, true, null,
+            pageable);
+    verifyNoMoreInteractions(jpa);
   }
 
   @Test

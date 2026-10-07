@@ -45,53 +45,87 @@ class GerenciarUsuariosUseCaseTest {
         agora);
   }
 
+  private static final String SENHA_VALIDA = "s".repeat(PoliticaSenha.TAMANHO_MINIMO);
+
   @Test
-  void deveCriarUsuarioComSucesso() {
+  void shouldSaveUserWithHashedPasswordWhenAdminCreatesInternalUser() {
+    // Arrange
     final Usuario admin = criarAdmin();
     when(usuarioRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
     when(usuarioRepository.existsByEmail("novo@test.com")).thenReturn(false);
-    when(passwordHasher.hash("senha-de-8")).thenReturn("hashed");
-    when(usuarioRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(passwordHasher.hash(SENHA_VALIDA)).thenReturn("hashed");
+    when(usuarioRepository.save(any(Usuario.class))).thenAnswer(inv -> inv.getArgument(0));
 
+    // Act
     final Usuario resultado =
         useCase.criar(
             new GerenciarUsuariosUseCase.CriarInput(
-                "Novo", "novo@test.com", "senha-de-8", PerfilUsuario.OPERADOR, admin.getId()));
+                "Novo", "novo@test.com", SENHA_VALIDA, PerfilUsuario.OPERADOR, admin.getId()));
 
-    assertNotNull(resultado);
-    assertEquals("Novo", resultado.getNome());
-    assertEquals(PerfilUsuario.OPERADOR, resultado.getPerfil());
+    // Assert
+    assertEquals("hashed", resultado.getSenhaHash());
+    verify(usuarioRepository, times(1)).findById(admin.getId());
+    verify(usuarioRepository, times(1)).existsByEmail("novo@test.com");
+    verify(passwordHasher, times(1)).hash(SENHA_VALIDA);
+    verify(usuarioRepository, times(1)).save(resultado);
+    verifyNoMoreInteractions(usuarioRepository, passwordHasher);
   }
 
   @Test
-  void deveFalharComEmailDuplicado() {
+  void shouldRejectCreationWhenEmailIsAlreadyRegistered() {
+    // Arrange
     final Usuario admin = criarAdmin();
     when(usuarioRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
     when(usuarioRepository.existsByEmail("dup@test.com")).thenReturn(true);
 
-    assertThrows(
-        BusinessRuleException.class,
-        () ->
-            useCase.criar(
-                new GerenciarUsuariosUseCase.CriarInput(
-                    "Dup", "dup@test.com", "senha-de-8", PerfilUsuario.OPERADOR, admin.getId())));
+    // Act
+    final BusinessRuleException erro =
+        assertThrows(
+            BusinessRuleException.class,
+            () ->
+                useCase.criar(
+                    new GerenciarUsuariosUseCase.CriarInput(
+                        "Dup",
+                        "dup@test.com",
+                        SENHA_VALIDA,
+                        PerfilUsuario.OPERADOR,
+                        admin.getId())));
+
+    // Assert
+    assertEquals("Email ja cadastrado", erro.getMessage());
+    verify(usuarioRepository, times(1)).findById(admin.getId());
+    verify(usuarioRepository, times(1)).existsByEmail("dup@test.com");
+    verifyNoMoreInteractions(usuarioRepository, passwordHasher);
   }
 
   @Test
-  void deveFalharComPerfilExterno() {
+  void shouldRejectCreationWhenProfileIsExternal() {
+    // Arrange
     final Usuario admin = criarAdmin();
     when(usuarioRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
 
-    assertThrows(
-        BusinessRuleException.class,
-        () ->
-            useCase.criar(
-                new GerenciarUsuariosUseCase.CriarInput(
-                    "Ext", "ext@test.com", "senha-de-8", PerfilUsuario.EXTERNO, admin.getId())));
+    // Act
+    final BusinessRuleException erro =
+        assertThrows(
+            BusinessRuleException.class,
+            () ->
+                useCase.criar(
+                    new GerenciarUsuariosUseCase.CriarInput(
+                        "Ext",
+                        "ext@test.com",
+                        SENHA_VALIDA,
+                        PerfilUsuario.EXTERNO,
+                        admin.getId())));
+
+    // Assert
+    assertEquals("Use o caso de uso de cadastrar prestador externo", erro.getMessage());
+    verify(usuarioRepository, times(1)).findById(admin.getId());
+    verifyNoMoreInteractions(usuarioRepository, passwordHasher);
   }
 
   @Test
-  void deveFalharSeNaoAdmin() {
+  void shouldRejectCreationWhenRequesterIsNotAdministrator() {
+    // Arrange
     final Instant agora = Instant.now();
     final Usuario gestor =
         new Usuario(
@@ -105,16 +139,23 @@ class GerenciarUsuariosUseCaseTest {
             agora);
     when(usuarioRepository.findById(gestor.getId())).thenReturn(Optional.of(gestor));
 
-    assertThrows(
-        NaoAutorizadoException.class,
-        () ->
-            useCase.criar(
-                new GerenciarUsuariosUseCase.CriarInput(
-                    "Novo",
-                    "novo@test.com",
-                    "senha-de-8",
-                    PerfilUsuario.OPERADOR,
-                    gestor.getId())));
+    // Act
+    final NaoAutorizadoException erro =
+        assertThrows(
+            NaoAutorizadoException.class,
+            () ->
+                useCase.criar(
+                    new GerenciarUsuariosUseCase.CriarInput(
+                        "Novo",
+                        "novo@test.com",
+                        SENHA_VALIDA,
+                        PerfilUsuario.OPERADOR,
+                        gestor.getId())));
+
+    // Assert
+    assertEquals("Somente ADMINISTRADOR pode gerenciar usuarios", erro.getMessage());
+    verify(usuarioRepository, times(1)).findById(gestor.getId());
+    verifyNoMoreInteractions(usuarioRepository, passwordHasher);
   }
 
   @Test
@@ -318,16 +359,24 @@ class GerenciarUsuariosUseCaseTest {
   }
 
   @Test
-  void deveFalharAoRedefinirSenhaSeVazia() {
+  void shouldRejectResetWhenPasswordIsBlank() {
+    // Arrange
     final Usuario admin = criarAdmin();
     when(usuarioRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
 
-    assertThrows(
-        ValidationException.class,
-        () ->
-            useCase.redefinirSenha(
-                new GerenciarUsuariosUseCase.RedefinirSenhaInput(
-                    UUID.randomUUID(), "  ", admin.getId())));
+    // Act
+    final ValidationException erro =
+        assertThrows(
+            ValidationException.class,
+            () ->
+                useCase.redefinirSenha(
+                    new GerenciarUsuariosUseCase.RedefinirSenhaInput(
+                        UUID.randomUUID(), "  ", admin.getId())));
+
+    // Assert
+    assertEquals(MENSAGEM_SENHA, erro.getMessage());
+    verify(usuarioRepository, times(1)).findById(admin.getId());
+    verifyNoMoreInteractions(usuarioRepository, passwordHasher);
   }
 
   private static final String MENSAGEM_SENHA =

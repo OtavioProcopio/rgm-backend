@@ -51,19 +51,20 @@ class ResolverDestinatariosEventoUseCaseTest {
         UUID.randomUUID(), solicitacaoId, usuarioId, UUID.randomUUID(), AGORA, removidoEm);
   }
 
-  /** Prepara os tres repositorios para uma solicitacao e devolve o resultado do caso de uso. */
-  private Set<UUID> resolver(
+  private void preparar(
       final Solicitacao sol,
       final List<SolicitacaoAtribuicao> atribuicoes,
-      final Usuario conectado,
-      final Set<UUID> comAcessoAnterior) {
+      final Usuario conectado) {
     when(solicitacaoRepository.findById(sol.getId())).thenReturn(Optional.of(sol));
     when(atribuicaoRepository.findBySolicitacaoId(sol.getId())).thenReturn(atribuicoes);
     when(usuarioRepository.findAllByIdIn(List.of(conectado.getId())))
         .thenReturn(List.of(conectado));
-    return useCase.execute(
-        new ResolverDestinatariosEventoUseCase.Input(
-            sol.getId(), Set.of(conectado.getId()), comAcessoAnterior));
+  }
+
+  private static ResolverDestinatariosEventoUseCase.Input entrada(
+      final Solicitacao sol, final Usuario conectado, final Set<UUID> comAcessoAnterior) {
+    return new ResolverDestinatariosEventoUseCase.Input(
+        sol.getId(), Set.of(conectado.getId()), comAcessoAnterior);
   }
 
   private void verificarLeituras(final Solicitacao sol, final Usuario conectado) {
@@ -79,8 +80,10 @@ class ResolverDestinatariosEventoUseCaseTest {
     final Usuario gestor = usuario(PerfilUsuario.GESTOR);
     final Solicitacao sol = abertaPor(UUID.randomUUID());
 
+    preparar(sol, List.of(), gestor);
+
     // Act
-    final Set<UUID> destinatarios = resolver(sol, List.of(), gestor, Set.of());
+    final Set<UUID> destinatarios = useCase.execute(entrada(sol, gestor, Set.of()));
 
     // Assert
     assertEquals(Set.of(gestor.getId()), destinatarios);
@@ -93,8 +96,10 @@ class ResolverDestinatariosEventoUseCaseTest {
     final Usuario operador = usuario(PerfilUsuario.OPERADOR);
     final Solicitacao sol = abertaPor(operador.getId());
 
+    preparar(sol, List.of(), operador);
+
     // Act
-    final Set<UUID> destinatarios = resolver(sol, List.of(), operador, Set.of());
+    final Set<UUID> destinatarios = useCase.execute(entrada(sol, operador, Set.of()));
 
     // Assert
     assertEquals(Set.of(operador.getId()), destinatarios);
@@ -109,8 +114,10 @@ class ResolverDestinatariosEventoUseCaseTest {
     final List<SolicitacaoAtribuicao> atribuicoes =
         List.of(atribuicao(sol.getId(), operador.getId(), null));
 
+    preparar(sol, atribuicoes, operador);
+
     // Act
-    final Set<UUID> destinatarios = resolver(sol, atribuicoes, operador, Set.of());
+    final Set<UUID> destinatarios = useCase.execute(entrada(sol, operador, Set.of()));
 
     // Assert
     assertEquals(Set.of(operador.getId()), destinatarios);
@@ -125,8 +132,10 @@ class ResolverDestinatariosEventoUseCaseTest {
     final List<SolicitacaoAtribuicao> atribuicoes =
         List.of(atribuicao(sol.getId(), UUID.randomUUID(), null));
 
+    preparar(sol, atribuicoes, operador);
+
     // Act
-    final Set<UUID> destinatarios = resolver(sol, atribuicoes, operador, Set.of());
+    final Set<UUID> destinatarios = useCase.execute(entrada(sol, operador, Set.of()));
 
     // Assert
     assertEquals(Set.of(), destinatarios);
@@ -141,8 +150,10 @@ class ResolverDestinatariosEventoUseCaseTest {
     final List<SolicitacaoAtribuicao> atribuicoes =
         List.of(atribuicao(sol.getId(), operador.getId(), AGORA));
 
+    preparar(sol, atribuicoes, operador);
+
     // Act
-    final Set<UUID> destinatarios = resolver(sol, atribuicoes, operador, Set.of());
+    final Set<UUID> destinatarios = useCase.execute(entrada(sol, operador, Set.of()));
 
     // Assert
     assertEquals(Set.of(), destinatarios);
@@ -157,8 +168,11 @@ class ResolverDestinatariosEventoUseCaseTest {
     final List<SolicitacaoAtribuicao> atribuicoes =
         List.of(atribuicao(sol.getId(), operador.getId(), AGORA));
 
+    preparar(sol, atribuicoes, operador);
+
     // Act
-    final Set<UUID> destinatarios = resolver(sol, atribuicoes, operador, Set.of(operador.getId()));
+    final Set<UUID> destinatarios =
+        useCase.execute(entrada(sol, operador, Set.of(operador.getId())));
 
     // Assert
     assertEquals(Set.of(operador.getId()), destinatarios);

@@ -15,6 +15,12 @@ public final class AcessoSolicitacao {
 
   private AcessoSolicitacao() {}
 
+  /** Indica se o perfil do usuario le todas as solicitacoes, sem depender de vinculo com elas. */
+  public static boolean veTodas(final Usuario usuario) {
+    requireNonNull(usuario, "usuario");
+    return usuario.getPerfil().podeMoverQualquer();
+  }
+
   /** Indica se o usuario pode ler a solicitacao. */
   public static boolean podeVer(
       final Usuario usuario, final Solicitacao solicitacao, final BooleanSupplier estaAtribuido) {
@@ -22,7 +28,7 @@ public final class AcessoSolicitacao {
     requireNonNull(solicitacao, "solicitacao");
     requireNonNull(estaAtribuido, "estaAtribuido");
     return usuario.isAtivo()
-        && (usuario.getPerfil().podeMoverQualquer()
+        && (veTodas(usuario)
             || estaAtribuido.getAsBoolean()
             || usuario.getId().equals(solicitacao.getAbertaPorUsuarioId()));
   }

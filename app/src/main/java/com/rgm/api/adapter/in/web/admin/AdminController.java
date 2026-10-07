@@ -159,7 +159,8 @@ public class AdminController {
     return ResponseEntity.noContent().build();
   }
 
-  @Transactional
+  // Sem transacao no controller: as conexoes de tempo real so podem cair depois que a senha
+  // nova estiver gravada, senao o token antigo reconecta antes do commit.
   @PatchMapping("/usuarios/{id}/senha")
   public ResponseEntity<UsuarioResponse> redefinirSenha(
       @PathVariable final UUID id,

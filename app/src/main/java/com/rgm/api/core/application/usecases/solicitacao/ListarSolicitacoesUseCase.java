@@ -3,7 +3,6 @@ package com.rgm.api.core.application.usecases.solicitacao;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
 import com.rgm.api.core.domain.model.aggregates.Usuario;
-import com.rgm.api.core.domain.model.enums.PerfilUsuario;
 import com.rgm.api.core.domain.model.enums.PrioridadeSolicitacao;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
 import com.rgm.api.core.domain.model.enums.TipoFiltroData;
@@ -11,6 +10,7 @@ import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
 import com.rgm.api.core.domain.ports.repositories.PageResult;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
+import com.rgm.api.core.domain.validation.AcessoSolicitacao;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -99,9 +99,6 @@ public final class ListarSolicitacoesUseCase {
         usuarioRepository
             .findById(input.usuarioAutenticadoId())
             .orElseThrow(() -> new RecursoNaoEncontradoException("Usuario nao encontrado"));
-    if (usuario.getPerfil() == PerfilUsuario.OPERADOR) {
-      return input.usuarioAutenticadoId();
-    }
-    return null;
+    return AcessoSolicitacao.veTodas(usuario) ? null : input.usuarioAutenticadoId();
   }
 }

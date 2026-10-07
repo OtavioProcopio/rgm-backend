@@ -77,6 +77,33 @@ class AcessoSolicitacaoTest {
     verifyNoMoreInteractions(estaAtribuido);
   }
 
+  @ParameterizedTest
+  @EnumSource(
+      value = PerfilUsuario.class,
+      names = {"GESTOR", "ADMINISTRADOR"})
+  void shouldSeeEverySolicitacaoWhenProfileIsManagerOrAdministrator(final PerfilUsuario perfil) {
+    // Arrange
+    final Usuario usuario = usuario(perfil, true);
+
+    // Act
+    final boolean veTodas = AcessoSolicitacao.veTodas(usuario);
+
+    // Assert
+    assertTrue(veTodas);
+  }
+
+  @Test
+  void shouldNotSeeEverySolicitacaoWhenProfileIsOperator() {
+    // Arrange
+    final Usuario operador = usuario(PerfilUsuario.OPERADOR, true);
+
+    // Act
+    final boolean veTodas = AcessoSolicitacao.veTodas(operador);
+
+    // Assert
+    assertFalse(veTodas);
+  }
+
   @Test
   void shouldAllowReadingWhenOperatorIsAssigned() {
     // Arrange

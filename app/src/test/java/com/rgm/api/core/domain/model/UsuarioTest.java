@@ -128,7 +128,7 @@ class UsuarioTest {
   }
 
   @Test
-  void shouldRejectNegativeCredentialVersion() {
+  void shouldRejectCredentialVersionWhenNegative() {
     // Arrange
     final int versaoInvalida = -1;
 
