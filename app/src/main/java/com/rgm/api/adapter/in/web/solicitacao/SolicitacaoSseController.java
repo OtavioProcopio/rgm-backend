@@ -40,7 +40,8 @@ public class SolicitacaoSseController {
     publisher.addEmitter(usuario.getId(), emitter);
     try {
       emitter.send(SseEmitter.event().name("connected").data("ok"));
-    } catch (final IOException e) {
+    } catch (final IOException | IllegalStateException e) {
+      // IllegalStateException: a conexao foi encerrada entre o registro e o primeiro envio.
       log.debug("Falha ao enviar evento inicial SSE: {}", e.getMessage());
     }
     return emitter;

@@ -2,6 +2,9 @@ package com.rgm.api.adapter.in.web.solicitacao;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -56,6 +59,29 @@ class SolicitacaoSseControllerTest {
     // Arrange
     final Usuario usuario = usuario();
     when(autenticarAcessoUseCase.execute(TOKEN)).thenReturn(usuario);
+
+    // Act
+    final SseEmitter emitter = controller.subscribe(TOKEN);
+
+    // Assert
+    assertEquals(30L * 60L * 1000L, emitter.getTimeout());
+    verify(autenticarAcessoUseCase, times(1)).execute(TOKEN);
+    verify(publisher, times(1)).addEmitter(usuario.getId(), emitter);
+    verifyNoMoreInteractions(autenticarAcessoUseCase, publisher);
+  }
+
+  @Test
+  void shouldReturnTheEmitterWhenConnectionIsClosedBeforeTheFirstEvent() {
+    // Arrange
+    final Usuario usuario = usuario();
+    when(autenticarAcessoUseCase.execute(TOKEN)).thenReturn(usuario);
+    doAnswer(
+            chamada -> {
+              chamada.<SseEmitter>getArgument(1).complete();
+              return null;
+            })
+        .when(publisher)
+        .addEmitter(eq(usuario.getId()), any(SseEmitter.class));
 
     // Act
     final SseEmitter emitter = controller.subscribe(TOKEN);

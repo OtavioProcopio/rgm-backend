@@ -131,6 +131,23 @@ class GlobalExceptionHandlerTest {
   }
 
   @Test
+  void shouldAnswerConflictWhenRecordWasChangedBySomeoneElse() {
+    // Arrange
+    final var ex =
+        new org.springframework.orm.ObjectOptimisticLockingFailureException(
+            "Solicitacao", java.util.UUID.randomUUID());
+
+    // Act
+    final ResponseEntity<ErrorResponse> response = handler.handleOptimisticLock(ex);
+
+    // Assert
+    assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+    assertEquals(
+        "Este registro foi alterado por outro usuario. Recarregue e tente novamente.",
+        response.getBody().message());
+  }
+
+  @Test
   void handleMaxUploadSize_deveRetornar413() {
     final MaxUploadSizeExceededException ex = new MaxUploadSizeExceededException(1000L);
     final ResponseEntity<ErrorResponse> response = handler.handleMaxUploadSize(ex);
