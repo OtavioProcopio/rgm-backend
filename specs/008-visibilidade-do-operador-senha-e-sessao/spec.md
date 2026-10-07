@@ -20,21 +20,23 @@ especificação só, em 2026-10-07.
    própria solicitação antes da triagem fica inalcançável pela tela.
 2. O detalhe e o histórico não checam acesso: qualquer usuário autenticado lê qualquer
    solicitação pelo identificador. A listagem esconde o que o detalhe expõe.
+3. Toda mudança de solicitação é avisada em tempo real a todos os usuários conectados,
+   operadores incluídos, tenham ou não relação com ela.
 
 **Senha e sessão (#98).**
 
-3. A API aceita senha de 1 caractere na troca e na redefinição, e aceita criar usuário sem
+4. A API aceita senha de 1 caractere na troca e na redefinição, e aceita criar usuário sem
    senha nenhuma num perfil que faz login. O frontend exige 8, mas quem chama a API direto
    não passa por ele.
-4. Trocar ou redefinir a senha não encerra as sessões abertas: o acesso emitido antes
+5. Trocar ou redefinir a senha não encerra as sessões abertas: o acesso emitido antes
    continua valendo por até 24 horas e a renovação por até 7 dias. Depois de uma troca por
    suspeita de vazamento, quem tem a credencial antiga continua dentro.
-5. O perfil do usuário viaja dentro da credencial de acesso. Rebaixar um administrador só
+6. O perfil do usuário viaja dentro da credencial de acesso. Rebaixar um administrador só
    vale por completo quando a credencial dele expira.
 
 **Limites de texto (#109).**
 
-6. A API não limita o tamanho dos textos. Um título de solicitação com 256 caracteres
+7. A API não limita o tamanho dos textos. Um título de solicitação com 256 caracteres
    responde "Registro duplicado ou violação de integridade" (409), mandando o usuário
    procurar uma duplicata que não existe. Nos campos sem limite de armazenamento, um texto
    de qualquer tamanho é gravado.
@@ -57,7 +59,9 @@ imediato. Texto grande demais é recusado com uma mensagem que diz o limite.
 - Regras de composição de senha (maiúscula, número, símbolo) e histórico de senhas.
 - Mudar a regra de acesso às evidências, que já segue "abriu ou é responsável".
 - Mudar o que gestor e administrador enxergam.
-- Ajustes no frontend: texto do quadro vazio e marcação do card (rgm-frontend#122).
+- Ajustes no frontend: texto do quadro vazio e marcação do card (rgm-frontend#122), e
+  guardar as credenciais novas que a troca de senha passa a devolver (RF-19). Enquanto o
+  frontend não fizer o segundo, quem troca a própria senha volta ao login.
 - Cortar ou migrar textos já gravados que passem dos limites novos.
 
 ## Personas e cenários de uso
@@ -86,6 +90,8 @@ imediato. Texto grande demais é recusado com uma mensagem que diz o limite.
 | RF-05 | A consulta do histórico de uma solicitação deve seguir a mesma regra de RF-04 | obrigatório |
 | RF-06 | O relatório em PDF de solicitações deve trazer, para um operador, só as solicitações a que ele tem acesso | obrigatório |
 | RF-07 | A listagem, o detalhe e o histórico não devem mudar para gestor e administrador | obrigatório |
+| RF-18 | Um evento de tempo real sobre uma solicitação só deve ser entregue a um operador que tem acesso a ela (RF-01); gestor e administrador continuam recebendo todos | obrigatório |
+| RF-20 | Quando a mudança altera quem tem acesso (responsável atribuído ou removido), o evento deve ser entregue ao operador que tinha acesso antes da mudança ou que passa a ter depois dela | obrigatório |
 
 ### Senha e sessão
 
@@ -95,8 +101,11 @@ imediato. Texto grande demais é recusado com uma mensagem que diz o limite.
 | RF-09 | Criar usuário de perfil que faz login (operador, gestor, administrador) sem senha deve ser recusado; usuário externo continua podendo ser criado sem senha | obrigatório |
 | RF-10 | Criar e editar usuário devem recusar e-mail informado que não tenha formato de e-mail | obrigatório |
 | RF-11 | Depois que a senha de um usuário é trocada ou redefinida, toda credencial de acesso e de renovação emitida antes para ele deve ser recusada como "não autenticado" nas chamadas comuns, na abertura do tempo real e na renovação | obrigatório |
+| RF-21 | As conexões de tempo real já abertas de um usuário devem ser encerradas no momento em que a senha dele é trocada ou redefinida | obrigatório |
+| RF-19 | A troca da própria senha deve devolver credenciais novas de acesso e de renovação, válidas, para que a sessão que fez a troca continue; as demais sessões do usuário caem por RF-11 | obrigatório |
 | RF-12 | A credencial emitida no login feito depois da troca ou da redefinição deve ser aceita | obrigatório |
 | RF-13 | A permissão de cada chamada deve considerar o perfil atual do usuário, não o perfil que ele tinha quando a credencial foi emitida | obrigatório |
+| RF-22 | Mudar o perfil de um usuário não deve encerrar as sessões dele: as credenciais emitidas antes continuam aceitas, com o perfil novo | obrigatório |
 
 ### Limites de texto
 
@@ -197,6 +206,36 @@ Funcionalidade: Visibilidade do operador, senha e sessão seguras e limites de t
     Então recebe todas na lista
     E recebe o detalhe e o histórico de qualquer uma
 
+  Cenário: Operador não recebe evento de solicitação alheia
+    Dado um operador conectado ao tempo real
+    E uma solicitação que ele não abriu e da qual não é responsável
+    Quando essa solicitação muda de etapa
+    Então ele não recebe evento sobre ela
+
+  Cenário: Operador recebe evento da solicitação a que tem acesso
+    Dado um operador conectado ao tempo real
+    E uma solicitação que ele abriu
+    Quando essa solicitação muda de etapa
+    Então ele recebe o evento
+
+  Cenário: Operador removido de responsável recebe o evento da remoção
+    Dado um operador conectado ao tempo real
+    E uma solicitação aberta por outro usuário da qual ele é responsável
+    Quando ele é removido de responsável
+    Então ele recebe o evento dessa mudança
+    E não recebe os eventos seguintes dessa solicitação
+
+  Cenário: Operador que vira responsável recebe o evento da atribuição
+    Dado um operador conectado ao tempo real
+    E uma solicitação aberta por outro usuário, sem relação com ele
+    Quando ele é atribuído como responsável
+    Então ele recebe o evento dessa mudança
+
+  Cenário: Gestor recebe evento de qualquer solicitação
+    Dado um gestor conectado ao tempo real
+    Quando uma solicitação aberta por outro usuário muda de etapa
+    Então ele recebe o evento
+
   # Senha e sessão
 
   Esquema do Cenário: Senha curta é recusada
@@ -239,6 +278,28 @@ Funcionalidade: Visibilidade do operador, senha e sessão seguras e limites de t
       | redefinida por um administrador | uma chamada comum         |
       | redefinida por um administrador | a abertura do tempo real  |
       | redefinida por um administrador | a renovação da credencial |
+
+  Cenário: Quem troca a própria senha continua na sessão
+    Dado que um usuário entrou em dois dispositivos
+    Quando ele troca a própria senha em um deles
+    Então recebe credenciais novas
+    E uma chamada com a credencial nova é aceita
+    E uma chamada com a credencial do outro dispositivo recebe "não autenticado"
+
+  Esquema do Cenário: Conexão de tempo real aberta cai na troca de senha
+    Dado um usuário com uma conexão de tempo real aberta
+    Quando a senha dele é "<mudança>"
+    Então essa conexão é encerrada
+
+    Exemplos:
+      | mudança                         |
+      | trocada por ele                 |
+      | redefinida por um administrador |
+
+  Cenário: Mudar o perfil não desconecta
+    Dado que um operador entrou e depois teve o perfil alterado para "Gestor"
+    Quando ele faz uma chamada com a credencial que já tinha
+    Então a chamada é aceita
 
   Cenário: Login depois da troca funciona
     Dado que um usuário teve a senha redefinida
@@ -298,25 +359,21 @@ Funcionalidade: Visibilidade do operador, senha e sessão seguras e limites de t
 
 ## Ambiguidades
 
-1. **Regra de visibilidade (RF-01).** A #96 termina com "Decisão pendente: confirmar a regra
-   acima antes de implementar".
-   `[NECESSITA ESCLARECIMENTO: confirma que o operador vê a solicitação se a abriu ou se é responsável ativo, e que gestor e administrador veem todas?]`
-2. **Resposta para solicitação alheia (RF-04 e RF-05).** A #96 pede "acesso negado" (403).
-   Isso confirma a quem tenta que a solicitação existe; "não encontrado" (404) não confirma.
-   `[NECESSITA ESCLARECIMENTO: solicitação alheia responde "acesso negado" ou "não encontrado"?]`
-3. **Eventos em tempo real.** Hoje toda mudança de solicitação é enviada a todos os usuários
-   conectados, operadores incluídos. Com a regra nova, o operador não lê a solicitação
-   alheia, mas continua recebendo o aviso de que ela mudou.
-   `[NECESSITA ESCLARECIMENTO: os eventos de tempo real entram nesta feature (operador só recebe evento de solicitação a que tem acesso) ou ficam para depois?]`
-4. **Sessão de quem troca a própria senha (RF-11).** A regra derruba toda credencial emitida
-   antes da troca, inclusive a da sessão em que o usuário trocou a senha: ele seria mandado
-   de volta ao login logo depois de trocar.
-   `[NECESSITA ESCLARECIMENTO: quem troca a própria senha continua na sessão atual ou entra de novo?]`
-5. **Mudança de perfil e sessão (RF-13).** A #98 pede duas coisas: o perfil novo valer na
-   chamada seguinte e as credenciais antigas serem recusadas na mudança de perfil. A primeira
-   já resolve o rebaixamento; a segunda também desconecta o usuário a cada mudança de perfil.
-   A spec está escrita só com a primeira.
-   `[NECESSITA ESCLARECIMENTO: mudar o perfil de um usuário também deve desconectá-lo?]`
+1. **Regra de visibilidade (RF-01).** Decidido em 2026-10-07: o operador vê a solicitação
+   que abriu ou da qual é responsável ativo; gestor e administrador veem todas.
+2. **Resposta para solicitação alheia (RF-04 e RF-05).** Decidido em 2026-10-07: "acesso
+   negado" (403), como a #96 pede e como as evidências já respondem.
+3. **Eventos em tempo real (RF-18).** Decidido em 2026-10-07: entram nesta feature. O
+   operador só recebe evento de solicitação a que tem acesso.
+4. **Sessão de quem troca a própria senha (RF-19).** Decidido em 2026-10-07: continua na
+   sessão. A troca devolve credenciais novas; as outras sessões caem.
+5. **Mudança de perfil e sessão (RF-13 e RF-22).** Decidido em 2026-10-07: mudar o perfil
+   não desconecta. O perfil novo vale na chamada seguinte e as credenciais antigas seguem
+   aceitas. Diverge do segundo pedido da #98 nesse ponto, por decisão do usuário.
+6. **Evento quando o operador perde o acesso (RF-20).** Decidido em 2026-10-07: recebe esse
+   último evento. Vale "tinha acesso antes ou passa a ter depois".
+7. **Conexão de tempo real já aberta (RF-21).** Decidido em 2026-10-07: cai na hora em que
+   a senha é trocada ou redefinida.
 
 Decisões já tomadas, registradas aqui para não voltarem como dúvida:
 
@@ -335,3 +392,15 @@ Decisões já tomadas, registradas aqui para não voltarem como dúvida:
 - 0 respostas "registro duplicado" causadas por tamanho de texto.
 - 0 senhas com menos de 8 caracteres aceitas pela API.
 - Depois de uma redefinição de senha, 0 chamadas aceitas com credencial emitida antes dela.
+
+## Esclarecimentos
+
+| # | Pergunta | Resposta | Data |
+|---|---|---|---|
+| 1 | Qual é a regra de visibilidade do operador? | Abriu ou é responsável ativo; gestor e administrador veem todas | 2026-10-07 |
+| 2 | O que a API responde para solicitação alheia consultada pelo identificador? | Acesso negado (403) | 2026-10-07 |
+| 3 | Os eventos de tempo real entram nesta feature? | Entram agora: operador só recebe evento de solicitação a que tem acesso | 2026-10-07 |
+| 4 | Quem troca a própria senha continua na sessão atual ou entra de novo? | Continua na sessão: a troca devolve credenciais novas e as outras sessões caem | 2026-10-07 |
+| 5 | Mudar o perfil de um usuário também deve desconectá-lo? | Não desconecta; o perfil novo vale na chamada seguinte | 2026-10-07 |
+| 6 | O operador que perde o acesso a uma solicitação recebe o evento dessa mudança? | Recebe esse último evento: quem tinha acesso antes ou passa a ter depois | 2026-10-07 |
+| 7 | A conexão de tempo real já aberta cai quando a senha é trocada ou redefinida? | Cai na hora | 2026-10-07 |
