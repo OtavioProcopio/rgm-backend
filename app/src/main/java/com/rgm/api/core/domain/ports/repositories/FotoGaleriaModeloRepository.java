@@ -18,8 +18,11 @@ public interface FotoGaleriaModeloRepository {
 
   void deleteById(UUID id);
 
-  /** Desmarca qualquer foto principal existente do modelo (no maximo uma por vez). */
-  void limparPrincipal(UUID modeloId);
+  /**
+   * Grava a foto como principal do modelo, desmarcando a anterior na mesma operacao: se a gravacao
+   * falhar, a principal anterior continua (no maximo uma por modelo).
+   */
+  FotoGaleriaModelo salvarComoPrincipal(FotoGaleriaModelo foto);
 
   /** Resolve a URL da foto principal de cada modelo, para uso em listagens sem N+1. */
   Map<UUID, String> findPrincipalUrlsByModeloIds(Collection<UUID> modeloIds);

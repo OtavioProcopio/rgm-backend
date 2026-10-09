@@ -1,5 +1,6 @@
 package com.rgm.api.adapter.in.web.dto.response;
 
+import com.rgm.api.core.application.usecases.solicitacao.ObterSolicitacaoUseCase.ResponsavelNome;
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
 import com.rgm.api.core.domain.model.enums.AcaoSolicitacao;
 import java.time.Instant;
@@ -29,7 +30,9 @@ public record SolicitacaoResponse(
     Long tempoRestanteSegundos,
     boolean atrasada,
     Long tempoResolucaoSegundos,
-    List<String> acoesPermitidas) {
+    List<String> acoesPermitidas,
+    List<ResponsavelResponse> responsaveis,
+    String abertaPorNome) {
 
   public static SolicitacaoResponse from(final Solicitacao s) {
     return from(s, List.of());
@@ -44,6 +47,16 @@ public record SolicitacaoResponse(
       final Solicitacao s,
       final List<UUID> responsaveis,
       final Set<AcaoSolicitacao> acoesPermitidas) {
+    return from(s, responsaveis, acoesPermitidas, null, null);
+  }
+
+  /** Com nomes: so o detalhe e a listagem preenchem `responsaveis` e `abertaPorNome`. */
+  public static SolicitacaoResponse from(
+      final Solicitacao s,
+      final List<UUID> responsavelIds,
+      final Set<AcaoSolicitacao> acoesPermitidas,
+      final List<ResponsavelNome> responsaveis,
+      final String abertaPorNome) {
     final Instant agora = Instant.now();
     return new SolicitacaoResponse(
         s.getId(),
@@ -62,11 +75,15 @@ public record SolicitacaoResponse(
         s.getAtualizadaEm(),
         s.getConcluidaEm(),
         s.getCanceladaEm(),
-        responsaveis,
+        responsavelIds,
         s.getPrazoLimite(),
         s.getTempoRestanteSegundos(agora),
         s.isAtrasada(agora),
         s.getTempoResolucaoSegundos(),
-        acoesPermitidas == null ? null : acoesPermitidas.stream().map(Enum::name).toList());
+        acoesPermitidas == null ? null : acoesPermitidas.stream().map(Enum::name).toList(),
+        responsaveis == null
+            ? null
+            : responsaveis.stream().map(ResponsavelResponse::from).toList(),
+        abertaPorNome);
   }
 }
