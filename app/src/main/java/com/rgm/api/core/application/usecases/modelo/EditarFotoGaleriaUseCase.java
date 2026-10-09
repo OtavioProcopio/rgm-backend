@@ -32,6 +32,7 @@ public final class EditarFotoGaleriaUseCase {
     final FotoGaleriaModelo foto = buscarNoModelo(input.modeloId(), input.fotoId());
 
     FotoGaleriaModelo atualizada = foto;
+    boolean definirComoPrincipal = false;
 
     if (input.identificacao() != null) {
       if (input.identificacao().isBlank()) {
@@ -41,13 +42,15 @@ public final class EditarFotoGaleriaUseCase {
     }
 
     if (Boolean.TRUE.equals(input.principal())) {
-      fotoGaleriaModeloRepository.limparPrincipal(input.modeloId());
+      definirComoPrincipal = true;
       atualizada = atualizada.comPrincipal(true);
     } else if (Boolean.FALSE.equals(input.principal())) {
       atualizada = atualizada.comPrincipal(false);
     }
 
-    return fotoGaleriaModeloRepository.save(atualizada);
+    return definirComoPrincipal
+        ? fotoGaleriaModeloRepository.salvarComoPrincipal(atualizada)
+        : fotoGaleriaModeloRepository.save(atualizada);
   }
 
   private FotoGaleriaModelo buscarNoModelo(final UUID modeloId, final UUID fotoId) {

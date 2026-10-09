@@ -1,7 +1,9 @@
 package com.rgm.api.adapter.in.web.solicitacao;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -309,7 +311,9 @@ class SolicitacaoControllerTest {
     final Solicitacao sol = criarSolicitacao();
     final UUID userId = UUID.randomUUID();
     when(obterUseCase.execute(new ObterSolicitacaoUseCase.Input(solId, userId)))
-        .thenReturn(new ObterSolicitacaoUseCase.Output(sol, List.of(), java.util.Set.of()));
+        .thenReturn(
+            new ObterSolicitacaoUseCase.Output(
+                sol, List.of(), List.of(), null, java.util.Set.of()));
 
     mockMvc
         .perform(get("/api/solicitacoes/{id}", solId).with(user(userId.toString())))
@@ -714,6 +718,8 @@ class SolicitacaoControllerTest {
             new ObterSolicitacaoUseCase.Output(
                 sol,
                 List.of(),
+                List.of(),
+                null,
                 java.util.EnumSet.of(
                     com.rgm.api.core.domain.model.enums.AcaoSolicitacao.EDITAR,
                     com.rgm.api.core.domain.model.enums.AcaoSolicitacao.COMENTAR)));
@@ -738,6 +744,8 @@ class SolicitacaoControllerTest {
     final Solicitacao sol = criarSolicitacao();
     when(listarUseCase.execute(any())).thenReturn(new PageResult<>(List.of(sol), 0, 20, 1, 1));
     when(obterUseCase.listarResponsaveisBatch(List.of(sol.getId()))).thenReturn(java.util.Map.of());
+    when(obterUseCase.resolverNomes(List.of(sol.getAbertaPorUsuarioId())))
+        .thenReturn(java.util.Map.of());
 
     // Act
     final var resposta = mockMvc.perform(get("/api/solicitacoes"));
@@ -748,7 +756,125 @@ class SolicitacaoControllerTest {
         .andExpect(
             jsonPath("$.content[0].acoesPermitidas").value(org.hamcrest.Matchers.nullValue()));
     verify(obterUseCase, times(1)).listarResponsaveisBatch(List.of(sol.getId()));
+    verify(obterUseCase, times(1)).resolverNomes(List.of(sol.getAbertaPorUsuarioId()));
     verifyNoMoreInteractions(obterUseCase, eventPublisher);
+  }
+
+  @Test
+  void shouldReturnNamesAndKeepIdsWhenSolicitacaoIsFetchedById() throws Exception {
+    // Arrange
+    final Solicitacao sol = criarSolicitacao();
+    final UUID userId = UUID.randomUUID();
+    final UUID brunoId = UUID.randomUUID();
+    final UUID carlaId = UUID.randomUUID();
+    final ObterSolicitacaoUseCase.Input entrada =
+        new ObterSolicitacaoUseCase.Input(sol.getId(), userId);
+    when(obterUseCase.execute(entrada))
+        .thenReturn(
+            new ObterSolicitacaoUseCase.Output(
+                sol,
+                List.of(brunoId, carlaId),
+                List.of(
+                    new ObterSolicitacaoUseCase.ResponsavelNome(brunoId, "Bruno"),
+                    new ObterSolicitacaoUseCase.ResponsavelNome(carlaId, "Carla")),
+                "Ana",
+                java.util.Set.of()));
+
+    // Act
+    final var resposta =
+        mockMvc.perform(get("/api/solicitacoes/{id}", sol.getId()).with(user(userId.toString())));
+
+    // Assert
+    resposta
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.responsavelIds[0]").value(brunoId.toString()))
+        .andExpect(jsonPath("$.responsavelIds[1]").value(carlaId.toString()))
+        .andExpect(jsonPath("$.abertaPorUsuarioId").value(sol.getAbertaPorUsuarioId().toString()))
+        .andExpect(jsonPath("$.responsaveis.length()").value(2))
+        .andExpect(jsonPath("$.responsaveis[0].id").value(brunoId.toString()))
+        .andExpect(jsonPath("$.responsaveis[0].nome").value("Bruno"))
+        .andExpect(jsonPath("$.responsaveis[1].nome").value("Carla"))
+        .andExpect(jsonPath("$.abertaPorNome").value("Ana"));
+    verify(obterUseCase, times(1)).execute(entrada);
+    verifyNoMoreInteractions(obterUseCase, eventPublisher);
+  }
+
+  @Test
+  void shouldReturnNamesInOneLookupWhenSolicitacoesAreListed() throws Exception {
+    // Arrange
+    final Solicitacao primeira = criarSolicitacao();
+    final Solicitacao segunda = criarSolicitacao();
+    final UUID brunoId = UUID.randomUUID();
+    final UUID carlaId = UUID.randomUUID();
+    when(listarUseCase.execute(any()))
+        .thenReturn(new PageResult<>(List.of(primeira, segunda), 0, 20, 2, 1));
+    when(obterUseCase.listarResponsaveisBatch(List.of(primeira.getId(), segunda.getId())))
+        .thenReturn(java.util.Map.of(primeira.getId(), List.of(brunoId, carlaId)));
+    when(obterUseCase.resolverNomes(
+            List.of(
+                brunoId,
+                carlaId,
+                primeira.getAbertaPorUsuarioId(),
+                segunda.getAbertaPorUsuarioId())))
+        .thenReturn(
+            java.util.Map.of(
+                brunoId, "Bruno", carlaId, "Carla", primeira.getAbertaPorUsuarioId(), "Ana"));
+
+    // Act
+    final var resposta = mockMvc.perform(get("/api/solicitacoes"));
+
+    // Assert
+    resposta
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.content[0].responsavelIds.length()").value(2))
+        .andExpect(jsonPath("$.content[0].responsaveis[0].nome").value("Bruno"))
+        .andExpect(jsonPath("$.content[0].responsaveis[1].nome").value("Carla"))
+        .andExpect(jsonPath("$.content[0].abertaPorNome").value("Ana"))
+        .andExpect(jsonPath("$.content[1].responsavelIds.length()").value(0))
+        .andExpect(jsonPath("$.content[1].responsaveis.length()").value(0))
+        .andExpect(jsonPath("$.content[1].abertaPorNome").value(org.hamcrest.Matchers.nullValue()));
+    verify(obterUseCase, times(1))
+        .listarResponsaveisBatch(List.of(primeira.getId(), segunda.getId()));
+    verify(obterUseCase, times(1))
+        .resolverNomes(
+            List.of(
+                brunoId,
+                carlaId,
+                primeira.getAbertaPorUsuarioId(),
+                segunda.getAbertaPorUsuarioId()));
+    verifyNoMoreInteractions(obterUseCase, eventPublisher);
+  }
+
+  @Test
+  void shouldNotReturnNamesNorPublishThemWhenSolicitacaoIsOpened() throws Exception {
+    // Arrange
+    final Solicitacao sol = criarSolicitacao();
+    final UUID userId = UUID.randomUUID();
+    final UUID modeloId = UUID.randomUUID();
+    when(abrirUseCase.execute(any())).thenReturn(sol);
+
+    // Act
+    final var resposta =
+        mockMvc.perform(
+            post("/api/solicitacoes")
+                .with(user(userId.toString()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        new AbrirSolicitacaoRequest(
+                            "Titulo", "Desc", "REPARO", modeloId, null, null, null))));
+
+    // Assert
+    resposta
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.responsaveis").value(org.hamcrest.Matchers.nullValue()))
+        .andExpect(jsonPath("$.abertaPorNome").value(org.hamcrest.Matchers.nullValue()));
+    final org.mockito.ArgumentCaptor<SolicitacaoEvent> evento =
+        org.mockito.ArgumentCaptor.forClass(SolicitacaoEvent.class);
+    verify(eventPublisher, times(1)).publish(eq("solicitacao"), evento.capture(), any(), any());
+    assertNull(evento.getValue().solicitacao().responsaveis());
+    assertNull(evento.getValue().solicitacao().abertaPorNome());
+    verifyNoMoreInteractions(eventPublisher);
   }
 
   @Test

@@ -148,6 +148,8 @@ class ObterSolicitacaoUseCaseTest {
             new ObterSolicitacaoUseCase.Output(
                 sol,
                 List.of(),
+                List.of(),
+                null,
                 EnumSet.of(
                     AcaoSolicitacao.CANCELAR,
                     AcaoSolicitacao.EDITAR,
@@ -156,6 +158,7 @@ class ObterSolicitacaoUseCaseTest {
     verify(solicitacaoRepository, times(1)).findById(sol.getId());
     verify(usuarioRepository, times(1)).findById(autorId);
     verify(atribuicaoRepository, times(1)).findBySolicitacaoId(sol.getId());
+    verify(usuarioRepository, times(1)).findAllByIdIn(List.of(autorId));
     verifyNoMoreInteractions(solicitacaoRepository, usuarioRepository, atribuicaoRepository);
   }
 
@@ -233,6 +236,8 @@ class ObterSolicitacaoUseCaseTest {
     assertThat(output.solicitacao()).isSameAs(sol);
     verify(solicitacaoRepository, times(1)).findById(sol.getId());
     verify(usuarioRepository, times(1)).findById(operadorId);
+    verify(usuarioRepository, times(1))
+        .findAllByIdIn(List.of(operadorId, sol.getAbertaPorUsuarioId()));
     verify(atribuicaoRepository, times(1)).findBySolicitacaoId(sol.getId());
     verifyNoMoreInteractions(solicitacaoRepository, usuarioRepository, atribuicaoRepository);
   }
@@ -289,7 +294,165 @@ class ObterSolicitacaoUseCaseTest {
     assertThat(output.solicitacao()).isSameAs(sol);
     verify(solicitacaoRepository, times(1)).findById(sol.getId());
     verify(usuarioRepository, times(1)).findById(gestorId);
+    verify(usuarioRepository, times(1)).findAllByIdIn(List.of(sol.getAbertaPorUsuarioId()));
     verify(atribuicaoRepository, times(1)).findBySolicitacaoId(sol.getId());
     verifyNoMoreInteractions(solicitacaoRepository, usuarioRepository, atribuicaoRepository);
+  }
+
+  private static Usuario nomeado(final UUID id, final String nome, final boolean ativo) {
+    final Instant agora = Instant.now();
+    return new Usuario(
+        id, nome, nome + "@rgm.test", "hash", PerfilUsuario.OPERADOR, ativo, agora, agora);
+  }
+
+  private static SolicitacaoAtribuicao atribuicao(final UUID solicitacaoId, final UUID usuarioId) {
+    return new SolicitacaoAtribuicao(
+        UUID.randomUUID(), solicitacaoId, usuarioId, UUID.randomUUID(), Instant.now(), null);
+  }
+
+  @Test
+  void shouldReturnNamesInResponsavelIdsOrderWhenSolicitacaoHasAssigneesAndOpener() {
+    // Arrange
+    final UUID gestorId = UUID.randomUUID();
+    final UUID autorId = UUID.randomUUID();
+    final UUID brunoId = UUID.randomUUID();
+    final UUID carlaId = UUID.randomUUID();
+    final Solicitacao sol =
+        Solicitacao.abrir(
+            "T", "D", TipoSolicitacao.REPARO, UUID.randomUUID(), autorId, Instant.now());
+    when(solicitacaoRepository.findById(sol.getId())).thenReturn(Optional.of(sol));
+    when(usuarioRepository.findById(gestorId))
+        .thenReturn(Optional.of(usuario(gestorId, PerfilUsuario.GESTOR)));
+    when(atribuicaoRepository.findBySolicitacaoId(sol.getId()))
+        .thenReturn(List.of(atribuicao(sol.getId(), brunoId), atribuicao(sol.getId(), carlaId)));
+    when(usuarioRepository.findAllByIdIn(List.of(brunoId, carlaId, autorId)))
+        .thenReturn(
+            List.of(
+                nomeado(autorId, "Ana", true),
+                nomeado(carlaId, "Carla", true),
+                nomeado(brunoId, "Bruno", true)));
+
+    // Act
+    final var output = useCase.execute(new ObterSolicitacaoUseCase.Input(sol.getId(), gestorId));
+
+    // Assert
+    assertThat(output.responsavelIds()).containsExactly(brunoId, carlaId);
+    assertThat(output.responsaveis())
+        .containsExactly(
+            new ObterSolicitacaoUseCase.ResponsavelNome(brunoId, "Bruno"),
+            new ObterSolicitacaoUseCase.ResponsavelNome(carlaId, "Carla"));
+    assertThat(output.abertaPorNome()).isEqualTo("Ana");
+    verify(usuarioRepository, times(1)).findAllByIdIn(List.of(brunoId, carlaId, autorId));
+  }
+
+  @Test
+  void shouldKeepNameWhenAssigneeIsInactive() {
+    // Arrange
+    final UUID gestorId = UUID.randomUUID();
+    final UUID inativoId = UUID.randomUUID();
+    final Solicitacao sol =
+        Solicitacao.abrir(
+            "T", "D", TipoSolicitacao.REPARO, UUID.randomUUID(), UUID.randomUUID(), Instant.now());
+    when(solicitacaoRepository.findById(sol.getId())).thenReturn(Optional.of(sol));
+    when(usuarioRepository.findById(gestorId))
+        .thenReturn(Optional.of(usuario(gestorId, PerfilUsuario.GESTOR)));
+    when(atribuicaoRepository.findBySolicitacaoId(sol.getId()))
+        .thenReturn(List.of(atribuicao(sol.getId(), inativoId)));
+    when(usuarioRepository.findAllByIdIn(List.of(inativoId, sol.getAbertaPorUsuarioId())))
+        .thenReturn(List.of(nomeado(inativoId, "Diego", false)));
+
+    // Act
+    final var output = useCase.execute(new ObterSolicitacaoUseCase.Input(sol.getId(), gestorId));
+
+    // Assert
+    assertThat(output.responsaveis())
+        .containsExactly(new ObterSolicitacaoUseCase.ResponsavelNome(inativoId, "Diego"));
+  }
+
+  @Test
+  void shouldReturnNullNameAndKeepOrderWhenAssigneeAndOpenerAreNotFound() {
+    // Arrange
+    final UUID gestorId = UUID.randomUUID();
+    final UUID orfaoId = UUID.randomUUID();
+    final UUID carlaId = UUID.randomUUID();
+    final Solicitacao sol =
+        Solicitacao.abrir(
+            "T", "D", TipoSolicitacao.REPARO, UUID.randomUUID(), UUID.randomUUID(), Instant.now());
+    when(solicitacaoRepository.findById(sol.getId())).thenReturn(Optional.of(sol));
+    when(usuarioRepository.findById(gestorId))
+        .thenReturn(Optional.of(usuario(gestorId, PerfilUsuario.GESTOR)));
+    when(atribuicaoRepository.findBySolicitacaoId(sol.getId()))
+        .thenReturn(List.of(atribuicao(sol.getId(), orfaoId), atribuicao(sol.getId(), carlaId)));
+    when(usuarioRepository.findAllByIdIn(List.of(orfaoId, carlaId, sol.getAbertaPorUsuarioId())))
+        .thenReturn(List.of(nomeado(carlaId, "Carla", true)));
+
+    // Act
+    final var output = useCase.execute(new ObterSolicitacaoUseCase.Input(sol.getId(), gestorId));
+
+    // Assert
+    assertThat(output.responsavelIds()).containsExactly(orfaoId, carlaId);
+    assertThat(output.responsaveis())
+        .containsExactly(
+            new ObterSolicitacaoUseCase.ResponsavelNome(orfaoId, null),
+            new ObterSolicitacaoUseCase.ResponsavelNome(carlaId, "Carla"));
+    assertThat(output.abertaPorNome()).isNull();
+  }
+
+  @Test
+  void shouldReturnEmptyResponsaveisWhenSolicitacaoHasNoAssignee() {
+    // Arrange
+    final UUID gestorId = UUID.randomUUID();
+    final UUID autorId = UUID.randomUUID();
+    final Solicitacao sol =
+        Solicitacao.abrir(
+            "T", "D", TipoSolicitacao.REPARO, UUID.randomUUID(), autorId, Instant.now());
+    when(solicitacaoRepository.findById(sol.getId())).thenReturn(Optional.of(sol));
+    when(usuarioRepository.findById(gestorId))
+        .thenReturn(Optional.of(usuario(gestorId, PerfilUsuario.GESTOR)));
+    when(atribuicaoRepository.findBySolicitacaoId(sol.getId())).thenReturn(List.of());
+    when(usuarioRepository.findAllByIdIn(List.of(autorId)))
+        .thenReturn(List.of(nomeado(autorId, "Ana", true)));
+
+    // Act
+    final var output = useCase.execute(new ObterSolicitacaoUseCase.Input(sol.getId(), gestorId));
+
+    // Assert
+    assertThat(output.responsaveis()).isEmpty();
+    assertThat(output.abertaPorNome()).isEqualTo("Ana");
+  }
+
+  @Test
+  void shouldMapIdsToNamesInOneQueryWhenResolvingNames() {
+    // Arrange
+    final UUID anaId = UUID.randomUUID();
+    final UUID brunoId = UUID.randomUUID();
+    final UUID desconhecidoId = UUID.randomUUID();
+    when(usuarioRepository.findAllByIdIn(List.of(anaId, brunoId, desconhecidoId)))
+        .thenReturn(List.of(nomeado(anaId, "Ana", true), nomeado(brunoId, "Bruno", false)));
+
+    // Act
+    final var nomes =
+        useCase.resolverNomes(java.util.Arrays.asList(anaId, brunoId, anaId, null, desconhecidoId));
+
+    // Assert
+    assertThat(nomes).containsOnlyKeys(anaId, brunoId).containsEntry(anaId, "Ana");
+    assertThat(nomes).containsEntry(brunoId, "Bruno");
+    verify(usuarioRepository, times(1)).findAllByIdIn(List.of(anaId, brunoId, desconhecidoId));
+    verifyNoMoreInteractions(usuarioRepository);
+  }
+
+  @Test
+  void shouldNotQueryWhenResolvingNamesForEmptyOrNullOnlyIds() {
+    // Arrange
+    final java.util.List<UUID> soNulos = java.util.Collections.singletonList(null);
+
+    // Act
+    final var vazio = useCase.resolverNomes(List.of());
+    final var nulos = useCase.resolverNomes(soNulos);
+
+    // Assert
+    assertThat(vazio).isEmpty();
+    assertThat(nulos).isEmpty();
+    verifyNoMoreInteractions(usuarioRepository);
   }
 }

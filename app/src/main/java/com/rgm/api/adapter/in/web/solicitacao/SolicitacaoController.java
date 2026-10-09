@@ -41,6 +41,7 @@ import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import jakarta.validation.Valid;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -284,12 +285,26 @@ public class SolicitacaoController {
     final List<UUID> solIds = result.content().stream().map(s -> s.getId()).toList();
     final Map<UUID, List<UUID>> responsaveisPorSol = obterUseCase.listarResponsaveisBatch(solIds);
 
+    final List<UUID> idsParaNomear = new ArrayList<>();
+    responsaveisPorSol.values().forEach(idsParaNomear::addAll);
+    result.content().forEach(s -> idsParaNomear.add(s.getAbertaPorUsuarioId()));
+    final Map<UUID, String> nomes = obterUseCase.resolverNomes(idsParaNomear);
+
     return ResponseEntity.ok(
         PageResponse.from(
             result,
-            s ->
-                SolicitacaoResponse.from(
-                    s, responsaveisPorSol.getOrDefault(s.getId(), List.of()))));
+            s -> {
+              final List<UUID> responsavelIds =
+                  responsaveisPorSol.getOrDefault(s.getId(), List.of());
+              return SolicitacaoResponse.from(
+                  s,
+                  responsavelIds,
+                  null,
+                  responsavelIds.stream()
+                      .map(id -> new ObterSolicitacaoUseCase.ResponsavelNome(id, nomes.get(id)))
+                      .toList(),
+                  nomes.get(s.getAbertaPorUsuarioId()));
+            }));
   }
 
   private ListarSolicitacoesUseCase.Input buildInput(
@@ -369,7 +384,11 @@ public class SolicitacaoController {
     final var output = obterUseCase.execute(new ObterSolicitacaoUseCase.Input(id, usuarioId));
     return ResponseEntity.ok(
         SolicitacaoResponse.from(
-            output.solicitacao(), output.responsavelIds(), output.acoesPermitidas()));
+            output.solicitacao(),
+            output.responsavelIds(),
+            output.acoesPermitidas(),
+            output.responsaveis(),
+            output.abertaPorNome()));
   }
 
   @GetMapping("/{id}/atividades")
