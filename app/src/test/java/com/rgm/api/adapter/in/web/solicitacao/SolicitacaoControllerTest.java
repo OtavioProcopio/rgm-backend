@@ -818,9 +818,7 @@ class SolicitacaoControllerTest {
                 segunda.getAbertaPorUsuarioId())))
         .thenReturn(
             java.util.Map.of(
-                brunoId, "Bruno",
-                carlaId, "Carla",
-                primeira.getAbertaPorUsuarioId(), "Ana"));
+                brunoId, "Bruno", carlaId, "Carla", primeira.getAbertaPorUsuarioId(), "Ana"));
 
     // Act
     final var resposta = mockMvc.perform(get("/api/solicitacoes"));

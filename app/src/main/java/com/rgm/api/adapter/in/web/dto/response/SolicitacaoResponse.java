@@ -81,9 +81,7 @@ public record SolicitacaoResponse(
         s.isAtrasada(agora),
         s.getTempoResolucaoSegundos(),
         acoesPermitidas == null ? null : acoesPermitidas.stream().map(Enum::name).toList(),
-        responsaveis == null
-            ? null
-            : responsaveis.stream().map(ResponsavelResponse::from).toList(),
+        responsaveis == null ? null : responsaveis.stream().map(ResponsavelResponse::from).toList(),
         abertaPorNome);
   }
 }
