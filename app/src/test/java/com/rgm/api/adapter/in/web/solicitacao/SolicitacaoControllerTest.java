@@ -1,11 +1,14 @@
 package com.rgm.api.adapter.in.web.solicitacao;
 
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
@@ -58,7 +61,10 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.ComponentScan;
@@ -1208,5 +1214,136 @@ class SolicitacaoControllerTest {
             sol.getId(),
             List.of());
     verifyNoMoreInteractions(abrirUseCase, eventPublisher);
+  }
+
+  @Test
+  void shouldRespond400WithoutCallingUseCaseWhenPageIsNegative() throws Exception {
+    // Arrange
+    final String pagina = "-1";
+
+    // Act
+    final var resposta = mockMvc.perform(get("/api/solicitacoes").param("page", pagina));
+
+    // Assert
+    resposta.andExpect(status().isBadRequest());
+    verifyNoInteractions(listarUseCase);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"0", "-5", "101", "5000"})
+  void shouldRespond400WithoutCallingUseCaseWhenSizeIsOutOfRange(final String tamanho)
+      throws Exception {
+    // Act
+    final var resposta = mockMvc.perform(get("/api/solicitacoes").param("size", tamanho));
+
+    // Assert
+    resposta.andExpect(status().isBadRequest());
+    verifyNoInteractions(listarUseCase);
+  }
+
+  @Test
+  void shouldAcceptSizeWhenSizeIsTheMaximumOf100() throws Exception {
+    // Arrange
+    when(listarUseCase.execute(any())).thenReturn(new PageResult<>(List.of(), 0, 100, 0, 0));
+    when(obterUseCase.listarResponsaveisBatch(any())).thenReturn(java.util.Map.of());
+    final ArgumentCaptor<ListarSolicitacoesUseCase.Input> captor =
+        ArgumentCaptor.forClass(ListarSolicitacoesUseCase.Input.class);
+
+    // Act
+    final var resposta = mockMvc.perform(get("/api/solicitacoes").param("size", "100"));
+
+    // Assert
+    resposta.andExpect(status().isOk());
+    verify(listarUseCase, times(1)).execute(captor.capture());
+    assertEquals(100, captor.getValue().size());
+    assertEquals(0, captor.getValue().page());
+    verifyNoMoreInteractions(listarUseCase);
+    verify(obterUseCase, times(1)).listarResponsaveisBatch(List.of());
+    verify(obterUseCase, times(1)).resolverNomes(List.of());
+    verifyNoMoreInteractions(obterUseCase);
+  }
+
+  @Test
+  void shouldUseSize20WhenSizeIsNotInformed() throws Exception {
+    // Arrange
+    when(listarUseCase.execute(any())).thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
+    when(obterUseCase.listarResponsaveisBatch(any())).thenReturn(java.util.Map.of());
+    final ArgumentCaptor<ListarSolicitacoesUseCase.Input> captor =
+        ArgumentCaptor.forClass(ListarSolicitacoesUseCase.Input.class);
+
+    // Act
+    final var resposta = mockMvc.perform(get("/api/solicitacoes"));
+
+    // Assert
+    resposta.andExpect(status().isOk());
+    verify(listarUseCase, times(1)).execute(captor.capture());
+    assertEquals(20, captor.getValue().size());
+    verifyNoMoreInteractions(listarUseCase);
+    verify(obterUseCase, times(1)).listarResponsaveisBatch(List.of());
+    verify(obterUseCase, times(1)).resolverNomes(List.of());
+    verifyNoMoreInteractions(obterUseCase);
+  }
+
+  @ParameterizedTest
+  @CsvSource({"criadaEmInicio,ontem", "criadaEmFim,ontem", "dataInicio,32/13/2026", "dataFim,xx"})
+  void shouldRespond400NamingTheParameterWhenDateIsNotIso8601(
+      final String parametro, final String valor) throws Exception {
+    // Act
+    final var resposta = mockMvc.perform(get("/api/solicitacoes").param(parametro, valor));
+
+    // Assert
+    resposta
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.message").value(containsString(parametro)));
+    verifyNoInteractions(listarUseCase);
+  }
+
+  @ParameterizedTest
+  @CsvSource({"status,INVALIDO", "tipo,INVALIDO", "prioridade,INVALIDA", "tipoData,INVALIDO"})
+  void shouldRespond400WithoutLeakingClassNameWhenEnumerationIsInvalid(
+      final String parametro, final String valor) throws Exception {
+    // Act
+    final var resposta = mockMvc.perform(get("/api/solicitacoes").param(parametro, valor));
+
+    // Assert
+    resposta
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.message").value(containsString(parametro)))
+        .andExpect(jsonPath("$.message").value(not(containsString("com.rgm"))))
+        .andExpect(jsonPath("$.message").value(not(containsString("No enum constant"))));
+    verifyNoInteractions(listarUseCase);
+  }
+
+  @Test
+  void shouldRespond400WithoutCallingUseCaseWhenMetricsByModelSizeExceedsMaximum()
+      throws Exception {
+    // Arrange
+    final String tamanho = "101";
+
+    // Act
+    final var resposta =
+        mockMvc.perform(get("/api/solicitacoes/metricas/por-modelo").param("size", tamanho));
+
+    // Assert
+    resposta.andExpect(status().isBadRequest());
+    verifyNoInteractions(obterMetricasPorModeloUseCase);
+  }
+
+  @Test
+  void shouldRespond400WithoutCallingUseCaseWhenOpenBodyIsMalformedJson() throws Exception {
+    // Arrange
+    final String corpo = "{ json quebrado";
+
+    // Act
+    final var resposta =
+        mockMvc.perform(
+            post("/api/solicitacoes")
+                .with(user(UUID.randomUUID().toString()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(corpo));
+
+    // Assert
+    resposta.andExpect(status().isBadRequest());
+    verifyNoInteractions(abrirUseCase);
   }
 }

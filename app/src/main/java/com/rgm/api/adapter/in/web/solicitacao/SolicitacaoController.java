@@ -1,5 +1,6 @@
 package com.rgm.api.adapter.in.web.solicitacao;
 
+import com.rgm.api.adapter.in.web.ParametrosDeConsulta;
 import com.rgm.api.adapter.in.web.dto.request.AbrirSolicitacaoRequest;
 import com.rgm.api.adapter.in.web.dto.request.CancelarSolicitacaoRequest;
 import com.rgm.api.adapter.in.web.dto.request.ComentarioRequest;
@@ -157,6 +158,7 @@ public class SolicitacaoController {
         dir,
         page,
         size);
+    ParametrosDeConsulta.pagina(page, size);
     final var output =
         obterMetricasPorModeloUseCase.execute(
             new ObterMetricasPorModeloUseCase.Input(
@@ -261,6 +263,7 @@ public class SolicitacaoController {
       @RequestParam(required = false) final Boolean atrasada,
       @RequestParam(required = false) final Boolean emAberto,
       final Authentication authentication) {
+    ParametrosDeConsulta.pagina(page, size);
     final var result =
         listarUseCase.execute(
             buildInput(
@@ -326,17 +329,19 @@ public class SolicitacaoController {
       final int page,
       final int size) {
     final TipoFiltroData tipo0 =
-        tipoData != null ? TipoFiltroData.valueOf(tipoData) : TipoFiltroData.CRIACAO;
-    final String inicioRaw = dataInicio != null ? dataInicio : criadaEmInicio;
-    final String fimRaw = dataFim != null ? dataFim : criadaEmFim;
+        tipoData != null
+            ? ParametrosDeConsulta.enumeracao("tipoData", tipoData, TipoFiltroData.class)
+            : TipoFiltroData.CRIACAO;
+    final Instant inicio = dataDoFiltro("dataInicio", dataInicio, "criadaEmInicio", criadaEmInicio);
+    final Instant fim = dataDoFiltro("dataFim", dataFim, "criadaEmFim", criadaEmFim);
     return new ListarSolicitacoesUseCase.Input(
-        status != null ? StatusSolicitacao.valueOf(status) : null,
+        ParametrosDeConsulta.enumeracao("status", status, StatusSolicitacao.class),
         modeloId,
-        tipo != null ? TipoSolicitacao.valueOf(tipo) : null,
-        prioridade != null ? PrioridadeSolicitacao.valueOf(prioridade) : null,
+        ParametrosDeConsulta.enumeracao("tipo", tipo, TipoSolicitacao.class),
+        ParametrosDeConsulta.enumeracao("prioridade", prioridade, PrioridadeSolicitacao.class),
         tipo0,
-        inicioRaw != null ? Instant.parse(inicioRaw) : null,
-        fimRaw != null ? Instant.parse(fimRaw) : null,
+        inicio,
+        fim,
         abertaPorUsuarioId,
         responsavelId,
         maquina,
@@ -345,6 +350,19 @@ public class SolicitacaoController {
         usuarioAutenticadoId,
         page,
         size);
+  }
+
+  /**
+   * O parametro preferido (dataInicio/dataFim) vence o alternativo (criadaEmInicio/criadaEmFim).
+   */
+  private static Instant dataDoFiltro(
+      final String nomePreferido,
+      final String valorPreferido,
+      final String nomeAlternativo,
+      final String valorAlternativo) {
+    return valorPreferido != null
+        ? ParametrosDeConsulta.data(nomePreferido, valorPreferido)
+        : ParametrosDeConsulta.data(nomeAlternativo, valorAlternativo);
   }
 
   private UUID usuarioAutenticadoId(final Authentication authentication) {
