@@ -1,5 +1,6 @@
 package com.rgm.api.adapter.in.web.modelo;
 
+import com.rgm.api.adapter.in.web.ParametrosDeConsulta;
 import com.rgm.api.adapter.in.web.dto.request.CriarModeloRequest;
 import com.rgm.api.adapter.in.web.dto.request.EditarModeloRequest;
 import com.rgm.api.adapter.in.web.dto.response.EventoModeloResponse;
@@ -95,6 +96,7 @@ public class ModeloController {
       @RequestParam(required = false) final String codigo,
       @RequestParam(required = false) final String maquina,
       @RequestParam(required = false) final String descricao) {
+    ParametrosDeConsulta.pagina(page, size);
     final var result =
         listarUseCase.execute(
             new ListarModelosUseCase.Input(ativo, codigo, maquina, descricao, page, size));

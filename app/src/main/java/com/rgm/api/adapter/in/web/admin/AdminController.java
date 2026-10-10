@@ -1,5 +1,6 @@
 package com.rgm.api.adapter.in.web.admin;
 
+import com.rgm.api.adapter.in.web.ParametrosDeConsulta;
 import com.rgm.api.adapter.in.web.dto.request.AlterarPerfilRequest;
 import com.rgm.api.adapter.in.web.dto.request.CriarUsuarioRequest;
 import com.rgm.api.adapter.in.web.dto.request.EditarUsuarioRequest;
@@ -68,7 +69,9 @@ public class AdminController {
       @RequestParam(defaultValue = "20") final int size,
       @RequestParam(required = false) final String perfil,
       @RequestParam(required = false) final Boolean ativo) {
-    final PerfilUsuario perfilFilter = perfil != null ? PerfilUsuario.valueOf(perfil) : null;
+    ParametrosDeConsulta.pagina(page, size);
+    final PerfilUsuario perfilFilter =
+        ParametrosDeConsulta.enumeracao("perfil", perfil, PerfilUsuario.class);
     final var result =
         listarUsuariosUseCase.execute(
             new ListarUsuariosUseCase.Input(perfilFilter, ativo, page, size));

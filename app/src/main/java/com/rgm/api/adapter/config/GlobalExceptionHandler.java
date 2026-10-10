@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -23,6 +24,9 @@ public class GlobalExceptionHandler {
 
   private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
   private static final String SQLSTATE_VALOR_LONGO = "22001";
+  private static final String PREFIXO_ENUMERACAO_INVALIDA = "No enum constant";
+  private static final String MENSAGEM_ENUMERACAO_INVALIDA =
+      "Valor inválido para um dos campos informados";
 
   @ExceptionHandler(RecursoNaoEncontradoException.class)
   public ResponseEntity<ErrorResponse> handleNotFound(final RecursoNaoEncontradoException ex) {
@@ -109,7 +113,20 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(IllegalArgumentException.class)
   public ResponseEntity<ErrorResponse> handleIllegalArgument(final IllegalArgumentException ex) {
-    return ResponseEntity.badRequest().body(ErrorResponse.of(400, "Bad Request", ex.getMessage()));
+    final String message = ex.getMessage();
+    final boolean enumeracao = message != null && message.startsWith(PREFIXO_ENUMERACAO_INVALIDA);
+    return ResponseEntity.badRequest()
+        .body(
+            ErrorResponse.of(
+                400, "Bad Request", enumeracao ? MENSAGEM_ENUMERACAO_INVALIDA : message));
+  }
+
+  @ExceptionHandler(HttpMessageNotReadableException.class)
+  public ResponseEntity<ErrorResponse> handleMessageNotReadable(
+      final HttpMessageNotReadableException ex) {
+    log.debug("Corpo da requisicao ilegivel: {}", ex.getMessage());
+    return ResponseEntity.badRequest()
+        .body(ErrorResponse.of(400, "Bad Request", "Corpo da requisição inválido ou malformado"));
   }
 
   @ExceptionHandler(

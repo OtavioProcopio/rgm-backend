@@ -1,6 +1,7 @@
 package com.rgm.api.adapter.config;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -15,8 +16,10 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpInputMessage;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
@@ -223,5 +226,51 @@ class GlobalExceptionHandlerTest {
     assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
     assertEquals(400, response.getBody().status());
     assertEquals("email: Formato inválido", response.getBody().message());
+  }
+
+  @Test
+  void shouldResponder400WhenCorpoDaRequisicaoEMalformado() {
+    // Arrange
+    final HttpMessageNotReadableException ex =
+        new HttpMessageNotReadableException(
+            "JSON parse error: Unexpected character ('j')", mock(HttpInputMessage.class));
+
+    // Act
+    final ResponseEntity<ErrorResponse> response = handler.handleMessageNotReadable(ex);
+
+    // Assert
+    assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+    assertEquals(400, response.getBody().status());
+    assertEquals("Corpo da requisição inválido ou malformado", response.getBody().message());
+  }
+
+  @Test
+  void shouldNaoExporDetalheInternoWhenCorpoDaRequisicaoEMalformado() {
+    // Arrange
+    final HttpMessageNotReadableException ex =
+        new HttpMessageNotReadableException(
+            "JSON parse error: Unexpected character ('j')", mock(HttpInputMessage.class));
+
+    // Act
+    final ResponseEntity<ErrorResponse> response = handler.handleMessageNotReadable(ex);
+
+    // Assert
+    assertFalse(response.getBody().message().contains("JSON parse"));
+  }
+
+  @Test
+  void shouldNaoExporClasseInternaWhenArgumentoIlegalVemDeEnumeracao() {
+    // Arrange
+    final IllegalArgumentException ex =
+        new IllegalArgumentException(
+            "No enum constant com.rgm.api.core.domain.model.enums.StatusSolicitacao.INVALIDO");
+
+    // Act
+    final ResponseEntity<ErrorResponse> response = handler.handleIllegalArgument(ex);
+
+    // Assert
+    assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+    assertFalse(response.getBody().message().contains("No enum constant"));
+    assertFalse(response.getBody().message().contains("com.rgm"));
   }
 }

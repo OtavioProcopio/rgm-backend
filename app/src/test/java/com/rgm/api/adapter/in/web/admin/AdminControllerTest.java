@@ -1,9 +1,12 @@
 package com.rgm.api.adapter.in.web.admin;
 
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
@@ -42,6 +45,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.ComponentScan;
@@ -351,5 +356,101 @@ class AdminControllerTest {
     resposta.andExpect(status().isCreated());
     verify(cadastrarExternoUseCase, times(1)).execute(entrada);
     verifyNoMoreInteractions(gerenciarUsuariosUseCase, cadastrarExternoUseCase, eventPublisher);
+  }
+
+  private PageResult<Usuario> paginaVazia() {
+    return new PageResult<>(List.of(), 0, 20, 0, 0);
+  }
+
+  private ListarUsuariosUseCase.Input capturarEntradaDaListagem() {
+    final ArgumentCaptor<ListarUsuariosUseCase.Input> captor =
+        ArgumentCaptor.forClass(ListarUsuariosUseCase.Input.class);
+    verify(listarUsuariosUseCase, times(1)).execute(captor.capture());
+    verifyNoMoreInteractions(listarUsuariosUseCase);
+    return captor.getValue();
+  }
+
+  @Test
+  void shouldAnswerBadRequestWhenPageIsNegative() throws Exception {
+    // Arrange
+    final String page = "-1";
+
+    // Act
+    final var resposta = mockMvc.perform(get("/api/admin/usuarios").param("page", page));
+
+    // Assert
+    resposta.andExpect(status().isBadRequest());
+    verifyNoInteractions(listarUsuariosUseCase);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"-1", "0", "101"})
+  void shouldAnswerBadRequestWhenSizeIsOutOfRange(final String size) throws Exception {
+    // Arrange
+    final var requisicao = get("/api/admin/usuarios").param("size", size);
+
+    // Act
+    final var resposta = mockMvc.perform(requisicao);
+
+    // Assert
+    resposta.andExpect(status().isBadRequest());
+    verifyNoInteractions(listarUsuariosUseCase);
+  }
+
+  @Test
+  void shouldAcceptSizeWhenItIsTheMaximumAllowed() throws Exception {
+    // Arrange
+    when(listarUsuariosUseCase.execute(any())).thenReturn(paginaVazia());
+
+    // Act
+    final var resposta = mockMvc.perform(get("/api/admin/usuarios").param("size", "100"));
+
+    // Assert
+    resposta.andExpect(status().isOk());
+    assertEquals(100, capturarEntradaDaListagem().size());
+  }
+
+  @Test
+  void shouldUseDefaultSizeWhenSizeIsMissing() throws Exception {
+    // Arrange
+    when(listarUsuariosUseCase.execute(any())).thenReturn(paginaVazia());
+
+    // Act
+    final var resposta = mockMvc.perform(get("/api/admin/usuarios"));
+
+    // Assert
+    resposta.andExpect(status().isOk());
+    assertEquals(20, capturarEntradaDaListagem().size());
+  }
+
+  @Test
+  void shouldAnswerBadRequestNamingAcceptedValuesWhenPerfilIsUnknown() throws Exception {
+    // Arrange
+    final String perfil = "NAOEXISTE";
+
+    // Act
+    final var resposta = mockMvc.perform(get("/api/admin/usuarios").param("perfil", perfil));
+
+    // Assert
+    resposta
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.message").value(containsString("perfil")))
+        .andExpect(jsonPath("$.message").value(containsString("GESTOR")))
+        .andExpect(jsonPath("$.message").value(not(containsString("com.rgm"))))
+        .andExpect(jsonPath("$.message").value(not(containsString("No enum constant"))));
+    verifyNoInteractions(listarUsuariosUseCase);
+  }
+
+  @Test
+  void shouldAcceptPerfilWhenItIsValid() throws Exception {
+    // Arrange
+    when(listarUsuariosUseCase.execute(any())).thenReturn(paginaVazia());
+
+    // Act
+    final var resposta = mockMvc.perform(get("/api/admin/usuarios").param("perfil", "GESTOR"));
+
+    // Assert
+    resposta.andExpect(status().isOk());
+    assertEquals(PerfilUsuario.GESTOR, capturarEntradaDaListagem().perfil());
   }
 }

@@ -1,7 +1,7 @@
 package com.rgm.api.adapter.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rgm.api.adapter.out.security.JwtAuthenticationFilter;
-import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
@@ -18,11 +18,15 @@ public class SecurityConfig {
 
   private final JwtAuthenticationFilter jwtFilter;
   private final RateLimitFilter rateLimitFilter;
+  private final ObjectMapper objectMapper;
 
   public SecurityConfig(
-      final JwtAuthenticationFilter jwtFilter, final RateLimitFilter rateLimitFilter) {
+      final JwtAuthenticationFilter jwtFilter,
+      final RateLimitFilter rateLimitFilter,
+      final ObjectMapper objectMapper) {
     this.jwtFilter = jwtFilter;
     this.rateLimitFilter = rateLimitFilter;
+    this.objectMapper = objectMapper;
   }
 
   @Bean
@@ -37,10 +41,10 @@ public class SecurityConfig {
                     .permitAll()
                     .requestMatchers("/api/solicitacoes/events")
                     .permitAll()
-                    .requestMatchers("/actuator/**")
-                    .permitAll()
                     .requestMatchers("/swagger-ui/**", "/api-docs/**", "/swagger-ui.html")
                     .permitAll()
+                    .requestMatchers("/api/solicitacoes/metricas", "/api/solicitacoes/metricas/**")
+                    .hasAnyRole("ADMINISTRADOR", "GESTOR")
                     .requestMatchers(
                         org.springframework.http.HttpMethod.GET,
                         "/api/admin/usuarios",
@@ -52,13 +56,8 @@ public class SecurityConfig {
                     .authenticated())
         .exceptionHandling(
             ex ->
-                ex.authenticationEntryPoint(
-                        (request, response, authException) ->
-                            response.sendError(
-                                HttpServletResponse.SC_UNAUTHORIZED, "Não autenticado"))
-                    .accessDeniedHandler(
-                        (request, response, accessDeniedException) ->
-                            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Acesso negado")))
+                ex.authenticationEntryPoint(new JsonAuthenticationEntryPoint(objectMapper))
+                    .accessDeniedHandler(new JsonAccessDeniedHandler(objectMapper)))
         .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
         .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
         .build();

@@ -1,10 +1,14 @@
 package com.rgm.api.adapter.in.web.modelo;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.nullValue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
@@ -13,6 +17,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -30,7 +35,13 @@ import com.rgm.api.core.application.usecases.modelo.ObterResumoSolicitacoesModel
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.model.aggregates.EventoModelo;
 import com.rgm.api.core.domain.model.aggregates.Modelo;
+import com.rgm.api.core.domain.model.aggregates.Solicitacao;
+import com.rgm.api.core.domain.model.aggregates.Usuario;
+import com.rgm.api.core.domain.model.enums.PerfilUsuario;
+import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
 import com.rgm.api.core.domain.model.enums.TipoEventoModelo;
+import com.rgm.api.core.domain.model.enums.TipoModelo;
+import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
 import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.EventoModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.FotoGaleriaModeloRepository;
@@ -43,12 +54,16 @@ import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import com.rgm.api.core.domain.validation.LimitesTexto;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.ComponentScan;
@@ -476,5 +491,374 @@ class ModeloControllerTest {
     // Assert
     resposta.andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value(mensagem));
     verifyNoMoreInteractions(gerenciarUseCase);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"0", "101"})
+  void shouldAnswerBadRequestWhenListingModelosWithSizeOutOfRange(final String size)
+      throws Exception {
+    // Arrange
+    final var requisicao = get("/api/modelos").param("size", size);
+
+    // Act
+    final var resposta = mockMvc.perform(requisicao);
+
+    // Assert
+    resposta.andExpect(status().isBadRequest());
+    verifyNoInteractions(listarUseCase);
+  }
+
+  @Test
+  void shouldAnswerBadRequestWhenListingModelosWithNegativePage() throws Exception {
+    // Arrange
+    final String pageNegativa = "-1";
+
+    // Act
+    final var resposta = mockMvc.perform(get("/api/modelos").param("page", pageNegativa));
+
+    // Assert
+    resposta.andExpect(status().isBadRequest());
+    verifyNoInteractions(listarUseCase);
+  }
+
+  @Test
+  void shouldRepassSizeToUseCaseWhenListingModelosWithMaximumSize() throws Exception {
+    // Arrange
+    when(listarUseCase.execute(any())).thenReturn(new PageResult<>(List.of(), 0, 100, 0, 0));
+    final ArgumentCaptor<ListarModelosUseCase.Input> captor =
+        ArgumentCaptor.forClass(ListarModelosUseCase.Input.class);
+
+    // Act
+    final var resposta = mockMvc.perform(get("/api/modelos").param("size", "100"));
+
+    // Assert
+    resposta.andExpect(status().isOk());
+    verify(listarUseCase, times(1)).execute(captor.capture());
+    verifyNoMoreInteractions(listarUseCase);
+    assertEquals(100, captor.getValue().size());
+  }
+
+  @Test
+  void shouldUseDefaultSizeWhenListingModelosWithoutSize() throws Exception {
+    // Arrange
+    when(listarUseCase.execute(any())).thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
+    final ArgumentCaptor<ListarModelosUseCase.Input> captor =
+        ArgumentCaptor.forClass(ListarModelosUseCase.Input.class);
+
+    // Act
+    final var resposta = mockMvc.perform(get("/api/modelos"));
+
+    // Assert
+    resposta.andExpect(status().isOk());
+    verify(listarUseCase, times(1)).execute(captor.capture());
+    verifyNoMoreInteractions(listarUseCase);
+    assertEquals(20, captor.getValue().size());
+  }
+
+  @Test
+  void shouldInformStatusAndFieldInBodyWhenListingModelosWithInvalidSize() throws Exception {
+    // Arrange
+    final String sizeInvalido = "0";
+
+    // Act
+    final var resposta = mockMvc.perform(get("/api/modelos").param("size", sizeInvalido));
+
+    // Assert
+    resposta
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.status").value(400))
+        .andExpect(jsonPath("$.message", containsString("size")));
+    verifyNoInteractions(listarUseCase);
+  }
+
+  private Solicitacao criarSolicitacao(final UUID modeloId, final UUID abertaPorUsuarioId) {
+    final Instant agora = Instant.now();
+    return new Solicitacao(
+        UUID.randomUUID(),
+        "Titulo",
+        "Descricao",
+        TipoSolicitacao.REPARO,
+        StatusSolicitacao.A_FAZER,
+        null,
+        modeloId,
+        null,
+        null,
+        null,
+        abertaPorUsuarioId,
+        null,
+        agora,
+        agora,
+        null,
+        null);
+  }
+
+  private Usuario criarUsuario(final UUID id, final String nome) {
+    final Instant agora = Instant.now();
+    return new Usuario(id, nome, "u@rgm.com", "hash", PerfilUsuario.OPERADOR, true, agora, agora);
+  }
+
+  @Test
+  void shouldAnswerNotFoundWhenListingEventosOfUnknownModelo() throws Exception {
+    // Arrange
+    final UUID id = UUID.randomUUID();
+    when(modeloRepository.findById(id)).thenReturn(Optional.empty());
+
+    // Act
+    final var resposta = mockMvc.perform(get("/api/modelos/{id}/eventos", id));
+
+    // Assert
+    resposta.andExpect(status().isNotFound());
+    verify(modeloRepository, times(1)).findById(id);
+    verifyNoMoreInteractions(modeloRepository);
+    verifyNoInteractions(eventoModeloRepository);
+  }
+
+  @Test
+  void shouldAnswerNotFoundWhenGeneratingFichaOfUnknownModelo() throws Exception {
+    // Arrange
+    final UUID id = UUID.randomUUID();
+    when(modeloRepository.findById(id)).thenReturn(Optional.empty());
+
+    // Act
+    final var resposta =
+        mockMvc.perform(
+            get("/api/modelos/{id}/relatorio", id).with(user(UUID.randomUUID().toString())));
+
+    // Assert
+    resposta.andExpect(status().isNotFound());
+    verify(modeloRepository, times(1)).findById(id);
+    verifyNoMoreInteractions(modeloRepository);
+    verifyNoInteractions(
+        eventoModeloRepository, solicitacaoRepository, atividadeRepository, modeloPdfService);
+  }
+
+  @Test
+  void shouldRepassAtividadesAndNomesWhenGeneratingFichaWithSolicitacoes() throws Exception {
+    // Arrange
+    final Modelo modelo = criarModelo();
+    final UUID usuarioId = UUID.randomUUID();
+    final var primeira = criarSolicitacao(modelo.getId(), usuarioId);
+    final var segunda = criarSolicitacao(modelo.getId(), usuarioId);
+    final byte[] pdf = {9, 8, 7};
+    when(modeloRepository.findById(modelo.getId())).thenReturn(Optional.of(modelo));
+    when(eventoModeloRepository.findByModeloId(modelo.getId())).thenReturn(List.of());
+    when(solicitacaoRepository.findByModeloId(modelo.getId()))
+        .thenReturn(List.of(primeira, segunda));
+    when(solicitacaoRepository.resumirPorModelo(modelo.getId()))
+        .thenReturn(new ResumoSolicitacoesModelo(2, 2, 0, 0, null, null));
+    when(atividadeRepository.findBySolicitacaoId(primeira.getId())).thenReturn(List.of());
+    when(atividadeRepository.findBySolicitacaoId(segunda.getId())).thenReturn(List.of());
+    when(usuarioRepository.findAllByIdIn(List.of(usuarioId)))
+        .thenReturn(List.of(criarUsuario(usuarioId, "Maria")));
+    when(modeloPdfService.gerarFicha(
+            eq(modelo),
+            eq(List.of()),
+            eq(List.of(primeira, segunda)),
+            eq(Map.of(primeira.getId(), List.of(), segunda.getId(), List.of())),
+            eq("Sistema"),
+            eq(Map.of(usuarioId, "Maria")),
+            any(),
+            any()))
+        .thenReturn(pdf);
+
+    // Act
+    final var resposta = mockMvc.perform(get("/api/modelos/{id}/relatorio", modelo.getId()));
+
+    // Assert
+    resposta
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.APPLICATION_PDF))
+        .andExpect(content().bytes(pdf))
+        .andExpect(
+            header().string("Content-Disposition", containsString("ficha-modelo-MOD-001.pdf")));
+    verify(modeloRepository, times(1)).findById(modelo.getId());
+    verify(eventoModeloRepository, times(1)).findByModeloId(modelo.getId());
+    verify(solicitacaoRepository, times(1)).findByModeloId(modelo.getId());
+    verify(solicitacaoRepository, times(1)).resumirPorModelo(modelo.getId());
+    verify(atividadeRepository, times(1)).findBySolicitacaoId(primeira.getId());
+    verify(atividadeRepository, times(1)).findBySolicitacaoId(segunda.getId());
+    verify(usuarioRepository, times(1)).findAllByIdIn(List.of(usuarioId));
+    verify(modeloPdfService, times(1))
+        .gerarFicha(
+            modelo,
+            List.of(),
+            List.of(primeira, segunda),
+            Map.of(primeira.getId(), List.of(), segunda.getId(), List.of()),
+            "Sistema",
+            Map.of(usuarioId, "Maria"),
+            null,
+            null);
+    verifyNoMoreInteractions(
+        modeloRepository,
+        eventoModeloRepository,
+        solicitacaoRepository,
+        atividadeRepository,
+        usuarioRepository,
+        modeloPdfService);
+  }
+
+  @Test
+  void shouldAnswerBadRequestWhenCreatingModeloWithUnknownTipo() throws Exception {
+    // Arrange
+    final var request = new CriarModeloRequest("MOD-001", "Desc", "Obs", "FBOX", "INEXISTENTE");
+
+    // Act
+    final var resposta =
+        mockMvc.perform(
+            post("/api/modelos")
+                .with(user(UUID.randomUUID().toString()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)));
+
+    // Assert
+    resposta
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.message").value("Tipo de modelo invalido: INEXISTENTE"));
+    verifyNoInteractions(gerenciarUseCase);
+  }
+
+  @Test
+  void shouldAnswerBadRequestWhenEditingModeloWithUnknownTipo() throws Exception {
+    // Arrange
+    final var request = new EditarModeloRequest("MOD-001", "Desc", "Obs", "FBOX", "INEXISTENTE");
+
+    // Act
+    final var resposta =
+        mockMvc.perform(
+            put("/api/modelos/{id}", UUID.randomUUID())
+                .with(user(UUID.randomUUID().toString()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)));
+
+    // Assert
+    resposta
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.message").value("Tipo de modelo invalido: INEXISTENTE"));
+    verifyNoInteractions(gerenciarUseCase);
+  }
+
+  @Test
+  void shouldRepassTipoEnumToUseCaseWhenCreatingModeloWithValidTipo() throws Exception {
+    // Arrange
+    when(gerenciarUseCase.criar(any())).thenReturn(criarModelo());
+    final ArgumentCaptor<GerenciarModelosUseCase.CriarInput> captor =
+        ArgumentCaptor.forClass(GerenciarModelosUseCase.CriarInput.class);
+    final var request = new CriarModeloRequest("MOD-001", "Desc", "Obs", "FBOX", "RESINA");
+
+    // Act
+    final var resposta =
+        mockMvc.perform(
+            post("/api/modelos")
+                .with(user(UUID.randomUUID().toString()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)));
+
+    // Assert
+    resposta.andExpect(status().isCreated());
+    verify(gerenciarUseCase, times(1)).criar(captor.capture());
+    verifyNoMoreInteractions(gerenciarUseCase);
+    assertEquals(TipoModelo.RESINA, captor.getValue().tipo());
+  }
+
+  @Test
+  void shouldRepassNullTipoToUseCaseWhenCreatingModeloWithBlankTipo() throws Exception {
+    // Arrange
+    when(gerenciarUseCase.criar(any())).thenReturn(criarModelo());
+    final ArgumentCaptor<GerenciarModelosUseCase.CriarInput> captor =
+        ArgumentCaptor.forClass(GerenciarModelosUseCase.CriarInput.class);
+    final var request = new CriarModeloRequest("MOD-001", "Desc", "Obs", "FBOX", "  ");
+
+    // Act
+    final var resposta =
+        mockMvc.perform(
+            post("/api/modelos")
+                .with(user(UUID.randomUUID().toString()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)));
+
+    // Assert
+    resposta.andExpect(status().isCreated());
+    verify(gerenciarUseCase, times(1)).criar(captor.capture());
+    verifyNoMoreInteractions(gerenciarUseCase);
+    assertNull(captor.getValue().tipo());
+  }
+
+  @Test
+  void shouldUseSistemaAsGeradoPorWhenGeneratingListaWithoutAuthentication() throws Exception {
+    // Arrange
+    when(listarUseCase.execute(any())).thenReturn(new PageResult<>(List.of(), 0, 1000, 0, 0));
+    when(modeloPdfService.gerarLista(any(), eq("Sistema"))).thenReturn(new byte[] {1});
+
+    // Act
+    final var resposta = mockMvc.perform(get("/api/modelos/relatorio"));
+
+    // Assert
+    resposta.andExpect(status().isOk()).andExpect(content().bytes(new byte[] {1}));
+    verify(listarUseCase, times(1))
+        .execute(new ListarModelosUseCase.Input(null, null, null, null, 0, 1000));
+    verify(modeloPdfService, times(1)).gerarLista(List.of(), "Sistema");
+    verifyNoMoreInteractions(listarUseCase, modeloPdfService);
+    verifyNoInteractions(usuarioRepository);
+  }
+
+  @Test
+  void shouldUseSistemaAsGeradoPorWhenAuthenticatedUserIsNotFound() throws Exception {
+    // Arrange
+    final UUID usuarioId = UUID.randomUUID();
+    when(listarUseCase.execute(any())).thenReturn(new PageResult<>(List.of(), 0, 1000, 0, 0));
+    when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.empty());
+    when(modeloPdfService.gerarLista(any(), eq("Sistema"))).thenReturn(new byte[] {1});
+
+    // Act
+    final var resposta =
+        mockMvc.perform(get("/api/modelos/relatorio").with(user(usuarioId.toString())));
+
+    // Assert
+    resposta.andExpect(status().isOk());
+    verify(listarUseCase, times(1))
+        .execute(new ListarModelosUseCase.Input(null, null, null, null, 0, 1000));
+    verify(usuarioRepository, times(1)).findById(usuarioId);
+    verify(modeloPdfService, times(1)).gerarLista(List.of(), "Sistema");
+    verifyNoMoreInteractions(listarUseCase, usuarioRepository, modeloPdfService);
+  }
+
+  @Test
+  void shouldUseSistemaAsGeradoPorWhenAuthenticatedNameIsNotAUuid() throws Exception {
+    // Arrange
+    when(listarUseCase.execute(any())).thenReturn(new PageResult<>(List.of(), 0, 1000, 0, 0));
+    when(modeloPdfService.gerarLista(any(), eq("Sistema"))).thenReturn(new byte[] {1});
+
+    // Act
+    final var resposta = mockMvc.perform(get("/api/modelos/relatorio").with(user("nao-e-uuid")));
+
+    // Assert
+    resposta.andExpect(status().isOk());
+    verify(listarUseCase, times(1))
+        .execute(new ListarModelosUseCase.Input(null, null, null, null, 0, 1000));
+    verify(modeloPdfService, times(1)).gerarLista(List.of(), "Sistema");
+    verifyNoMoreInteractions(listarUseCase, modeloPdfService);
+    verifyNoInteractions(usuarioRepository);
+  }
+
+  @Test
+  void shouldUseUsuarioNomeAsGeradoPorWhenAuthenticatedUserIsFound() throws Exception {
+    // Arrange
+    final UUID usuarioId = UUID.randomUUID();
+    when(listarUseCase.execute(any())).thenReturn(new PageResult<>(List.of(), 0, 1000, 0, 0));
+    when(usuarioRepository.findById(usuarioId))
+        .thenReturn(Optional.of(criarUsuario(usuarioId, "Maria")));
+    when(modeloPdfService.gerarLista(any(), eq("Maria"))).thenReturn(new byte[] {1});
+
+    // Act
+    final var resposta =
+        mockMvc.perform(get("/api/modelos/relatorio").with(user(usuarioId.toString())));
+
+    // Assert
+    resposta.andExpect(status().isOk());
+    verify(listarUseCase, times(1))
+        .execute(new ListarModelosUseCase.Input(null, null, null, null, 0, 1000));
+    verify(usuarioRepository, times(1)).findById(usuarioId);
+    verify(modeloPdfService, times(1)).gerarLista(List.of(), "Maria");
+    verifyNoMoreInteractions(listarUseCase, usuarioRepository, modeloPdfService);
   }
 }
