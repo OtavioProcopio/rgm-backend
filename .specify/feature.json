@@ -1,4 +1,4 @@
 {
-  "active": "specs/009-nome-dos-responsaveis-na-solicitacao-e",
-  "title": "Nome dos responsaveis na solicitacao e transacao ao definir foto de capa"
+  "active": "specs/010-seguranca-e-robustez-da-api-permissoes",
+  "title": "Seguranca e robustez da API: permissoes, exposicao e limites (issues #97, #122, #99, #113 e #89)"
 }

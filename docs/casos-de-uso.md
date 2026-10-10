@@ -110,11 +110,11 @@ Referência de todos os casos de uso implementados no sistema.
 - **Regras**: Somente ADMIN; cascata em atribuições, atividades e vínculos
 
 ## UC-16 — Ranking de métricas de tempo por modelo
-- **Atores**: Gestor, Administrador
+- **Atores**: Gestor, Administrador. Os quatro endpoints de indicadores (`GET /api/solicitacoes/metricas`, `/metricas/historico`, `/metricas/por-modelo` e `/metricas/por-modelo/pdf`) respondem só a esses perfis; Operador recebe 403 (antes da spec 010, respondiam 200 a qualquer autenticado)
 - **Classe**: `ObterMetricasPorModeloUseCase`
 - **Endpoints**: `GET /api/solicitacoes/metricas/por-modelo`, `GET /api/solicitacoes/metricas/por-modelo/pdf`
 - **Regras**: Agregação via SQL nativo (CTEs + `LAG()`), nunca carrega solicitações em memória; retorna, por modelo com ao menos 1 solicitação CONCLUIDA, o tempo médio de resolução e o intervalo médio entre solicitações consecutivas (nulo se houver menos de 2); ordenação (`sort=TEMPO_RESOLUCAO|INTERVALO`, `dir=asc|desc`) validada contra whitelist antes de virar SQL; exportação em PDF separada do relatório de lista de modelos
-- **Erros**: 400 (`sort`/`dir` inválidos)
+- **Erros**: 400 (`sort`/`dir` inválidos; `size` fora de 1..100), 403 (operador)
 - **Nota**: A ficha PDF individual do modelo (`GET /api/modelos/{id}/relatorio`) exibe as mesmas duas métricas, com a mesma regra do ranking, vindas do resumo das solicitações do modelo (UC-20). Até a v1.5.0 a ficha exigia 2+ solicitações CONCLUIDA e media o intervalo só entre as concluídas; a feature `specs/007-filtros-e-resumos-para-a-paginacao` unificou o critério.
 
 ## UC-17 — SLA de solicitações (SOL-007)
@@ -184,6 +184,21 @@ Declarados em `LimitesTexto` (domínio) e aplicados nos requests; texto acima do
 | `GET /api/modelos` | `ativo`, `codigo` | `page`, `size` |
 
 `emAberto=true` devolve só A_FAZER, EM_ANDAMENTO e EM_VALIDACAO e se soma aos outros filtros (com um `status` encerrado, a lista vem vazia); ausente ou `false` não filtra. Com `tipoData=CONCLUSAO`, `dataInicio`/`dataFim` comparam a data de encerramento: conclusão das concluídas e cancelamento das canceladas.
+
+**Paginação**: `size` aceita de 1 a 100 (padrão 20) e `page` é a partir de 0; valor fora do intervalo responde 400 com mensagem que diz o intervalo. Vale para `GET /api/solicitacoes`, `GET /api/solicitacoes/metricas/por-modelo`, `GET /api/modelos` e `GET /api/admin/usuarios`.
+
+## Convenções de erro
+
+- **Entrada inválida**: corpo JSON malformado, data fora de ISO-8601 e enumeração inválida (status, tipo, prioridade, tipoData e perfil) respondem 400, com o nome do campo e o formato ou os valores aceitos; nunca 500.
+- **Segurança**: as respostas 401 (sem credencial válida) e 403 (autenticado sem permissão) trazem corpo JSON no formato padrão de erro (`status`, `error`, `message`, `timestamp`). Operador autenticado sem permissão recebe 403, e não 401.
+
+## Exposição operacional
+
+Spec `specs/010-seguranca-e-robustez-da-api-permissoes`:
+
+- Só `GET /actuator/health` é anônimo.
+- `/actuator/prometheus` e o índice do actuator (`/actuator`) exigem HTTP Basic da conta de coleta definida por `MONITORAMENTO_COLETA_USUARIO` e `MONITORAMENTO_COLETA_SENHA`; sem a senha configurada, ninguém coleta.
+- A interface Swagger UI não é servida em produção.
 
 ## Endpoints de Consulta por ID
 
