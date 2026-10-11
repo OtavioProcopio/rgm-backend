@@ -15,9 +15,11 @@ import static org.mockito.Mockito.when;
 import com.rgm.api.adapter.out.persistence.entity.SolicitacaoJpaEntity;
 import com.rgm.api.adapter.out.persistence.repository.SolicitacaoJpaRepository;
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
+import com.rgm.api.core.domain.model.enums.CriterioOrdenacaoSolicitacao;
 import com.rgm.api.core.domain.model.enums.PrioridadeSolicitacao;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
 import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
+import com.rgm.api.core.domain.ports.repositories.OrdenacaoSolicitacao;
 import com.rgm.api.core.domain.ports.repositories.PageResult;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -30,7 +32,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 
 class SolicitacaoRepositoryAdapterTest {
 
@@ -192,7 +193,7 @@ class SolicitacaoRepositoryAdapterTest {
   void shouldConverterEnumsEmTextoEMapearAPaginaWhenFiltraPorStatusETipo() {
     // Arrange
     final SolicitacaoJpaEntity e = criarEntity();
-    final var pageable = PageRequest.of(0, 10, Sort.by(Sort.Direction.ASC, "criada_em"));
+    final var pageable = PageRequest.of(0, 10);
     final Page<SolicitacaoJpaEntity> page = new PageImpl<>(List.of(e), pageable, 1);
     when(jpa.findByFilters(
             StatusSolicitacao.A_FAZER.name(),
@@ -209,6 +210,8 @@ class SolicitacaoRepositoryAdapterTest {
             null,
             false,
             null,
+            "CRIADA_EM",
+            true,
             pageable))
         .thenReturn(page);
 
@@ -229,6 +232,7 @@ class SolicitacaoRepositoryAdapterTest {
             null,
             false,
             null,
+            OrdenacaoSolicitacao.PADRAO,
             0,
             10);
 
@@ -250,6 +254,8 @@ class SolicitacaoRepositoryAdapterTest {
             null,
             false,
             null,
+            "CRIADA_EM",
+            true,
             pageable);
     verifyNoMoreInteractions(jpa);
   }
@@ -258,7 +264,7 @@ class SolicitacaoRepositoryAdapterTest {
   void shouldRepassarAVisibilidadeAoRepositorioWhenFiltraParaUmOperador() {
     // Arrange
     final UUID operadorId = UUID.randomUUID();
-    final var pageable = PageRequest.of(0, 10, Sort.by(Sort.Direction.ASC, "criada_em"));
+    final var pageable = PageRequest.of(0, 10);
     final Page<SolicitacaoJpaEntity> page = new PageImpl<>(List.of(), pageable, 0);
     when(jpa.findByFilters(
             null,
@@ -275,6 +281,8 @@ class SolicitacaoRepositoryAdapterTest {
             null,
             false,
             operadorId,
+            "CRIADA_EM",
+            true,
             pageable))
         .thenReturn(page);
 
@@ -295,6 +303,7 @@ class SolicitacaoRepositoryAdapterTest {
             null,
             false,
             operadorId,
+            OrdenacaoSolicitacao.PADRAO,
             0,
             10);
 
@@ -316,6 +325,8 @@ class SolicitacaoRepositoryAdapterTest {
             null,
             false,
             operadorId,
+            "CRIADA_EM",
+            true,
             pageable);
     verifyNoMoreInteractions(jpa);
   }
@@ -367,15 +378,173 @@ class SolicitacaoRepositoryAdapterTest {
   }
 
   @Test
-  void findByCriadaEmBetween_retornaLista() {
-    final Instant inicio = Instant.now().minusSeconds(3600);
-    final Instant fim = Instant.now();
-    final SolicitacaoJpaEntity e = criarEntity();
-    when(jpa.findByCriadaEmBetween(inicio, fim)).thenReturn(List.of(e));
+  void shouldMapearALinhaAgregadaWhenAgregaSeriePorDia() {
+    // Arrange
+    final Instant inicio = Instant.parse("2026-09-01T03:00:00Z");
+    final Instant fim = Instant.parse("2026-10-01T03:00:00Z");
+    final UUID modeloId = UUID.randomUUID();
+    final java.time.ZoneId fuso = java.time.ZoneId.of("America/Sao_Paulo");
+    final List<Object[]> linhas = new ArrayList<>();
+    linhas.add(new Object[] {java.sql.Date.valueOf("2026-09-09"), 5L, 2L, 2L, 1L, 7200.5});
+    linhas.add(new Object[] {java.sql.Date.valueOf("2026-09-10"), 1L, 1L, 0L, 0L, null});
+    when(jpa.agregarSerie(inicio, fim, modeloId, "day", "America/Sao_Paulo")).thenReturn(linhas);
 
-    final List<Solicitacao> result = adapter.findByCriadaEmBetween(inicio, fim);
+    // Act
+    final var serie =
+        adapter.agregarSerie(
+            inicio,
+            fim,
+            modeloId,
+            com.rgm.api.core.domain.ports.repositories.GranularidadeSerie.DIA,
+            fuso);
 
-    assertEquals(1, result.size());
+    // Assert
+    assertEquals(
+        List.of(
+            new com.rgm.api.core.domain.ports.repositories.LinhaDeSerie(
+                java.time.LocalDate.of(2026, 9, 9), 5, 2, 2, 1, 7200.5),
+            new com.rgm.api.core.domain.ports.repositories.LinhaDeSerie(
+                java.time.LocalDate.of(2026, 9, 10), 1, 1, 0, 0, null)),
+        serie);
+    verify(jpa, times(1)).agregarSerie(inicio, fim, modeloId, "day", "America/Sao_Paulo");
+    verifyNoMoreInteractions(jpa);
+  }
+
+  @Test
+  void shouldPedirAUnidadeSemanaWhenGranularidadeESemana() {
+    // Arrange
+    final Instant inicio = Instant.parse("2026-09-01T03:00:00Z");
+    final Instant fim = Instant.parse("2026-10-01T03:00:00Z");
+    final java.time.ZoneId fuso = java.time.ZoneId.of("America/Sao_Paulo");
+    when(jpa.agregarSerie(inicio, fim, null, "week", "America/Sao_Paulo")).thenReturn(List.of());
+
+    // Act
+    final var serie =
+        adapter.agregarSerie(
+            inicio,
+            fim,
+            null,
+            com.rgm.api.core.domain.ports.repositories.GranularidadeSerie.SEMANA,
+            fuso);
+
+    // Assert
+    assertTrue(serie.isEmpty());
+    verify(jpa, times(1)).agregarSerie(inicio, fim, null, "week", "America/Sao_Paulo");
+    verifyNoMoreInteractions(jpa);
+  }
+
+  private static final java.time.ZoneId FUSO_PAINEL = java.time.ZoneId.of("America/Sao_Paulo");
+  private static final Instant PAINEL_INICIO = Instant.parse("2026-09-07T03:00:00Z");
+  private static final Instant PAINEL_FIM = Instant.parse("2026-09-14T03:00:00Z");
+  private static final Instant PAINEL_AGORA = Instant.parse("2026-09-13T15:00:00Z");
+
+  @Test
+  void shouldMapearTotaisESerieDoPainelWhenAgregaAJanela() {
+    // Arrange
+    final UUID modeloId = UUID.randomUUID();
+    final List<Object[]> totais = new ArrayList<>();
+    totais.add(new Object[] {4L, 3L, 1L, 1800.0});
+    final List<Object[]> serie = new ArrayList<>();
+    serie.add(new Object[] {java.sql.Date.valueOf("2026-09-07"), 2L, 1L, 0L, 5L, 2L});
+    serie.add(new Object[] {java.sql.Date.valueOf("2026-09-08"), 0L, 0L, 1L, 4L, 1L});
+    when(jpa.painelTotais(PAINEL_INICIO, PAINEL_FIM, modeloId)).thenReturn(totais);
+    when(jpa.painelSerie(
+            java.time.LocalDate.of(2026, 9, 7),
+            java.time.LocalDate.of(2026, 9, 14),
+            modeloId,
+            "day",
+            "America/Sao_Paulo",
+            PAINEL_AGORA))
+        .thenReturn(serie);
+
+    // Act
+    final var painel =
+        adapter.agregarPainel(
+            PAINEL_INICIO,
+            PAINEL_FIM,
+            modeloId,
+            com.rgm.api.core.domain.ports.repositories.GranularidadeSerie.DIA,
+            FUSO_PAINEL,
+            PAINEL_AGORA);
+
+    // Assert
+    assertEquals(
+        new com.rgm.api.core.domain.ports.repositories.PainelAgregado.Totais(4, 3, 1, 1800.0),
+        painel.totais());
+    assertEquals(
+        List.of(
+            new com.rgm.api.core.domain.ports.repositories.PainelAgregado.Ponto(
+                java.time.LocalDate.of(2026, 9, 7), 2, 1, 0, 5, 2),
+            new com.rgm.api.core.domain.ports.repositories.PainelAgregado.Ponto(
+                java.time.LocalDate.of(2026, 9, 8), 0, 0, 1, 4, 1)),
+        painel.serie());
+    verify(jpa, times(1)).painelTotais(PAINEL_INICIO, PAINEL_FIM, modeloId);
+    verify(jpa, times(1))
+        .painelSerie(
+            java.time.LocalDate.of(2026, 9, 7),
+            java.time.LocalDate.of(2026, 9, 14),
+            modeloId,
+            "day",
+            "America/Sao_Paulo",
+            PAINEL_AGORA);
+    verifyNoMoreInteractions(jpa);
+  }
+
+  @Test
+  void shouldPedirAUnidadeSemanaEManterTempoNuloWhenPainelEmSemanas() {
+    // Arrange
+    final List<Object[]> totais = new ArrayList<>();
+    totais.add(new Object[] {0L, 0L, 0L, null});
+    when(jpa.painelTotais(PAINEL_INICIO, PAINEL_FIM, null)).thenReturn(totais);
+    when(jpa.painelSerie(
+            java.time.LocalDate.of(2026, 9, 7),
+            java.time.LocalDate.of(2026, 9, 14),
+            null,
+            "week",
+            "America/Sao_Paulo",
+            PAINEL_AGORA))
+        .thenReturn(List.of());
+
+    // Act
+    final var painel =
+        adapter.agregarPainel(
+            PAINEL_INICIO,
+            PAINEL_FIM,
+            null,
+            com.rgm.api.core.domain.ports.repositories.GranularidadeSerie.SEMANA,
+            FUSO_PAINEL,
+            PAINEL_AGORA);
+
+    // Assert
+    assertNull(painel.totais().tempoMedioResolucaoSegundos());
+    assertTrue(painel.serie().isEmpty());
+    verify(jpa, times(1)).painelTotais(PAINEL_INICIO, PAINEL_FIM, null);
+    verify(jpa, times(1))
+        .painelSerie(
+            java.time.LocalDate.of(2026, 9, 7),
+            java.time.LocalDate.of(2026, 9, 14),
+            null,
+            "week",
+            "America/Sao_Paulo",
+            PAINEL_AGORA);
+    verifyNoMoreInteractions(jpa);
+  }
+
+  @Test
+  void shouldMapearAbertasEAtrasadasWhenSituacaoAgora() {
+    // Arrange
+    final UUID modeloId = UUID.randomUUID();
+    final List<Object[]> linhas = new ArrayList<>();
+    linhas.add(new Object[] {7L, 2L});
+    when(jpa.painelAgora(modeloId, PAINEL_AGORA)).thenReturn(linhas);
+
+    // Act
+    final var agora = adapter.situacaoAgora(modeloId, PAINEL_AGORA);
+
+    // Assert
+    assertEquals(new com.rgm.api.core.domain.ports.repositories.PainelAgregado.Agora(7, 2), agora);
+    verify(jpa, times(1)).painelAgora(modeloId, PAINEL_AGORA);
+    verifyNoMoreInteractions(jpa);
   }
 
   @Test
@@ -425,42 +594,180 @@ class SolicitacaoRepositoryAdapterTest {
   }
 
   @Test
-  void findByStatusAndCriadaEmBetween_retornaLista() {
-    final Instant inicio = Instant.now().minusSeconds(3600);
-    final Instant fim = Instant.now();
-    final SolicitacaoJpaEntity e = criarEntity();
-    when(jpa.findByStatusAndCriadaEmBetween(StatusSolicitacao.A_FAZER, inicio, fim))
-        .thenReturn(List.of(e));
-
-    final List<Solicitacao> result =
-        adapter.findByStatusAndCriadaEmBetween(StatusSolicitacao.A_FAZER, inicio, fim);
-
-    assertEquals(1, result.size());
-  }
-
-  @Test
   void shouldRepassarEmAbertoAoJpaWhenFiltroVemLigado() {
     // Arrange
-    final var pageable = PageRequest.of(0, 10, Sort.by(Sort.Direction.ASC, "criada_em"));
+    final var pageable = PageRequest.of(0, 10);
     final Page<SolicitacaoJpaEntity> page = new PageImpl<>(List.of(), pageable, 0);
     when(jpa.findByFilters(
-            null, null, null, null, null, null, null, null, null, null, null, null, true, null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            true,
+            null,
+            "CRIADA_EM",
+            true,
             pageable))
         .thenReturn(page);
 
     // Act
     final PageResult<Solicitacao> result =
         adapter.findByFilters(
-            null, null, null, null, null, null, null, null, null, null, null, null, true, null, 0,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            true,
+            null,
+            OrdenacaoSolicitacao.PADRAO,
+            0,
             10);
 
     // Assert
     assertEquals(new PageResult<>(List.of(), 0, 10, 0, 0), result);
     verify(jpa, times(1))
         .findByFilters(
-            null, null, null, null, null, null, null, null, null, null, null, null, true, null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            true,
+            null,
+            "CRIADA_EM",
+            true,
             pageable);
     verifyNoMoreInteractions(jpa);
+  }
+
+  @Test
+  void shouldRepassarCriterioESentidoAoJpaWhenOrdenacaoEPrazoLimiteDecrescente() {
+    // Arrange
+    final var pageable = PageRequest.of(2, 10);
+    final Page<SolicitacaoJpaEntity> page = new PageImpl<>(List.of(), pageable, 0);
+    final OrdenacaoSolicitacao ordenacao =
+        new OrdenacaoSolicitacao(CriterioOrdenacaoSolicitacao.PRAZO_LIMITE, false);
+    when(jpa.findByFilters(
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            false,
+            null,
+            "PRAZO_LIMITE",
+            false,
+            pageable))
+        .thenReturn(page);
+
+    // Act
+    final PageResult<Solicitacao> result =
+        adapter.findByFilters(
+            null, null, null, null, null, null, null, null, null, null, null, null, false, null,
+            ordenacao, 2, 10);
+
+    // Assert
+    assertEquals(new PageResult<>(List.of(), 2, 10, 0, 0), result);
+    verify(jpa, times(1))
+        .findByFilters(
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            false,
+            null,
+            "PRAZO_LIMITE",
+            false,
+            pageable);
+    verifyNoMoreInteractions(jpa);
+  }
+
+  @Test
+  void shouldMandarPaginaSemSortAoJpaWhenOrdenacaoVemDentroDaConsulta() {
+    // Arrange
+    final var captor =
+        org.mockito.ArgumentCaptor.forClass(org.springframework.data.domain.Pageable.class);
+    final Page<SolicitacaoJpaEntity> page = new PageImpl<>(List.of(), PageRequest.of(0, 10), 0);
+    when(jpa.findByFilters(
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            org.mockito.ArgumentMatchers.anyBoolean(),
+            any(),
+            any(),
+            org.mockito.ArgumentMatchers.anyBoolean(),
+            captor.capture()))
+        .thenReturn(page);
+
+    // Act
+    adapter.findByFilters(
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        false,
+        null,
+        OrdenacaoSolicitacao.PADRAO,
+        0,
+        10);
+
+    // Assert
+    assertTrue(captor.getValue().getSort().isUnsorted());
   }
 
   @Test
@@ -470,11 +777,11 @@ class SolicitacaoRepositoryAdapterTest {
     final Instant primeira = Instant.parse("2026-09-01T12:00:00Z");
     final Instant ultima = primeira.plusSeconds(300);
     final List<Object[]> linhas = new ArrayList<>();
-    linhas.add(new Object[] {4L, 1L, 2L, 1L, primeira, ultima, 259200.0});
+    linhas.add(new Object[] {5L, 1L, 2L, 1L, primeira, ultima, 259200.0, 4L});
     when(jpa.resumirPorModelo(modeloId)).thenReturn(linhas);
     final var esperado =
         new com.rgm.api.core.domain.ports.repositories.ResumoSolicitacoesModelo(
-            4, 1, 2, 1, 259200.0, 100.0);
+            5, 1, 2, 1, 259200.0, 100.0);
 
     // Act
     final var resumo = adapter.resumirPorModelo(modeloId);
@@ -482,6 +789,30 @@ class SolicitacaoRepositoryAdapterTest {
     // Assert
     assertEquals(esperado, resumo);
     verify(jpa, org.mockito.Mockito.times(1)).resumirPorModelo(modeloId);
+    verifyNoMoreInteractions(jpa);
+  }
+
+  @Test
+  void shouldOrdenarPorCriadaEmEDesempatarPorIdWhenListaTodasPaginadas() {
+    // Arrange
+    final var captor =
+        org.mockito.ArgumentCaptor.forClass(org.springframework.data.domain.Pageable.class);
+    final Page<SolicitacaoJpaEntity> page = new PageImpl<>(List.of(), PageRequest.of(0, 10), 0);
+    when(jpa.findAll(captor.capture())).thenReturn(page);
+    final var esperado =
+        org.springframework.data.domain.Sort.by(
+                org.springframework.data.domain.Sort.Direction.ASC, "criadaEm")
+            .and(
+                org.springframework.data.domain.Sort.by(
+                    org.springframework.data.domain.Sort.Direction.ASC, "id"));
+
+    // Act
+    adapter.findAll(0, 10);
+
+    // Assert
+    assertEquals(esperado, captor.getValue().getSort());
+    verify(jpa, times(1)).findAll(captor.getValue());
+    verifyNoMoreInteractions(jpa);
   }
 
   @Test
@@ -489,7 +820,7 @@ class SolicitacaoRepositoryAdapterTest {
     // Arrange
     final UUID modeloId = UUID.randomUUID();
     final List<Object[]> linhas = new ArrayList<>();
-    linhas.add(new Object[] {0L, 0L, 0L, 0L, null, null, null});
+    linhas.add(new Object[] {0L, 0L, 0L, 0L, null, null, null, 0L});
     when(jpa.resumirPorModelo(modeloId)).thenReturn(linhas);
     final var esperado =
         new com.rgm.api.core.domain.ports.repositories.ResumoSolicitacoesModelo(

@@ -4,11 +4,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 import com.rgm.api.adapter.out.persistence.entity.SolicitacaoJpaEntity;
+import com.rgm.api.core.domain.model.enums.CriterioOrdenacaoSolicitacao;
 import com.rgm.api.core.domain.model.enums.PrioridadeSolicitacao;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
 import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
+import com.rgm.api.core.domain.ports.repositories.OrdenacaoSolicitacao;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,7 +31,6 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-/** Exercita o SQL nativo das consultas de solicitacao em PostgreSQL real, com as migracoes. */
 @Testcontainers
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
@@ -39,8 +41,9 @@ class SolicitacaoJpaRepositoryPostgresTest {
   static final PostgreSQLContainer<?> POSTGRES =
       new PostgreSQLContainer<>("postgres:16-alpine").withDatabaseName("rgm_test");
 
-  private static final Pageable PRIMEIRA_PAGINA =
-      PageRequest.of(0, 50, Sort.by(Sort.Direction.ASC, "criada_em"));
+  private static final Pageable PRIMEIRA_PAGINA = PageRequest.of(0, 50);
+
+  private static final String CRITERIO_PADRAO = CriterioOrdenacaoSolicitacao.CRIADA_EM.name();
 
   @Autowired private SolicitacaoJpaRepository repository;
   @Autowired private JdbcTemplate jdbc;
@@ -144,7 +147,44 @@ class SolicitacaoJpaRepositoryPostgresTest {
         null,
         emAberto,
         null,
+        CRITERIO_PADRAO,
+        true,
         pageable);
+  }
+
+  private Page<SolicitacaoJpaEntity> listarOrdenado(
+      final CriterioOrdenacaoSolicitacao criterio,
+      final boolean ascendente,
+      final Pageable pageable) {
+    return repository.findByFilters(
+        null,
+        modeloId,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        false,
+        null,
+        criterio.name(),
+        ascendente,
+        pageable);
+  }
+
+  private List<UUID> idsNaOrdem(final Page<SolicitacaoJpaEntity> page) {
+    return page.getContent().stream().map(SolicitacaoJpaEntity::getId).toList();
+  }
+
+  private UUID persistirComPrioridade(
+      final PrioridadeSolicitacao prioridade, final Duration idade) {
+    return persistir(
+            StatusSolicitacao.A_FAZER, agora.minus(idade), null, usuarioId, modeloId, prioridade)
+        .getId();
   }
 
   private Page<SolicitacaoJpaEntity> filtrarVisivelPara(
@@ -164,6 +204,8 @@ class SolicitacaoJpaRepositoryPostgresTest {
         null,
         false,
         visivelPara,
+        CRITERIO_PADRAO,
+        true,
         PRIMEIRA_PAGINA);
   }
 
@@ -186,6 +228,135 @@ class SolicitacaoJpaRepositoryPostgresTest {
 
   private static List<UUID> ids(final Page<SolicitacaoJpaEntity> page) {
     return page.getContent().stream().map(SolicitacaoJpaEntity::getId).sorted().toList();
+  }
+
+  @Test
+  void shouldTrazerAMaisVencidaPrimeiroEASemPrioridadeNoFimWhenPrazoLimiteECrescente() {
+    // Arrange
+    final UUID baixa = persistirComPrioridade(PrioridadeSolicitacao.BAIXA, Duration.ofHours(1));
+    final UUID urgente =
+        persistirComPrioridade(PrioridadeSolicitacao.URGENTE, Duration.ofHours(10));
+    final UUID semPrioridade = persistirComPrioridade(null, Duration.ofHours(20));
+    final UUID media = persistirComPrioridade(PrioridadeSolicitacao.MEDIA, Duration.ofHours(2));
+
+    // Act
+    final var page =
+        listarOrdenado(CriterioOrdenacaoSolicitacao.PRAZO_LIMITE, true, PRIMEIRA_PAGINA);
+
+    // Assert
+    assertEquals(List.of(urgente, media, baixa, semPrioridade), idsNaOrdem(page));
+  }
+
+  @Test
+  void shouldManterASemPrioridadeNoFimWhenPrazoLimiteEDecrescente() {
+    // Arrange
+    final UUID baixa = persistirComPrioridade(PrioridadeSolicitacao.BAIXA, Duration.ofHours(1));
+    final UUID urgente =
+        persistirComPrioridade(PrioridadeSolicitacao.URGENTE, Duration.ofHours(10));
+    final UUID semPrioridade = persistirComPrioridade(null, Duration.ofHours(20));
+    final UUID media = persistirComPrioridade(PrioridadeSolicitacao.MEDIA, Duration.ofHours(2));
+
+    // Act
+    final var page =
+        listarOrdenado(CriterioOrdenacaoSolicitacao.PRAZO_LIMITE, false, PRIMEIRA_PAGINA);
+
+    // Assert
+    assertEquals(List.of(baixa, media, urgente, semPrioridade), idsNaOrdem(page));
+  }
+
+  @Test
+  void shouldTrazerAMaisNovaPrimeiroWhenCriacaoEDecrescente() {
+    // Arrange
+    final UUID antiga = persistirComPrioridade(null, Duration.ofDays(3));
+    final UUID nova = persistirComPrioridade(null, Duration.ofHours(1));
+    final UUID intermediaria = persistirComPrioridade(null, Duration.ofDays(1));
+
+    // Act
+    final var page = listarOrdenado(CriterioOrdenacaoSolicitacao.CRIADA_EM, false, PRIMEIRA_PAGINA);
+
+    // Assert
+    assertEquals(List.of(nova, intermediaria, antiga), idsNaOrdem(page));
+  }
+
+  @Test
+  void shouldTrazerAMaisAntigaPrimeiroWhenOrdenacaoEOPadrao() {
+    // Arrange
+    final UUID nova = persistirComPrioridade(null, Duration.ofHours(1));
+    final UUID antiga = persistirComPrioridade(null, Duration.ofDays(3));
+    final UUID intermediaria = persistirComPrioridade(null, Duration.ofDays(1));
+
+    // Act
+    final var page =
+        listarOrdenado(
+            OrdenacaoSolicitacao.PADRAO.criterio(),
+            OrdenacaoSolicitacao.PADRAO.ascendente(),
+            PRIMEIRA_PAGINA);
+
+    // Assert
+    assertEquals(List.of(antiga, intermediaria, nova), idsNaOrdem(page));
+  }
+
+  @Test
+  void shouldTrazerUrgenteAntesDeBaixaWhenPrioridadeECrescente() {
+    // Arrange
+    final UUID baixa = persistirComPrioridade(PrioridadeSolicitacao.BAIXA, Duration.ofDays(4));
+    final UUID semPrioridade = persistirComPrioridade(null, Duration.ofDays(3));
+    final UUID urgente = persistirComPrioridade(PrioridadeSolicitacao.URGENTE, Duration.ofDays(2));
+    final UUID media = persistirComPrioridade(PrioridadeSolicitacao.MEDIA, Duration.ofDays(1));
+    final UUID alta = persistirComPrioridade(PrioridadeSolicitacao.ALTA, Duration.ofHours(1));
+
+    // Act
+    final var page = listarOrdenado(CriterioOrdenacaoSolicitacao.PRIORIDADE, true, PRIMEIRA_PAGINA);
+
+    // Assert
+    assertEquals(List.of(urgente, alta, media, baixa, semPrioridade), idsNaOrdem(page));
+  }
+
+  @Test
+  void shouldTrazerBaixaAntesDeUrgenteEASemPrioridadeNoFimWhenPrioridadeEDecrescente() {
+    // Arrange
+    final UUID baixa = persistirComPrioridade(PrioridadeSolicitacao.BAIXA, Duration.ofDays(4));
+    final UUID semPrioridade = persistirComPrioridade(null, Duration.ofDays(3));
+    final UUID urgente = persistirComPrioridade(PrioridadeSolicitacao.URGENTE, Duration.ofDays(2));
+
+    // Act
+    final var page =
+        listarOrdenado(CriterioOrdenacaoSolicitacao.PRIORIDADE, false, PRIMEIRA_PAGINA);
+
+    // Assert
+    assertEquals(List.of(baixa, urgente, semPrioridade), idsNaOrdem(page));
+  }
+
+  @Test
+  void shouldNaoRepetirNemPerderItemWhenPaginasConsecutivasTemEmpateNoCriterio() {
+    // Arrange
+    final int total = 5;
+    final Duration idade = Duration.ofHours(3);
+    final Instant criadaEm = agora.minus(idade);
+    for (int i = 0; i < total; i++) {
+      persistir(
+          StatusSolicitacao.A_FAZER,
+          criadaEm,
+          null,
+          usuarioId,
+          modeloId,
+          PrioridadeSolicitacao.ALTA);
+    }
+    final List<UUID> esperados =
+        idsNaOrdem(listarOrdenado(CriterioOrdenacaoSolicitacao.PRIORIDADE, true, PRIMEIRA_PAGINA));
+
+    // Act
+    final List<UUID> paginado = new java.util.ArrayList<>();
+    for (int pagina = 0; pagina < 3; pagina++) {
+      paginado.addAll(
+          idsNaOrdem(
+              listarOrdenado(
+                  CriterioOrdenacaoSolicitacao.PRIORIDADE, true, PageRequest.of(pagina, 2))));
+    }
+
+    // Assert
+    assertEquals(total, paginado.stream().distinct().count());
+    assertEquals(esperados, paginado);
   }
 
   @Test
@@ -358,14 +529,7 @@ class SolicitacaoJpaRepositoryPostgresTest {
 
     // Act
     final var page =
-        filtrar(
-            null,
-            null,
-            null,
-            null,
-            usuarioId,
-            true,
-            PageRequest.of(0, tamanhoDaPagina, Sort.by(Sort.Direction.ASC, "criada_em")));
+        filtrar(null, null, null, null, usuarioId, true, PageRequest.of(0, tamanhoDaPagina));
 
     // Assert
     assertEquals(tamanhoDaPagina, page.getContent().size());
@@ -537,11 +701,739 @@ class SolicitacaoJpaRepositoryPostgresTest {
     final double intervalo =
         Duration.between((Instant) row[4], (Instant) row[5]).toMillis()
             / 1000.0
-            / (((Number) row[0]).longValue() - 1);
+            / (((Number) row[7]).longValue() - 1);
 
     // Assert
     assertEquals(((Number) ranking[3]).doubleValue(), intervalo, 0.001);
     assertEquals(((Number) ranking[2]).doubleValue(), ((Number) row[6]).doubleValue(), 0.001);
+  }
+
+  private static final String FUSO = "America/Sao_Paulo";
+  private static final Instant JANELA_INICIO = Instant.parse("2026-09-01T03:00:00Z");
+  private static final Instant JANELA_FIM = Instant.parse("2026-10-01T03:00:00Z");
+
+  private List<Object[]> serie(final String unidade, final UUID modelo) {
+    return repository.agregarSerie(JANELA_INICIO, JANELA_FIM, modelo, unidade, FUSO);
+  }
+
+  private void persistirAberta(final String criadaEm) {
+    persistir(StatusSolicitacao.A_FAZER, Instant.parse(criadaEm), null);
+  }
+
+  @Test
+  void shouldCairNoProprioDiaLocalWhenSolicitacaoFoiCriadaAs22hDeBrasilia() {
+    // Arrange
+    persistirAberta("2026-09-10T01:00:00Z");
+
+    // Act
+    final List<Object[]> linhas = serie("day", null);
+
+    // Assert
+    assertEquals(1, linhas.size());
+    assertEquals("2026-09-09", linhas.get(0)[0].toString());
+  }
+
+  @Test
+  void shouldSepararODiaWhenSolicitacoesEstaoEm23h59E00h00Locais() {
+    // Arrange
+    persistirAberta("2026-09-10T02:59:00Z");
+    persistirAberta("2026-09-10T03:00:00Z");
+
+    // Act
+    final List<Object[]> linhas = serie("day", null);
+
+    // Assert
+    assertEquals(2, linhas.size());
+    assertEquals("2026-09-09", linhas.get(0)[0].toString());
+    assertEquals(1L, ((Number) linhas.get(0)[1]).longValue());
+    assertEquals("2026-09-10", linhas.get(1)[0].toString());
+    assertEquals(1L, ((Number) linhas.get(1)[1]).longValue());
+  }
+
+  @Test
+  void shouldContarPorStatusEMediaDeResolucaoWhenAgregaODia() {
+    // Arrange
+    final Instant criadaEm = Instant.parse("2026-09-10T13:00:00Z");
+    persistir(StatusSolicitacao.CONCLUIDA, criadaEm, criadaEm.plus(Duration.ofHours(1)));
+    persistir(StatusSolicitacao.CONCLUIDA, criadaEm, criadaEm.plus(Duration.ofHours(3)));
+    persistir(StatusSolicitacao.CANCELADA, criadaEm, criadaEm.plus(Duration.ofHours(2)));
+    persistir(StatusSolicitacao.EM_VALIDACAO, criadaEm, null);
+    persistir(StatusSolicitacao.A_FAZER, criadaEm, null);
+
+    // Act
+    final Object[] linha = serie("day", null).get(0);
+
+    // Assert
+    assertEquals(5L, ((Number) linha[1]).longValue());
+    assertEquals(2L, ((Number) linha[2]).longValue());
+    assertEquals(2L, ((Number) linha[3]).longValue());
+    assertEquals(1L, ((Number) linha[4]).longValue());
+    assertEquals(7200.0, ((Number) linha[5]).doubleValue(), 0.001);
+  }
+
+  @Test
+  void shouldDeixarAMediaVaziaWhenDiaNaoTemConcluida() {
+    // Arrange
+    persistirAberta("2026-09-10T13:00:00Z");
+
+    // Act
+    final Object[] linha = serie("day", null).get(0);
+
+    // Assert
+    assertNull(linha[5]);
+  }
+
+  @Test
+  void shouldAgruparPelaDataDeCriacaoWhenConcluidaEmOutroDia() {
+    // Arrange
+    final Instant criadaEm = Instant.parse("2026-09-10T13:00:00Z");
+    persistir(StatusSolicitacao.CONCLUIDA, criadaEm, criadaEm.plus(Duration.ofDays(2)));
+
+    // Act
+    final List<Object[]> linhas = serie("day", null);
+
+    // Assert
+    assertEquals(1, linhas.size());
+    assertEquals("2026-09-10", linhas.get(0)[0].toString());
+  }
+
+  @Test
+  void shouldFiltrarPeloModeloNaConsultaWhenModeloVemPreenchido() {
+    // Arrange
+    final UUID outroModelo = criarModelo("DISA");
+    final Instant criadaEm = Instant.parse("2026-09-10T13:00:00Z");
+    persistir(StatusSolicitacao.A_FAZER, criadaEm, null);
+    persistir(StatusSolicitacao.A_FAZER, criadaEm, null, usuarioId, outroModelo, null);
+    persistir(StatusSolicitacao.A_FAZER, criadaEm, null, usuarioId, outroModelo, null);
+
+    // Act
+    final Object[] linha = serie("day", outroModelo).get(0);
+
+    // Assert
+    assertEquals(2L, ((Number) linha[1]).longValue());
+  }
+
+  @Test
+  void shouldAgruparDeSegundaADomingoWhenUnidadeESemana() {
+    // Arrange
+    persistirAberta("2026-09-14T02:59:00Z");
+    persistirAberta("2026-09-14T03:00:00Z");
+    persistirAberta("2026-09-20T14:00:00Z");
+
+    // Act
+    final List<Object[]> linhas = serie("week", null);
+
+    // Assert
+    assertEquals(2, linhas.size());
+    assertEquals("2026-09-07", linhas.get(0)[0].toString());
+    assertEquals(1L, ((Number) linhas.get(0)[1]).longValue());
+    assertEquals("2026-09-14", linhas.get(1)[0].toString());
+    assertEquals(2L, ((Number) linhas.get(1)[1]).longValue());
+  }
+
+  @Test
+  void shouldLimitarAJanelaWhenInicioEInclusivoEFimEExclusivo() {
+    // Arrange
+    persistirAberta("2026-09-01T02:59:00Z");
+    persistirAberta("2026-09-01T03:00:00Z");
+    persistirAberta("2026-10-01T02:59:00Z");
+    persistirAberta("2026-10-01T03:00:00Z");
+
+    // Act
+    final long total =
+        serie("day", null).stream().mapToLong(l -> ((Number) l[1]).longValue()).sum();
+
+    // Assert
+    assertEquals(2L, total);
+  }
+
+  private static final LocalDate PAINEL_PRIMEIRO_DIA = LocalDate.of(2026, 9, 7);
+  private static final LocalDate PAINEL_FIM_DIA = LocalDate.of(2026, 9, 14);
+  private static final Instant PAINEL_INICIO = Instant.parse("2026-09-07T03:00:00Z");
+  private static final Instant PAINEL_FIM = Instant.parse("2026-09-14T03:00:00Z");
+  private static final Instant PAINEL_AGORA_DOMINGO_13_09_12H_BRASILIA =
+      Instant.parse("2026-09-13T15:00:00Z");
+
+  private Object[] totaisDoPainel(final Instant inicio, final Instant fim, final UUID modelo) {
+    return repository.painelTotais(inicio, fim, modelo).get(0);
+  }
+
+  private List<Object[]> seriePainel(final String unidade, final UUID modelo) {
+    return repository.painelSerie(
+        PAINEL_PRIMEIRO_DIA,
+        PAINEL_FIM_DIA,
+        modelo,
+        unidade,
+        FUSO,
+        PAINEL_AGORA_DOMINGO_13_09_12H_BRASILIA);
+  }
+
+  private static List<Long> coluna(final List<Object[]> linhas, final int indice) {
+    return linhas.stream().map(l -> ((Number) l[indice]).longValue()).toList();
+  }
+
+  private SolicitacaoJpaEntity persistirComPrioridade(
+      final StatusSolicitacao status,
+      final String criadaEm,
+      final String encerradaEm,
+      final PrioridadeSolicitacao prioridade) {
+    return persistir(
+        status,
+        Instant.parse(criadaEm),
+        encerradaEm == null ? null : Instant.parse(encerradaEm),
+        usuarioId,
+        modeloId,
+        prioridade);
+  }
+
+  @Test
+  void shouldContarCriadasPelaDataDeCriacaoWhenJanelaTemTotais() {
+    // Arrange
+    persistirAberta("2026-09-07T02:59:00Z");
+    persistirAberta("2026-09-07T03:00:00Z");
+    persistirAberta("2026-09-13T12:00:00Z");
+    persistirAberta("2026-09-14T03:00:00Z");
+
+    // Act
+    final Object[] totais = totaisDoPainel(PAINEL_INICIO, PAINEL_FIM, null);
+
+    // Assert
+    assertEquals(2L, ((Number) totais[0]).longValue());
+  }
+
+  @Test
+  void shouldContarConcluidaNaJanelaDaConclusaoWhenFoiCriadaVinteDiasAntes() {
+    // Arrange
+    persistir(
+        StatusSolicitacao.CONCLUIDA,
+        Instant.parse("2026-08-18T13:00:00Z"),
+        Instant.parse("2026-09-12T13:00:00Z"));
+
+    // Act
+    final Object[] totais = totaisDoPainel(PAINEL_INICIO, PAINEL_FIM, null);
+
+    // Assert
+    assertEquals(0L, ((Number) totais[0]).longValue());
+    assertEquals(1L, ((Number) totais[1]).longValue());
+  }
+
+  @Test
+  void shouldContarCanceladaNaJanelaDoCancelamentoWhenFoiCriadaAntes() {
+    // Arrange
+    persistir(
+        StatusSolicitacao.CANCELADA,
+        Instant.parse("2026-08-18T13:00:00Z"),
+        Instant.parse("2026-09-09T13:00:00Z"));
+    persistir(
+        StatusSolicitacao.CANCELADA,
+        Instant.parse("2026-09-08T13:00:00Z"),
+        Instant.parse("2026-09-14T13:00:00Z"));
+
+    // Act
+    final Object[] totais = totaisDoPainel(PAINEL_INICIO, PAINEL_FIM, null);
+
+    // Assert
+    assertEquals(1L, ((Number) totais[2]).longValue());
+  }
+
+  @Test
+  void shouldDar1800SegundosWhenResolucaoDemorouTrintaMinutos() {
+    // Arrange
+    final Instant criadaEm = Instant.parse("2026-09-09T13:00:00Z");
+    persistir(StatusSolicitacao.CONCLUIDA, criadaEm, criadaEm.plus(Duration.ofMinutes(30)));
+
+    // Act
+    final Object[] totais = totaisDoPainel(PAINEL_INICIO, PAINEL_FIM, null);
+
+    // Assert
+    assertEquals(1800.0, ((Number) totais[3]).doubleValue(), 0.001);
+  }
+
+  @Test
+  void shouldMediarSoAsConcluidasNaJanelaWhenHaConclusaoForaDela() {
+    // Arrange
+    final Instant criadaEm = Instant.parse("2026-09-09T13:00:00Z");
+    persistir(StatusSolicitacao.CONCLUIDA, criadaEm, criadaEm.plus(Duration.ofMinutes(30)));
+    persistir(StatusSolicitacao.CONCLUIDA, criadaEm, criadaEm.plus(Duration.ofMinutes(90)));
+    final Instant antiga = Instant.parse("2026-08-01T13:00:00Z");
+    persistir(StatusSolicitacao.CONCLUIDA, antiga, antiga.plus(Duration.ofHours(10)));
+
+    // Act
+    final Object[] totais = totaisDoPainel(PAINEL_INICIO, PAINEL_FIM, null);
+
+    // Assert
+    assertEquals(3600.0, ((Number) totais[3]).doubleValue(), 0.001);
+  }
+
+  @Test
+  void shouldDeixarOTempoMedioNuloWhenNaoHaConcluidaNaJanela() {
+    // Arrange
+    persistirAberta("2026-09-09T13:00:00Z");
+
+    // Act
+    final Object[] totais = totaisDoPainel(PAINEL_INICIO, PAINEL_FIM, null);
+
+    // Assert
+    assertNull(totais[3]);
+  }
+
+  @Test
+  void shouldTotalizarSoOModeloWhenModeloVemPreenchidoNosTotais() {
+    // Arrange
+    final UUID outroModelo = criarModelo("DISA");
+    final Instant criadaEm = Instant.parse("2026-09-09T13:00:00Z");
+    persistir(StatusSolicitacao.A_FAZER, criadaEm, null);
+    persistir(StatusSolicitacao.A_FAZER, criadaEm, null, usuarioId, outroModelo, null);
+    persistir(
+        StatusSolicitacao.CONCLUIDA,
+        criadaEm,
+        criadaEm.plusSeconds(60),
+        usuarioId,
+        outroModelo,
+        null);
+
+    // Act
+    final Object[] totais = totaisDoPainel(PAINEL_INICIO, PAINEL_FIM, outroModelo);
+
+    // Assert
+    assertEquals(2L, ((Number) totais[0]).longValue());
+    assertEquals(1L, ((Number) totais[1]).longValue());
+  }
+
+  @Test
+  void shouldTotalizarAJanelaAnteriorComAsMesmasRegrasWhenJanelaEDeslocada() {
+    // Arrange
+    final Instant criadaEm = Instant.parse("2026-08-31T13:00:00Z");
+    persistir(StatusSolicitacao.CONCLUIDA, criadaEm, criadaEm.plus(Duration.ofMinutes(30)));
+    persistirAberta("2026-09-09T13:00:00Z");
+    final Instant inicioAnterior = PAINEL_INICIO.minus(Duration.ofDays(7));
+
+    // Act
+    final Object[] totais = totaisDoPainel(inicioAnterior, PAINEL_INICIO, null);
+
+    // Assert
+    assertEquals(1L, ((Number) totais[0]).longValue());
+    assertEquals(1L, ((Number) totais[1]).longValue());
+    assertEquals(1800.0, ((Number) totais[3]).doubleValue(), 0.001);
+  }
+
+  @Test
+  void shouldGerarUmPontoPorDiaLocalWhenJanelaNaoTemSolicitacao() {
+    // Arrange
+    final String unidade = "day";
+
+    // Act
+    final List<Object[]> linhas = seriePainel(unidade, null);
+
+    // Assert
+    assertEquals(7, linhas.size());
+    assertEquals("2026-09-07", linhas.get(0)[0].toString());
+    assertEquals("2026-09-13", linhas.get(6)[0].toString());
+    assertEquals(List.of(0L, 0L, 0L, 0L, 0L, 0L, 0L), coluna(linhas, 4));
+  }
+
+  @Test
+  void shouldCairNoDiaLocalWhenCriadaAs22hNaSerieDoPainel() {
+    // Arrange
+    persistirAberta("2026-09-10T01:00:00Z");
+
+    // Act
+    final List<Object[]> linhas = seriePainel("day", null);
+
+    // Assert
+    assertEquals(List.of(0L, 0L, 1L, 0L, 0L, 0L, 0L), coluna(linhas, 1));
+  }
+
+  @Test
+  void shouldContarConcluidaNoDiaDaConclusaoWhenSerieDoPainel() {
+    // Arrange
+    persistir(
+        StatusSolicitacao.CONCLUIDA,
+        Instant.parse("2026-08-18T13:00:00Z"),
+        Instant.parse("2026-09-10T01:00:00Z"));
+
+    // Act
+    final List<Object[]> linhas = seriePainel("day", null);
+
+    // Assert
+    assertEquals(List.of(0L, 0L, 1L, 0L, 0L, 0L, 0L), coluna(linhas, 2));
+    assertEquals(List.of(0L, 0L, 0L, 0L, 0L, 0L, 0L), coluna(linhas, 1));
+  }
+
+  @Test
+  void shouldContarCanceladaNoDiaDoCancelamentoWhenSerieDoPainel() {
+    // Arrange
+    persistir(
+        StatusSolicitacao.CANCELADA,
+        Instant.parse("2026-08-18T13:00:00Z"),
+        Instant.parse("2026-09-11T13:00:00Z"));
+
+    // Act
+    final List<Object[]> linhas = seriePainel("day", null);
+
+    // Assert
+    assertEquals(List.of(0L, 0L, 0L, 0L, 1L, 0L, 0L), coluna(linhas, 3));
+  }
+
+  @Test
+  void shouldContarAbertaDesdeACriacaoAteAEncerramentoWhenAbertasAoFimDoDia() {
+    // Arrange
+    persistir(
+        StatusSolicitacao.CONCLUIDA,
+        Instant.parse("2026-09-08T13:00:00Z"),
+        Instant.parse("2026-09-10T15:00:00Z"));
+
+    // Act
+    final List<Object[]> linhas = seriePainel("day", null);
+
+    // Assert
+    assertEquals(List.of(0L, 1L, 1L, 0L, 0L, 0L, 0L), coluna(linhas, 4));
+  }
+
+  @Test
+  void shouldContarCanceladaComoAbertaAteOCancelamentoWhenAbertasAoFimDoDia() {
+    // Arrange
+    persistir(
+        StatusSolicitacao.CANCELADA,
+        Instant.parse("2026-09-07T13:00:00Z"),
+        Instant.parse("2026-09-09T15:00:00Z"));
+
+    // Act
+    final List<Object[]> linhas = seriePainel("day", null);
+
+    // Assert
+    assertEquals(List.of(1L, 1L, 0L, 0L, 0L, 0L, 0L), coluna(linhas, 4));
+  }
+
+  @Test
+  void shouldContarComoAbertaAoFimDoDiaWhenEncerradaNaMeiaNoiteDoDiaSeguinte() {
+    // Arrange
+    persistir(
+        StatusSolicitacao.CONCLUIDA,
+        Instant.parse("2026-09-08T13:00:00Z"),
+        Instant.parse("2026-09-10T03:00:00Z"));
+
+    // Act
+    final List<Object[]> linhas = seriePainel("day", null);
+
+    // Assert
+    assertEquals(List.of(0L, 1L, 1L, 0L, 0L, 0L, 0L), coluna(linhas, 4));
+  }
+
+  @Test
+  void shouldNaoContarComoAbertaWhenCriadaNaMeiaNoiteDoDiaSeguinte() {
+    // Arrange
+    persistirAberta("2026-09-10T03:00:00Z");
+
+    // Act
+    final List<Object[]> linhas = seriePainel("day", null);
+
+    // Assert
+    assertEquals(List.of(0L, 0L, 0L, 1L, 1L, 1L, 1L), coluna(linhas, 4));
+  }
+
+  @Test
+  void shouldContarAtrasadaAoFimDoDiaWhenPrazoVenceAntesDoFimEEstaAberta() {
+    // Arrange
+    persistirComPrioridade(
+        StatusSolicitacao.CONCLUIDA,
+        "2026-09-08T13:00:00Z",
+        "2026-09-10T15:00:00Z",
+        PrioridadeSolicitacao.URGENTE);
+
+    // Act
+    final List<Object[]> linhas = seriePainel("day", null);
+
+    // Assert
+    assertEquals(List.of(0L, 1L, 1L, 0L, 0L, 0L, 0L), coluna(linhas, 5));
+  }
+
+  @Test
+  void shouldNaoContarAtrasadaWhenPrazoAindaNaoVenceuAoFimDoDia() {
+    // Arrange
+    persistirComPrioridade(
+        StatusSolicitacao.A_FAZER, "2026-09-07T13:00:00Z", null, PrioridadeSolicitacao.BAIXA);
+
+    // Act
+    final List<Object[]> linhas = seriePainel("day", null);
+
+    // Assert
+    assertEquals(List.of(1L, 1L, 1L, 1L, 1L, 1L, 1L), coluna(linhas, 4));
+    assertEquals(List.of(0L, 0L, 0L, 0L, 0L, 0L, 0L), coluna(linhas, 5));
+  }
+
+  @Test
+  void shouldNuncaContarAtrasadaWhenSolicitacaoNaoTemPrioridade() {
+    // Arrange
+    persistirAberta("2026-09-07T13:00:00Z");
+
+    // Act
+    final List<Object[]> linhas = seriePainel("day", null);
+
+    // Assert
+    assertEquals(List.of(0L, 0L, 0L, 0L, 0L, 0L, 0L), coluna(linhas, 5));
+  }
+
+  @Test
+  void shouldUsarOInstanteAgoraNoDiaDeHojeWhenPrazoVenceDepoisDeAgoraEAntesDoFimDoDia() {
+    // Arrange
+    persistirComPrioridade(
+        StatusSolicitacao.A_FAZER, "2026-09-13T14:00:00Z", null, PrioridadeSolicitacao.URGENTE);
+    persistirComPrioridade(
+        StatusSolicitacao.A_FAZER, "2026-09-13T10:00:00Z", null, PrioridadeSolicitacao.URGENTE);
+
+    // Act
+    final List<Object[]> linhas = seriePainel("day", null);
+
+    // Assert
+    assertEquals(2L, ((Number) linhas.get(6)[4]).longValue());
+    assertEquals(1L, ((Number) linhas.get(6)[5]).longValue());
+  }
+
+  @Test
+  void shouldFiltrarPeloModeloNaSerieWhenModeloVemPreenchido() {
+    // Arrange
+    final UUID outroModelo = criarModelo("DISA");
+    final Instant criadaEm = Instant.parse("2026-09-09T13:00:00Z");
+    persistir(StatusSolicitacao.A_FAZER, criadaEm, null);
+    persistir(StatusSolicitacao.A_FAZER, criadaEm, null, usuarioId, outroModelo, null);
+
+    // Act
+    final List<Object[]> linhas = seriePainel("day", outroModelo);
+
+    // Assert
+    assertEquals(List.of(0L, 0L, 1L, 0L, 0L, 0L, 0L), coluna(linhas, 1));
+    assertEquals(List.of(0L, 0L, 1L, 1L, 1L, 1L, 1L), coluna(linhas, 4));
+  }
+
+  @Test
+  void shouldAgruparPorSemanaComEstadoNoFimDaSemanaWhenUnidadeESemana() {
+    // Arrange
+    final Instant criadaEm = Instant.parse("2026-09-10T13:00:00Z");
+    persistir(StatusSolicitacao.CONCLUIDA, criadaEm, Instant.parse("2026-09-15T13:00:00Z"));
+    persistir(StatusSolicitacao.A_FAZER, Instant.parse("2026-09-08T13:00:00Z"), null);
+
+    // Act
+    final List<Object[]> linhas =
+        repository.painelSerie(
+            LocalDate.of(2026, 9, 9),
+            LocalDate.of(2026, 9, 17),
+            null,
+            "week",
+            FUSO,
+            Instant.parse("2026-09-16T15:00:00Z"));
+
+    // Assert
+    assertEquals(2, linhas.size());
+    assertEquals("2026-09-07", linhas.get(0)[0].toString());
+    assertEquals("2026-09-14", linhas.get(1)[0].toString());
+    assertEquals(List.of(1L, 0L), coluna(linhas, 1));
+    assertEquals(List.of(0L, 1L), coluna(linhas, 2));
+    assertEquals(List.of(2L, 1L), coluna(linhas, 4));
+  }
+
+  @Test
+  void shouldContarSoAsEmAbertoWhenSituacaoAgora() {
+    // Arrange
+    persistirAberta("2026-09-10T13:00:00Z");
+    persistir(StatusSolicitacao.EM_ANDAMENTO, Instant.parse("2026-09-10T13:00:00Z"), null);
+    persistir(StatusSolicitacao.EM_VALIDACAO, Instant.parse("2026-09-10T13:00:00Z"), null);
+    persistir(
+        StatusSolicitacao.CONCLUIDA,
+        Instant.parse("2026-09-10T13:00:00Z"),
+        Instant.parse("2026-09-11T13:00:00Z"));
+    persistir(
+        StatusSolicitacao.CANCELADA,
+        Instant.parse("2026-09-10T13:00:00Z"),
+        Instant.parse("2026-09-11T13:00:00Z"));
+
+    // Act
+    final Object[] agoraRow =
+        repository.painelAgora(null, PAINEL_AGORA_DOMINGO_13_09_12H_BRASILIA).get(0);
+
+    // Assert
+    assertEquals(3L, ((Number) agoraRow[0]).longValue());
+  }
+
+  @Test
+  void shouldContarSoAbertaVencidaWhenAtrasadasAgora() {
+    // Arrange
+    persistirComPrioridade(
+        StatusSolicitacao.A_FAZER, "2026-09-12T13:00:00Z", null, PrioridadeSolicitacao.URGENTE);
+    persistirComPrioridade(
+        StatusSolicitacao.A_FAZER, "2026-09-13T14:00:00Z", null, PrioridadeSolicitacao.URGENTE);
+    persistirComPrioridade(StatusSolicitacao.A_FAZER, "2026-09-01T13:00:00Z", null, null);
+    persistirComPrioridade(
+        StatusSolicitacao.CONCLUIDA,
+        "2026-09-01T13:00:00Z",
+        "2026-09-12T13:00:00Z",
+        PrioridadeSolicitacao.URGENTE);
+
+    // Act
+    final Object[] agoraRow =
+        repository.painelAgora(null, PAINEL_AGORA_DOMINGO_13_09_12H_BRASILIA).get(0);
+
+    // Assert
+    assertEquals(3L, ((Number) agoraRow[0]).longValue());
+    assertEquals(1L, ((Number) agoraRow[1]).longValue());
+  }
+
+  @Test
+  void shouldFiltrarPeloModeloWhenSituacaoAgora() {
+    // Arrange
+    final UUID outroModelo = criarModelo("DISA");
+    persistirAberta("2026-09-10T13:00:00Z");
+    persistir(
+        StatusSolicitacao.A_FAZER,
+        Instant.parse("2026-09-10T13:00:00Z"),
+        null,
+        usuarioId,
+        outroModelo,
+        PrioridadeSolicitacao.URGENTE);
+
+    // Act
+    final Object[] agoraRow =
+        repository.painelAgora(outroModelo, PAINEL_AGORA_DOMINGO_13_09_12H_BRASILIA).get(0);
+
+    // Assert
+    assertEquals(1L, ((Number) agoraRow[0]).longValue());
+    assertEquals(1L, ((Number) agoraRow[1]).longValue());
+  }
+
+  private void persistirDoTipo(
+      final TipoSolicitacao tipo, final Instant criadaEm, final Duration resolucao) {
+    final SolicitacaoJpaEntity s =
+        persistir(
+            StatusSolicitacao.CONCLUIDA,
+            criadaEm,
+            criadaEm.plus(resolucao),
+            usuarioId,
+            modeloId,
+            null);
+    s.setTipo(tipo);
+    repository.saveAndFlush(s);
+  }
+
+  private Object[] linhaDoRanking() {
+    return repository
+        .findMetricasPorModelo(
+            PageRequest.of(0, 50, Sort.by(Sort.Direction.ASC, "tempo_medio_resolucao")))
+        .getContent()
+        .stream()
+        .filter(linha -> modeloId.equals(linha[0]))
+        .findFirst()
+        .orElse(null);
+  }
+
+  private void persistirUmaCriacaoEDuasManutencoes() {
+    final Instant base = agora.minus(Duration.ofDays(40));
+    persistirDoTipo(TipoSolicitacao.REPARO, base.plus(Duration.ofDays(10)), Duration.ofDays(1));
+    persistirDoTipo(TipoSolicitacao.CRIACAO, base.plus(Duration.ofDays(20)), Duration.ofDays(5));
+    persistirDoTipo(TipoSolicitacao.INSPECAO, base.plus(Duration.ofDays(30)), Duration.ofDays(3));
+  }
+
+  @Test
+  void shouldFicarForaDoRankingWhenModeloTemSoCriacaoConcluida() {
+    // Arrange
+    persistirDoTipo(TipoSolicitacao.CRIACAO, agora.minus(Duration.ofDays(10)), Duration.ofDays(2));
+
+    // Act
+    final Object[] linha = linhaDoRanking();
+
+    // Assert
+    assertNull(linha);
+  }
+
+  @Test
+  void shouldContarSoModelosComManutencaoConcluidaWhenRankingTemModeloSoComCriacao() {
+    // Arrange
+    final Instant criadaEm = agora.minus(Duration.ofDays(10));
+    persistirDoTipo(TipoSolicitacao.CRIACAO, criadaEm, Duration.ofDays(2));
+    persistir(
+        StatusSolicitacao.CONCLUIDA,
+        criadaEm,
+        criadaEm.plus(Duration.ofDays(1)),
+        usuarioId,
+        criarModelo("DISA"),
+        null);
+
+    // Act
+    final var pagina =
+        repository.findMetricasPorModelo(PageRequest.of(0, 1, Sort.by("tempo_medio_resolucao")));
+
+    // Assert
+    assertEquals(1, pagina.getTotalElements());
+  }
+
+  @Test
+  void shouldAparecerSemOTempoDaCriacaoWhenModeloTemUmaManutencaoConcluida() {
+    // Arrange
+    final Instant base = agora.minus(Duration.ofDays(30));
+    persistirDoTipo(TipoSolicitacao.CRIACAO, base, Duration.ofDays(9));
+    persistirDoTipo(TipoSolicitacao.REPARO, base.plus(Duration.ofDays(12)), Duration.ofDays(2));
+
+    // Act
+    final Object[] linha = linhaDoRanking();
+
+    // Assert
+    assertEquals(Duration.ofDays(2).getSeconds(), ((Number) linha[2]).doubleValue(), 0.001);
+  }
+
+  @Test
+  void shouldIgnorarACriacaoNoIntervaloWhenRankeiaModeloComManutencoes() {
+    // Arrange
+    persistirUmaCriacaoEDuasManutencoes();
+
+    // Act
+    final Object[] linha = linhaDoRanking();
+
+    // Assert
+    assertEquals(Duration.ofDays(20).getSeconds(), ((Number) linha[3]).doubleValue(), 0.001);
+  }
+
+  @Test
+  void shouldExcluirACriacaoDoTempoMedioEDoIntervaloWhenResumePorModelo() {
+    // Arrange
+    persistirUmaCriacaoEDuasManutencoes();
+
+    // Act
+    final Object[] row = repository.resumirPorModelo(modeloId).get(0);
+    final double intervalo =
+        Duration.between((Instant) row[4], (Instant) row[5]).toMillis()
+            / 1000.0
+            / (((Number) row[7]).longValue() - 1);
+
+    // Assert
+    assertEquals(Duration.ofDays(2).getSeconds(), ((Number) row[6]).doubleValue(), 0.001);
+    assertEquals(Duration.ofDays(20).getSeconds(), intervalo, 0.001);
+  }
+
+  @Test
+  void shouldContarACriacaoNoTotalWhenResumePorModelo() {
+    // Arrange
+    persistirUmaCriacaoEDuasManutencoes();
+
+    // Act
+    final Object[] row = repository.resumirPorModelo(modeloId).get(0);
+
+    // Assert
+    assertEquals(3L, ((Number) row[0]).longValue());
+    assertEquals(2L, ((Number) row[7]).longValue());
+  }
+
+  @Test
+  void shouldDevolverTemposVaziosWhenResumeModeloComSoCriacao() {
+    // Arrange
+    persistirDoTipo(TipoSolicitacao.CRIACAO, agora.minus(Duration.ofDays(10)), Duration.ofDays(2));
+
+    // Act
+    final Object[] row = repository.resumirPorModelo(modeloId).get(0);
+
+    // Assert
+    assertEquals(1L, ((Number) row[0]).longValue());
+    assertNull(row[4]);
+    assertNull(row[6]);
+    assertEquals(0L, ((Number) row[7]).longValue());
   }
 
   @Test

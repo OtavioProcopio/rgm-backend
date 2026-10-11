@@ -15,6 +15,7 @@ import com.rgm.api.adapter.in.web.dto.response.HistoricoMetricasResponse;
 import com.rgm.api.adapter.in.web.dto.response.MetricaModeloResponse;
 import com.rgm.api.adapter.in.web.dto.response.MetricasSolicitacaoResponse;
 import com.rgm.api.adapter.in.web.dto.response.PageResponse;
+import com.rgm.api.adapter.in.web.dto.response.PainelPorPeriodoResponse;
 import com.rgm.api.adapter.in.web.dto.response.SolicitacaoResponse;
 import com.rgm.api.adapter.out.report.ModeloPdfService;
 import com.rgm.api.adapter.out.report.SolicitacaoPdfService;
@@ -30,6 +31,7 @@ import com.rgm.api.core.application.usecases.solicitacao.ListarSolicitacoesUseCa
 import com.rgm.api.core.application.usecases.solicitacao.ObterHistoricoMetricasUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ObterMetricasPorModeloUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ObterMetricasSolicitacoesUseCase;
+import com.rgm.api.core.application.usecases.solicitacao.ObterPainelPorPeriodoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ObterSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.RegistrarComentarioUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.TriarSolicitacaoUseCase;
@@ -39,6 +41,7 @@ import com.rgm.api.core.domain.model.enums.PrioridadeSolicitacao;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
 import com.rgm.api.core.domain.model.enums.TipoFiltroData;
 import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
+import com.rgm.api.core.domain.ports.repositories.OrdenacaoSolicitacao;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import jakarta.validation.Valid;
 import java.time.Instant;
@@ -78,6 +81,7 @@ public class SolicitacaoController {
   private final ListarSolicitacoesUseCase listarUseCase;
   private final ObterMetricasSolicitacoesUseCase obterMetricasUseCase;
   private final ObterHistoricoMetricasUseCase obterHistoricoMetricasUseCase;
+  private final ObterPainelPorPeriodoUseCase obterPainelPorPeriodoUseCase;
   private final ObterMetricasPorModeloUseCase obterMetricasPorModeloUseCase;
   private final GerenciarResponsaveisUseCase gerenciarResponsaveisUseCase;
   private final ObterSolicitacaoUseCase obterUseCase;
@@ -99,6 +103,7 @@ public class SolicitacaoController {
       final ListarSolicitacoesUseCase listarUseCase,
       final ObterMetricasSolicitacoesUseCase obterMetricasUseCase,
       final ObterHistoricoMetricasUseCase obterHistoricoMetricasUseCase,
+      final ObterPainelPorPeriodoUseCase obterPainelPorPeriodoUseCase,
       final ObterMetricasPorModeloUseCase obterMetricasPorModeloUseCase,
       final GerenciarResponsaveisUseCase gerenciarResponsaveisUseCase,
       final ObterSolicitacaoUseCase obterUseCase,
@@ -118,6 +123,7 @@ public class SolicitacaoController {
     this.listarUseCase = listarUseCase;
     this.obterMetricasUseCase = obterMetricasUseCase;
     this.obterHistoricoMetricasUseCase = obterHistoricoMetricasUseCase;
+    this.obterPainelPorPeriodoUseCase = obterPainelPorPeriodoUseCase;
     this.obterMetricasPorModeloUseCase = obterMetricasPorModeloUseCase;
     this.gerenciarResponsaveisUseCase = gerenciarResponsaveisUseCase;
     this.obterUseCase = obterUseCase;
@@ -140,10 +146,23 @@ public class SolicitacaoController {
       @RequestParam(defaultValue = "30") final int dias,
       @RequestParam(required = false) final UUID modeloId) {
     log.info("SolicitacaoController.obterHistorico dias={} modeloId={}", dias, modeloId);
+    ParametrosDeConsulta.diasDoHistorico(dias);
     final var output =
         obterHistoricoMetricasUseCase.execute(
             new ObterHistoricoMetricasUseCase.Input(dias, modeloId));
     return ResponseEntity.ok(HistoricoMetricasResponse.from(output));
+  }
+
+  @GetMapping("/metricas/painel")
+  public ResponseEntity<PainelPorPeriodoResponse> obterPainel(
+      @RequestParam(defaultValue = "30") final int dias,
+      @RequestParam(required = false) final UUID modeloId) {
+    log.info("SolicitacaoController.obterPainel dias={} modeloId={}", dias, modeloId);
+    ParametrosDeConsulta.periodoDoPainel(dias);
+    final var output =
+        obterPainelPorPeriodoUseCase.execute(
+            new ObterPainelPorPeriodoUseCase.Input(dias, modeloId));
+    return ResponseEntity.ok(PainelPorPeriodoResponse.from(output));
   }
 
   @GetMapping("/metricas/por-modelo")
@@ -221,6 +240,7 @@ public class SolicitacaoController {
             atrasada,
             emAberto,
             usuarioAutenticadoId(authentication),
+            OrdenacaoSolicitacao.PADRAO,
             0,
             Integer.MAX_VALUE);
     final var solicitacoes = listarUseCase.execute(input).content();
@@ -262,8 +282,11 @@ public class SolicitacaoController {
       @RequestParam(required = false) final String maquina,
       @RequestParam(required = false) final Boolean atrasada,
       @RequestParam(required = false) final Boolean emAberto,
+      @RequestParam(required = false) final String sort,
+      @RequestParam(required = false) final String dir,
       final Authentication authentication) {
     ParametrosDeConsulta.pagina(page, size);
+    final OrdenacaoSolicitacao ordenacao = ParametrosDeConsulta.ordenacao(sort, dir);
     final var result =
         listarUseCase.execute(
             buildInput(
@@ -282,6 +305,7 @@ public class SolicitacaoController {
                 atrasada,
                 emAberto,
                 usuarioAutenticadoId(authentication),
+                ordenacao,
                 page,
                 size));
 
@@ -326,6 +350,7 @@ public class SolicitacaoController {
       final Boolean atrasada,
       final Boolean emAberto,
       final UUID usuarioAutenticadoId,
+      final OrdenacaoSolicitacao ordenacao,
       final int page,
       final int size) {
     final TipoFiltroData tipo0 =
@@ -348,6 +373,7 @@ public class SolicitacaoController {
         atrasada,
         emAberto,
         usuarioAutenticadoId,
+        ordenacao,
         page,
         size);
   }

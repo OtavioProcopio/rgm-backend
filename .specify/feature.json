@@ -1,4 +1,4 @@
 {
-  "active": "specs/010-seguranca-e-robustez-da-api-permissoes",
-  "title": "Seguranca e robustez da API: permissoes, exposicao e limites (issues #97, #122, #99, #113 e #89)"
+  "active": "specs/011-painel-de-metricas-por-periodo-e",
+  "title": "Painel de métricas por período e ordenação da listagem (rgm-backend, issues #117, #108, #118 e #107), base develop. Spec 011. Ordenação sort/dir na listagem; painel por período com período anterior, conclusão pela data de conclusão, tempo em segundos, fuso America/Sao_Paulo; solicitação de criação fora dos tempos do modelo; aditivo e compatível com a v1.5.0 do frontend."
 }

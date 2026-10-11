@@ -6,6 +6,7 @@ import com.rgm.api.core.domain.model.enums.PrioridadeSolicitacao;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
 import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -33,7 +34,8 @@ public interface SolicitacaoRepository {
 
   /**
    * {@code visivelParaUsuarioId} nulo nao restringe; preenchido traz so as solicitacoes que o
-   * usuario abriu ou das quais e responsavel ativo.
+   * usuario abriu ou das quais e responsavel ativo. A ordenacao desempata sempre por criacao e id,
+   * para que paginas consecutivas nao repitam nem percam item.
    */
   PageResult<Solicitacao> findByFilters(
       StatusSolicitacao status,
@@ -50,6 +52,7 @@ public interface SolicitacaoRepository {
       Boolean atrasada,
       boolean emAberto,
       UUID visivelParaUsuarioId,
+      OrdenacaoSolicitacao ordenacao,
       int page,
       int size);
 
@@ -61,10 +64,30 @@ public interface SolicitacaoRepository {
 
   List<Solicitacao> findByStatus(StatusSolicitacao status);
 
-  List<Solicitacao> findByCriadaEmBetween(Instant inicio, Instant fim);
+  /**
+   * Serie agregada no banco por data de criacao, em [inicio, fim), um ponto por dia local ou por
+   * semana (segunda a domingo) no {@code fuso}; so pontos com solicitacao. {@code modeloId} nulo
+   * nao filtra. Nunca carrega solicitacoes em memoria.
+   */
+  List<LinhaDeSerie> agregarSerie(
+      Instant inicio, Instant fim, UUID modeloId, GranularidadeSerie granularidade, ZoneId fuso);
 
-  List<Solicitacao> findByStatusAndCriadaEmBetween(
-      StatusSolicitacao status, Instant inicio, Instant fim);
+  /**
+   * Totais e serie do painel na janela [inicio, fim), ambos em meia-noite local do {@code fuso},
+   * agregados no banco: criadas pela criacao, concluidas pela conclusao, canceladas pelo
+   * cancelamento; a serie traz um ponto por dia ou semana, inclusive os vazios. {@code agora}
+   * limita o atraso do dia de hoje. {@code modeloId} nulo nao filtra. Nunca carrega solicitacoes.
+   */
+  PainelAgregado agregarPainel(
+      Instant inicio,
+      Instant fim,
+      UUID modeloId,
+      GranularidadeSerie granularidade,
+      ZoneId fuso,
+      Instant agora);
+
+  /** Em aberto e em atraso em {@code agora}; {@code modeloId} nulo nao filtra. */
+  PainelAgregado.Agora situacaoAgora(UUID modeloId, Instant agora);
 
   long getTempoMedioResolucaoSegundos();
 

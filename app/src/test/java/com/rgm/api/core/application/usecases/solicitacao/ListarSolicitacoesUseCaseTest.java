@@ -5,9 +5,11 @@ import static org.mockito.Mockito.*;
 
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
 import com.rgm.api.core.domain.model.aggregates.Usuario;
+import com.rgm.api.core.domain.model.enums.CriterioOrdenacaoSolicitacao;
 import com.rgm.api.core.domain.model.enums.PerfilUsuario;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
 import com.rgm.api.core.domain.model.enums.TipoFiltroData;
+import com.rgm.api.core.domain.ports.repositories.OrdenacaoSolicitacao;
 import com.rgm.api.core.domain.ports.repositories.PageResult;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
@@ -119,8 +121,16 @@ class ListarSolicitacoesUseCaseTest {
         atrasada,
         emAberto,
         usuarioAutenticadoId,
+        null,
         0,
         20);
+  }
+
+  private ListarSolicitacoesUseCase.Input inputOrdenado(
+      final StatusSolicitacao status, final OrdenacaoSolicitacao ordenacao) {
+    return new ListarSolicitacoesUseCase.Input(
+        status, null, null, null, null, null, null, null, null, null, null, null, null, ordenacao,
+        0, 20);
   }
 
   private Usuario usuarioComPerfil(final UUID id, final PerfilUsuario perfil) {
@@ -165,6 +175,7 @@ class ListarSolicitacoesUseCaseTest {
             null,
             false,
             null,
+            OrdenacaoSolicitacao.PADRAO,
             0,
             20))
         .thenReturn(esperado);
@@ -191,8 +202,102 @@ class ListarSolicitacoesUseCaseTest {
             null,
             false,
             null,
+            OrdenacaoSolicitacao.PADRAO,
             0,
             20);
+    verifyNoMoreInteractions(solicitacaoRepository, usuarioRepository);
+  }
+
+  @Test
+  void shouldRepassarAOrdenacaoInformadaWhenFiltraPorStatus() {
+    // Arrange
+    final OrdenacaoSolicitacao ordenacao =
+        new OrdenacaoSolicitacao(CriterioOrdenacaoSolicitacao.PRAZO_LIMITE, false);
+    final PageResult<Solicitacao> esperado = new PageResult<>(List.of(), 0, 20, 0, 0);
+    when(solicitacaoRepository.findByFilters(
+            StatusSolicitacao.A_FAZER,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            false,
+            null,
+            ordenacao,
+            0,
+            20))
+        .thenReturn(esperado);
+
+    // Act
+    final PageResult<Solicitacao> result =
+        useCase.execute(inputOrdenado(StatusSolicitacao.A_FAZER, ordenacao));
+
+    // Assert
+    assertSame(esperado, result);
+    verify(solicitacaoRepository, times(1))
+        .findByFilters(
+            StatusSolicitacao.A_FAZER,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            false,
+            null,
+            ordenacao,
+            0,
+            20);
+    verifyNoMoreInteractions(solicitacaoRepository, usuarioRepository);
+  }
+
+  @Test
+  void shouldUsarAConsultaDeFiltrosWhenSoHaOrdenacaoDiferenteDoPadrao() {
+    // Arrange
+    final OrdenacaoSolicitacao ordenacao =
+        new OrdenacaoSolicitacao(CriterioOrdenacaoSolicitacao.PRIORIDADE, true);
+    final PageResult<Solicitacao> esperado = new PageResult<>(List.of(), 0, 20, 0, 0);
+    when(solicitacaoRepository.findByFilters(
+            null, null, null, null, null, null, null, null, null, null, null, null, false, null,
+            ordenacao, 0, 20))
+        .thenReturn(esperado);
+
+    // Act
+    final PageResult<Solicitacao> result = useCase.execute(inputOrdenado(null, ordenacao));
+
+    // Assert
+    assertSame(esperado, result);
+    verify(solicitacaoRepository, times(1))
+        .findByFilters(
+            null, null, null, null, null, null, null, null, null, null, null, null, false, null,
+            ordenacao, 0, 20);
+    verifyNoMoreInteractions(solicitacaoRepository, usuarioRepository);
+  }
+
+  @Test
+  void shouldListarTudoWhenOrdenacaoEOPadraoSemFiltro() {
+    // Arrange
+    final PageResult<Solicitacao> esperado = new PageResult<>(List.of(), 0, 20, 0, 0);
+    when(solicitacaoRepository.findAll(0, 20)).thenReturn(esperado);
+
+    // Act
+    final PageResult<Solicitacao> result =
+        useCase.execute(inputOrdenado(null, OrdenacaoSolicitacao.PADRAO));
+
+    // Assert
+    assertSame(esperado, result);
+    verify(solicitacaoRepository, times(1)).findAll(0, 20);
     verifyNoMoreInteractions(solicitacaoRepository, usuarioRepository);
   }
 
@@ -201,8 +306,23 @@ class ListarSolicitacoesUseCaseTest {
     // Arrange
     final PageResult<Solicitacao> esperado = new PageResult<>(List.of(), 0, 20, 0, 0);
     when(solicitacaoRepository.findByFilters(
-            null, null, null, null, null, null, null, null, null, null, "VICK", null, false, null,
-            0, 20))
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            "VICK",
+            null,
+            false,
+            null,
+            OrdenacaoSolicitacao.PADRAO,
+            0,
+            20))
         .thenReturn(esperado);
 
     // Act
@@ -213,8 +333,23 @@ class ListarSolicitacoesUseCaseTest {
     assertSame(esperado, result);
     verify(solicitacaoRepository, times(1))
         .findByFilters(
-            null, null, null, null, null, null, null, null, null, null, "VICK", null, false, null,
-            0, 20);
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            "VICK",
+            null,
+            false,
+            null,
+            OrdenacaoSolicitacao.PADRAO,
+            0,
+            20);
     verifyNoMoreInteractions(solicitacaoRepository, usuarioRepository);
   }
 
@@ -223,7 +358,22 @@ class ListarSolicitacoesUseCaseTest {
     // Arrange
     final PageResult<Solicitacao> esperado = new PageResult<>(List.of(), 0, 20, 0, 0);
     when(solicitacaoRepository.findByFilters(
-            null, null, null, null, null, null, null, null, null, null, null, true, false, null, 0,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            true,
+            false,
+            null,
+            OrdenacaoSolicitacao.PADRAO,
+            0,
             20))
         .thenReturn(esperado);
 
@@ -235,7 +385,22 @@ class ListarSolicitacoesUseCaseTest {
     assertSame(esperado, result);
     verify(solicitacaoRepository, times(1))
         .findByFilters(
-            null, null, null, null, null, null, null, null, null, null, null, true, false, null, 0,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            true,
+            false,
+            null,
+            OrdenacaoSolicitacao.PADRAO,
+            0,
             20);
     verifyNoMoreInteractions(solicitacaoRepository, usuarioRepository);
   }
@@ -261,6 +426,7 @@ class ListarSolicitacoesUseCaseTest {
             null,
             false,
             operadorId,
+            OrdenacaoSolicitacao.PADRAO,
             0,
             20))
         .thenReturn(esperado);
@@ -289,6 +455,7 @@ class ListarSolicitacoesUseCaseTest {
             null,
             false,
             operadorId,
+            OrdenacaoSolicitacao.PADRAO,
             0,
             20);
     verifyNoMoreInteractions(solicitacaoRepository, usuarioRepository, operador);
@@ -317,6 +484,7 @@ class ListarSolicitacoesUseCaseTest {
             null,
             false,
             operadorId,
+            OrdenacaoSolicitacao.PADRAO,
             0,
             20))
         .thenReturn(esperado);
@@ -345,6 +513,7 @@ class ListarSolicitacoesUseCaseTest {
             null,
             false,
             operadorId,
+            OrdenacaoSolicitacao.PADRAO,
             0,
             20);
     verifyNoMoreInteractions(solicitacaoRepository, usuarioRepository, operador);
@@ -378,8 +547,23 @@ class ListarSolicitacoesUseCaseTest {
     final Usuario admin = usuarioComPerfil(adminId, PerfilUsuario.ADMINISTRADOR);
     final PageResult<Solicitacao> esperado = new PageResult<>(List.of(), 0, 20, 0, 0);
     when(solicitacaoRepository.findByFilters(
-            null, null, null, null, null, null, null, null, abertaPor, null, null, null, false,
-            null, 0, 20))
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            abertaPor,
+            null,
+            null,
+            null,
+            false,
+            null,
+            OrdenacaoSolicitacao.PADRAO,
+            0,
+            20))
         .thenReturn(esperado);
 
     // Act
@@ -392,8 +576,23 @@ class ListarSolicitacoesUseCaseTest {
     verify(admin, times(1)).getPerfil();
     verify(solicitacaoRepository, times(1))
         .findByFilters(
-            null, null, null, null, null, null, null, null, abertaPor, null, null, null, false,
-            null, 0, 20);
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            abertaPor,
+            null,
+            null,
+            null,
+            false,
+            null,
+            OrdenacaoSolicitacao.PADRAO,
+            0,
+            20);
     verifyNoMoreInteractions(solicitacaoRepository, usuarioRepository, admin);
   }
 
@@ -419,6 +618,7 @@ class ListarSolicitacoesUseCaseTest {
             null,
             false,
             null,
+            OrdenacaoSolicitacao.PADRAO,
             0,
             20))
         .thenReturn(esperado);
@@ -447,6 +647,7 @@ class ListarSolicitacoesUseCaseTest {
             null,
             false,
             null,
+            OrdenacaoSolicitacao.PADRAO,
             0,
             20);
     verifyNoMoreInteractions(solicitacaoRepository, usuarioRepository, gestor);
@@ -459,7 +660,22 @@ class ListarSolicitacoesUseCaseTest {
     final Instant fim = Instant.parse("2026-02-01T00:00:00Z");
     final PageResult<Solicitacao> esperado = new PageResult<>(List.of(), 0, 20, 0, 0);
     when(solicitacaoRepository.findByFilters(
-            null, null, null, null, null, null, inicio, fim, null, null, null, null, false, null, 0,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            inicio,
+            fim,
+            null,
+            null,
+            null,
+            null,
+            false,
+            null,
+            OrdenacaoSolicitacao.PADRAO,
+            0,
             20))
         .thenReturn(esperado);
 
@@ -471,7 +687,22 @@ class ListarSolicitacoesUseCaseTest {
     assertSame(esperado, result);
     verify(solicitacaoRepository, times(1))
         .findByFilters(
-            null, null, null, null, null, null, inicio, fim, null, null, null, null, false, null, 0,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            inicio,
+            fim,
+            null,
+            null,
+            null,
+            null,
+            false,
+            null,
+            OrdenacaoSolicitacao.PADRAO,
+            0,
             20);
     verifyNoMoreInteractions(solicitacaoRepository, usuarioRepository);
   }
@@ -483,7 +714,22 @@ class ListarSolicitacoesUseCaseTest {
     final Instant fim = Instant.parse("2026-02-01T00:00:00Z");
     final PageResult<Solicitacao> esperado = new PageResult<>(List.of(), 0, 20, 0, 0);
     when(solicitacaoRepository.findByFilters(
-            null, null, null, null, inicio, fim, null, null, null, null, null, null, false, null, 0,
+            null,
+            null,
+            null,
+            null,
+            inicio,
+            fim,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            false,
+            null,
+            OrdenacaoSolicitacao.PADRAO,
+            0,
             20))
         .thenReturn(esperado);
 
@@ -495,7 +741,22 @@ class ListarSolicitacoesUseCaseTest {
     assertSame(esperado, result);
     verify(solicitacaoRepository, times(1))
         .findByFilters(
-            null, null, null, null, inicio, fim, null, null, null, null, null, null, false, null, 0,
+            null,
+            null,
+            null,
+            null,
+            inicio,
+            fim,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            false,
+            null,
+            OrdenacaoSolicitacao.PADRAO,
+            0,
             20);
     verifyNoMoreInteractions(solicitacaoRepository, usuarioRepository);
   }
@@ -506,8 +767,23 @@ class ListarSolicitacoesUseCaseTest {
     final UUID abertaPor = UUID.randomUUID();
     final PageResult<Solicitacao> esperado = new PageResult<>(List.of(), 0, 20, 0, 0);
     when(solicitacaoRepository.findByFilters(
-            null, null, null, null, null, null, null, null, abertaPor, null, null, null, true, null,
-            0, 20))
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            abertaPor,
+            null,
+            null,
+            null,
+            true,
+            null,
+            OrdenacaoSolicitacao.PADRAO,
+            0,
+            20))
         .thenReturn(esperado);
 
     // Act
@@ -518,8 +794,23 @@ class ListarSolicitacoesUseCaseTest {
     assertSame(esperado, result);
     verify(solicitacaoRepository, times(1))
         .findByFilters(
-            null, null, null, null, null, null, null, null, abertaPor, null, null, null, true, null,
-            0, 20);
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            abertaPor,
+            null,
+            null,
+            null,
+            true,
+            null,
+            OrdenacaoSolicitacao.PADRAO,
+            0,
+            20);
     verifyNoMoreInteractions(solicitacaoRepository);
   }
 
@@ -528,7 +819,22 @@ class ListarSolicitacoesUseCaseTest {
     // Arrange
     final PageResult<Solicitacao> esperado = new PageResult<>(List.of(), 0, 20, 0, 0);
     when(solicitacaoRepository.findByFilters(
-            null, null, null, null, null, null, null, null, null, null, null, null, true, null, 0,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            true,
+            null,
+            OrdenacaoSolicitacao.PADRAO,
+            0,
             20))
         .thenReturn(esperado);
 
@@ -540,7 +846,22 @@ class ListarSolicitacoesUseCaseTest {
     assertSame(esperado, result);
     verify(solicitacaoRepository, times(1))
         .findByFilters(
-            null, null, null, null, null, null, null, null, null, null, null, null, true, null, 0,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            true,
+            null,
+            OrdenacaoSolicitacao.PADRAO,
+            0,
             20);
     verifyNoMoreInteractions(solicitacaoRepository);
   }

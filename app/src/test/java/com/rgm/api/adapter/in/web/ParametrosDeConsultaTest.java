@@ -8,11 +8,14 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.rgm.api.core.domain.exceptions.ValidationException;
+import com.rgm.api.core.domain.model.enums.CriterioOrdenacaoSolicitacao;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
+import com.rgm.api.core.domain.ports.repositories.OrdenacaoSolicitacao;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 class ParametrosDeConsultaTest {
@@ -208,6 +211,150 @@ class ParametrosDeConsultaTest {
 
     // Assert
     assertTrue(erro.getMessage().contains("recebido: INVALIDO"));
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "criadaEm,CRIADA_EM",
+    "prazoLimite,PRAZO_LIMITE",
+    "prioridade,PRIORIDADE",
+  })
+  void shouldDevolverCriterioWhenSortEValido(final String sort, final String esperado) {
+    // Arrange
+    final String dir = "asc";
+
+    // Act
+    final OrdenacaoSolicitacao ordenacao = ParametrosDeConsulta.ordenacao(sort, dir);
+
+    // Assert
+    assertEquals(CriterioOrdenacaoSolicitacao.valueOf(esperado), ordenacao.criterio());
+  }
+
+  @ParameterizedTest
+  @CsvSource({"asc,true", "desc,false"})
+  void shouldDevolverSentidoWhenDirEValido(final String dir, final boolean ascendente) {
+    // Arrange
+    final String sort = "prazoLimite";
+
+    // Act
+    final OrdenacaoSolicitacao ordenacao = ParametrosDeConsulta.ordenacao(sort, dir);
+
+    // Assert
+    assertEquals(ascendente, ordenacao.ascendente());
+  }
+
+  @Test
+  void shouldDevolverOrdemPadraoWhenSortEDirNaoForamInformados() {
+    // Arrange
+    final String sort = null;
+    final String dir = null;
+
+    // Act
+    final OrdenacaoSolicitacao ordenacao = ParametrosDeConsulta.ordenacao(sort, dir);
+
+    // Assert
+    assertEquals(OrdenacaoSolicitacao.PADRAO, ordenacao);
+  }
+
+  @Test
+  void shouldAplicarSentidoACriacaoWhenSoDirFoiInformado() {
+    // Arrange
+    final String dir = "desc";
+
+    // Act
+    final OrdenacaoSolicitacao ordenacao = ParametrosDeConsulta.ordenacao(null, dir);
+
+    // Assert
+    assertEquals(
+        new OrdenacaoSolicitacao(CriterioOrdenacaoSolicitacao.CRIADA_EM, false), ordenacao);
+  }
+
+  @Test
+  void shouldDizerOParametroEOsValoresAceitosWhenSortEInvalido() {
+    // Arrange
+    final String sort = "titulo";
+
+    // Act
+    final ValidationException erro =
+        assertThrows(ValidationException.class, () -> ParametrosDeConsulta.ordenacao(sort, "asc"));
+
+    // Assert
+    assertEquals(
+        "Parâmetro 'sort' inválido (recebido: titulo)."
+            + " Valores aceitos: criadaEm, prazoLimite, prioridade",
+        erro.getMessage());
+  }
+
+  @Test
+  void shouldDizerOParametroEOsValoresAceitosWhenDirEInvalido() {
+    // Arrange
+    final String dir = "up";
+
+    // Act
+    final ValidationException erro =
+        assertThrows(
+            ValidationException.class, () -> ParametrosDeConsulta.ordenacao("criadaEm", dir));
+
+    // Assert
+    assertEquals(
+        "Parâmetro 'dir' inválido (recebido: up). Valores aceitos: asc, desc", erro.getMessage());
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {1, 30, 365})
+  void shouldAceitarWhenDiasDoHistoricoEstaEntre1E365(final int dias) {
+    // Arrange
+    final int valor = dias;
+
+    // Act
+    final Executable chamada = () -> ParametrosDeConsulta.diasDoHistorico(valor);
+
+    // Assert
+    assertDoesNotThrow(chamada);
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {0, -1, 366})
+  void shouldDizerOValorRecebidoEAFaixaWhenDiasDoHistoricoEstaFora(final int dias) {
+    // Arrange
+    final int valor = dias;
+
+    // Act
+    final ValidationException erro =
+        assertThrows(ValidationException.class, () -> ParametrosDeConsulta.diasDoHistorico(valor));
+
+    // Assert
+    assertEquals(
+        "Parâmetro 'dias' deve estar entre 1 e 365 (recebido: " + dias + ")", erro.getMessage());
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {7, 30, 90})
+  void shouldAceitarWhenPeriodoDoPainelE7Ou30Ou90(final int dias) {
+    // Arrange
+    final int valor = dias;
+
+    // Act
+    final Executable chamada = () -> ParametrosDeConsulta.periodoDoPainel(valor);
+
+    // Assert
+    assertDoesNotThrow(chamada);
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {0, 15, 91, -7})
+  void shouldListarOs7E30E90WhenPeriodoDoPainelNaoEAceito(final int dias) {
+    // Arrange
+    final int valor = dias;
+
+    // Act
+    final ValidationException erro =
+        assertThrows(ValidationException.class, () -> ParametrosDeConsulta.periodoDoPainel(valor));
+
+    // Assert
+    assertEquals(
+        "Parâmetro 'dias' inválido (recebido: " + dias + "). Valores aceitos: 7, 30, 90",
+        erro.getMessage());
   }
 
   @Test
