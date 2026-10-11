@@ -506,4 +506,35 @@ class ObterSolicitacaoUseCaseTest {
     verify(modeloRepository, org.mockito.Mockito.never())
         .findAllByIdIn(org.mockito.ArgumentMatchers.any());
   }
+
+  @Test
+  void shouldReturnNullModeloWhenDetailOfCriacaoWithoutModelo() {
+    // Arrange
+    final UUID autor = UUID.randomUUID();
+    final Solicitacao criacao =
+        Solicitacao.abrirCriacao("T", "D", "COD-1", "FBOX", null, autor, Instant.now());
+    when(solicitacaoRepository.findById(criacao.getId())).thenReturn(Optional.of(criacao));
+    when(atribuicaoRepository.findBySolicitacaoId(criacao.getId())).thenReturn(List.of());
+    when(usuarioRepository.findById(autor)).thenReturn(Optional.of(operador(autor)));
+
+    // Act
+    final var output = useCase.execute(new ObterSolicitacaoUseCase.Input(criacao.getId(), autor));
+
+    // Assert
+    assertThat(output.modelo()).isNull();
+    assertThat(output.solicitacao()).isEqualTo(criacao);
+  }
+
+  @Test
+  void shouldAllowLookupWithNullKeyWhenNoSolicitacaoHasModelo() {
+    // Arrange
+    final Solicitacao semModelo =
+        Solicitacao.abrirCriacao("T", "D", "COD-1", "FBOX", null, UUID.randomUUID(), Instant.now());
+
+    // Act
+    final var mapa = useCase.resolverModelos(List.of(semModelo));
+
+    // Assert
+    assertThat(mapa.get(semModelo.getModeloId())).isNull();
+  }
 }
