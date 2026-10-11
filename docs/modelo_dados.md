@@ -139,7 +139,6 @@ Fotos de apresentação/estado atual do modelo (galeria), independentes do hist�
 
 Timeline / prontuário do modelo.
 
-Cada item do histórico (`EventoModelo`) pode ter **1 ou mais evidências** anexadas por meio da relação N:N `EventoModeloEvidencia`.
 Se vocês quiserem **obrigar** que todo evento tenha pelo menos 1 evidência, isso deve virar uma regra de negócio/validação (o modelo suporta 0..N).
 
 - `id: UUID`
@@ -152,10 +151,9 @@ Se vocês quiserem **obrigar** que todo evento tenha pelo menos 1 evidência, is
 - `criadoEm: datetime`
 - `solicitacaoRelacionadaId: UUID` (opcional)
 
-### EventoModeloEvidencia (N:N)
-
-- `eventoModeloId: UUID`
-- `evidenciaId: UUID`
+> A tabela `evento_modelo_evidencias` (V1) ficou sem uso: nenhum caso de uso grava nela e o
+> código que a mapeava foi removido na spec 013. A tabela permanece, vazia de propósito, porque
+> as migrações publicadas são imutáveis e não há dado a perder.
 
 ## Relacionamentos (resumo)
 

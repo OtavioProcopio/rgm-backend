@@ -190,7 +190,7 @@ Declarados em `LimitesTexto` (domínio) e aplicados nos requests; texto acima do
 | Endpoint | Filtros | Paginação |
 |----------|---------|-----------|
 | `GET /api/solicitacoes` | `status`, `modeloId`, `tipo`, `prioridade`, `criadaEmInicio`/`criadaEmFim`, `abertaPorUsuarioId`, `responsavelId`, `maquina`, `atrasada`, `emAberto`, `q` (busca textual); ordenação `sort` (`criadaEm`, `prazoLimite`, `prioridade`, `concluidaEm`) e `dir` (`asc`, `desc`) | `page`, `size` |
-| `GET /api/solicitacoes/relatorio` | mesmos filtros de `GET /api/solicitacoes` | — (Exportação em PDF) |
+| `GET /api/solicitacoes/relatorio` | mesmos filtros, `q`, `sort` e `dir` de `GET /api/solicitacoes` | — (Exportação em PDF) |
 | `GET /api/admin/usuarios` | `perfil`, `ativo` | `page`, `size` |
 | `GET /api/modelos` | `ativo`, `codigo` | `page`, `size` |
 
@@ -304,3 +304,25 @@ Espelha o catálogo de máquinas. `GET /api/tipos-modelo` lista (qualquer usuár
 um modelo, `tipo` (opcional) precisa estar no catálogo e ativo; editar sem trocar o tipo continua
 valendo mesmo que ele tenha sido desativado. Renomear um tipo (ou uma máquina) troca o nome nos
 modelos que o usam.
+
+## Indicadores de gestão e relatórios (spec 013)
+
+**`GET /api/solicitacoes/metricas/gestao?dias=7|30|90`** (gestor e administrador; operador 403; outro
+valor de `dias` responde 400). Janela: os últimos N dias locais da fábrica, como o painel. Traz:
+`prazo` (concluídas com prioridade, no prazo e porcentagem, total e por prioridade; as concluídas
+sem prioridade ficam fora e são contadas em `concluidasSemPrioridade`), `resolucao` (mediana e p90 em
+segundos), `backlog` (abertas, faixas de menos de 1 dia, de 1 a 3 dias e de mais de 3 dias, e
+`semResponsavel`), `etapas` (espera até iniciar, execução e espera de validação, com amostras,
+mediana e média; devolução soma as passagens), `devolucao` (enviadas, devoluções e taxa),
+`porMaquina` (abertas, em atraso e tempo médio; criação fora), `reincidentes` (modelos com 3 ou mais
+reparos no período; o limite é fixo) e `carga` (abertas por responsável com nome, mais o total de
+solicitações distintas, já que um pedido com dois responsáveis conta para os dois). Sem dado, o
+valor vem `null`, nunca zero.
+
+**PDFs.** Cada PDF reflete o que a tela mostrava ao exportar: a lista de solicitações usa os mesmos
+filtros, busca e ordenação da listagem; a lista de modelos usa os filtros da tela e traz o tipo; o
+ranking mostra a ordenação. O cabeçalho escreve os filtros aplicados (ou "Sem filtros") e o total.
+Nenhum relatório corta em silêncio: só acima de 5000 linhas (rede de segurança de memória) o PDF traz
+"Exibindo N de M". A ficha do modelo traz o histórico (eventos e solicitações com atividades) e as
+fotos da galeria, com a capa em destaque; foto que não pode ser lida vira "Foto indisponível" e a
+ficha segue.

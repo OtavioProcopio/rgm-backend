@@ -1,7 +1,10 @@
 package com.rgm.api.adapter.out.report;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.rgm.api.core.application.usecases.modelo.ObterFichaDoModeloUseCase.Ficha;
+import com.rgm.api.core.application.usecases.modelo.ObterFichaDoModeloUseCase.FotoDaFicha;
 import com.rgm.api.core.domain.model.aggregates.EventoModelo;
 import com.rgm.api.core.domain.model.aggregates.Modelo;
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
@@ -11,35 +14,40 @@ import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
 import com.rgm.api.core.domain.model.enums.TipoAtividadeSolicitacao;
 import com.rgm.api.core.domain.model.enums.TipoEventoModelo;
 import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
+import com.rgm.api.core.domain.ports.repositories.MetricaModeloRow;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import javax.imageio.ImageIO;
 import org.junit.jupiter.api.Test;
 
 class ModeloPdfServiceTest {
 
   private final ModeloPdfService service = new ModeloPdfService();
 
-  private Modelo buildModelo(final boolean ativo, final boolean temPendencia) {
+  private Modelo modelo(final String codigo, final String tipo, final boolean ativo) {
     final Instant agora = Instant.now();
     return new Modelo(
         UUID.randomUUID(),
-        "MOD-001",
+        codigo,
         1,
         "Modelo de teste",
-        null,
+        "Observação do modelo",
         null,
         null,
         ativo,
         "Injetora A",
-        null,
-        temPendencia,
+        tipo,
+        false,
         agora,
         agora);
   }
 
-  private EventoModelo buildEvento(final UUID modeloId) {
+  private EventoModelo evento(final UUID modeloId) {
     return new EventoModelo(
         UUID.randomUUID(),
         modeloId,
@@ -52,166 +60,171 @@ class ModeloPdfServiceTest {
         Instant.now());
   }
 
-  private Solicitacao buildSolicitacao(final UUID modeloId, final StatusSolicitacao status) {
-    final boolean concluida = status == StatusSolicitacao.CONCLUIDA;
-    final boolean cancelada = status == StatusSolicitacao.CANCELADA;
+  private Solicitacao solicitacao(final UUID modeloId, final String titulo) {
     return new Solicitacao(
         UUID.randomUUID(),
-        "Manutenção urgente",
+        titulo,
         "Troca de vedações",
         TipoSolicitacao.REPARO,
-        status,
+        StatusSolicitacao.EM_ANDAMENTO,
         PrioridadeSolicitacao.ALTA,
         modeloId,
-        null /* modeloCodigo */,
-        null /* modeloMaquina */,
-        null /* modeloObservacoes */,
+        null,
+        null,
+        null,
         UUID.randomUUID(),
-        concluida || cancelada ? "Encerrado" : null,
+        null,
         Instant.now(),
         Instant.now(),
-        concluida ? Instant.now() : null,
-        cancelada ? Instant.now() : null);
+        null,
+        null);
   }
 
-  private AtividadeSolicitacao buildAtividade(
-      final UUID solicitacaoId, final TipoAtividadeSolicitacao tipo, final String comentario) {
+  private AtividadeSolicitacao comentario(final UUID solicitacaoId, final String texto) {
     return new AtividadeSolicitacao(
         UUID.randomUUID(),
         solicitacaoId,
-        tipo,
-        tipo == TipoAtividadeSolicitacao.MUDANCA_STATUS ? StatusSolicitacao.A_FAZER : null,
-        tipo == TipoAtividadeSolicitacao.MUDANCA_STATUS ? StatusSolicitacao.EM_ANDAMENTO : null,
-        comentario,
+        TipoAtividadeSolicitacao.COMENTARIO,
+        null,
+        null,
+        texto,
         UUID.randomUUID(),
         Instant.now());
   }
 
+  private static byte[] png() {
+    try {
+      final var imagem = new BufferedImage(8, 8, BufferedImage.TYPE_INT_RGB);
+      final var saida = new ByteArrayOutputStream();
+      ImageIO.write(imagem, "png", saida);
+      return saida.toByteArray();
+    } catch (final IOException e) {
+      throw new IllegalStateException(e);
+    }
+  }
+
+  private Ficha ficha(
+      final Modelo modelo,
+      final List<Solicitacao> solicitacoes,
+      final Map<UUID, List<AtividadeSolicitacao>> atividades,
+      final List<FotoDaFicha> fotos) {
+    return new Ficha(
+        modelo,
+        List.of(evento(modelo.getId())),
+        solicitacoes,
+        atividades,
+        Map.of(),
+        7200.0,
+        null,
+        fotos);
+  }
+
+  // ── lista ────────────────────────────────────────────────────────────────
+
   @Test
-  void gerarLista_retornaByteArrayNaoVazio() {
-    final var modelos = List.of(buildModelo(true, false), buildModelo(false, true));
-    final byte[] pdf = service.gerarLista(modelos);
-    assertNotNull(pdf);
-    assertTrue(pdf.length > 100);
+  void shouldWriteFiltersTotalAndTypeInTheModelList() {
+    // Arrange
+    final var modelos = List.of(modelo("MOD-001", "RESINA", true));
+    final var ctx = new ContextoDoRelatorio(List.of("Situação: ativos", "Máquina: FBOX"), 1, 1);
+
+    // Act
+    final String texto = TextoDoPdf.de(service.gerarLista(modelos, "Gestor", ctx));
+
+    // Assert
+    assertTrue(texto.contains("Filtros: Situação: ativos · Máquina: FBOX"));
+    assertTrue(texto.contains("1 modelo(s)"));
+    assertTrue(texto.contains("Tipo"));
+    assertTrue(texto.contains("RESINA"));
+    assertTrue(texto.contains("MOD-001"));
   }
 
   @Test
-  void gerarLista_listaVazia() {
-    final byte[] pdf = service.gerarLista(List.of());
-    assertNotNull(pdf);
-    assertTrue(pdf.length > 0);
+  void shouldWarnWhenTheModelListWasCut() {
+    // Arrange
+    final var modelos = List.of(modelo("MOD-001", null, true));
+    final var ctx = new ContextoDoRelatorio(List.of(), 6000, 5000);
+
+    // Act
+    final String texto = TextoDoPdf.de(service.gerarLista(modelos, "Gestor", ctx));
+
+    // Assert
+    assertTrue(texto.contains("Exibindo 5000 de 6000"));
   }
 
-  @Test
-  void gerarFicha_comMetricasDeTempo() {
-    final Modelo modelo = buildModelo(true, false);
-    final byte[] pdf =
-        service.gerarFicha(
-            modelo, List.of(), List.of(), Map.of(), "Gestor Teste", Map.of(), 7200.0, 90000.0);
-    assertNotNull(pdf);
-    assertTrue(pdf.length > 100);
-  }
+  // ── ranking ──────────────────────────────────────────────────────────────
 
   @Test
-  void gerarFicha_semMetricasDeTempo() {
-    final Modelo modelo = buildModelo(true, false);
-    final byte[] pdf =
-        service.gerarFicha(
-            modelo, List.of(), List.of(), Map.of(), "Gestor Teste", Map.of(), null, null);
-    assertNotNull(pdf);
-    assertTrue(pdf.length > 100);
+  void shouldWriteOrderingAndRowsInTheRanking() {
+    // Arrange
+    final var linhas = List.of(new MetricaModeloRow(UUID.randomUUID(), "MOD-9", 3600.0, null));
+    final var ctx = new ContextoDoRelatorio(List.of("Ordenado por: Tempo resolucao"), 1, 1);
+
+    // Act
+    final String texto = TextoDoPdf.de(service.gerarRankingModelos(linhas, "Gestor", ctx));
+
+    // Assert
+    assertTrue(texto.contains("Ordenado por: Tempo resolucao"));
+    assertTrue(texto.contains("MOD-9"));
   }
 
-  @Test
-  void gerarFicha_comTempoMasSemIntervalo() {
-    final Modelo modelo = buildModelo(true, false);
-    final byte[] pdf =
-        service.gerarFicha(
-            modelo, List.of(), List.of(), Map.of(), "Gestor Teste", Map.of(), 3600.0, null);
-    assertNotNull(pdf);
-    assertTrue(pdf.length > 100);
-  }
+  // ── ficha ────────────────────────────────────────────────────────────────
 
   @Test
-  void gerarRankingModelos_comLinhas() {
-    final var linha1 =
-        new com.rgm.api.core.domain.ports.repositories.MetricaModeloRow(
-            UUID.randomUUID(), "MDL-001", 3600.0, 90000.0);
-    final var linha2 =
-        new com.rgm.api.core.domain.ports.repositories.MetricaModeloRow(
-            UUID.randomUUID(), "MDL-002", 172800.0, null);
-    final byte[] pdf = service.gerarRankingModelos(List.of(linha1, linha2), "Gestor Teste");
-    assertNotNull(pdf);
-    assertTrue(pdf.length > 100);
-  }
-
-  @Test
-  void gerarRankingModelos_listaVazia() {
-    final byte[] pdf = service.gerarRankingModelos(List.of(), "Gestor Teste");
-    assertNotNull(pdf);
-    assertTrue(pdf.length > 0);
-  }
-
-  @Test
-  void gerarFicha_modeloSemSolicitacoes() {
-    final Modelo modelo = buildModelo(true, false);
-    final byte[] pdf = service.gerarFicha(modelo, List.of(), List.of(), Map.of());
-    assertNotNull(pdf);
-    assertTrue(pdf.length > 100);
-  }
-
-  @Test
-  void gerarFicha_comEventosESolicitacoes() {
-    final Modelo modelo = buildModelo(true, true);
-    final UUID modeloId = modelo.getId();
-    final var evento = buildEvento(modeloId);
-    final var solicitacao = buildSolicitacao(modeloId, StatusSolicitacao.CONCLUIDA);
+  void shouldIncludeHistoryAndPhotosWithTheCoverHighlightedInTheFicha() {
+    // Arrange
+    final var modelo = modelo("MOD-500", "COQUILHA_ACO", true);
+    final var solicitacao = solicitacao(modelo.getId(), "Trocar vedação");
     final var atividades =
+        Map.of(solicitacao.getId(), List.of(comentario(solicitacao.getId(), "Peça substituída")));
+    final var fotos =
         List.of(
-            buildAtividade(solicitacao.getId(), TipoAtividadeSolicitacao.ABERTURA, null),
-            buildAtividade(solicitacao.getId(), TipoAtividadeSolicitacao.MUDANCA_STATUS, null),
-            buildAtividade(
-                solicitacao.getId(), TipoAtividadeSolicitacao.COMENTARIO, "Trocou o rolamento"),
-            buildAtividade(
-                solicitacao.getId(), TipoAtividadeSolicitacao.EVIDENCIA_ADICIONADA, null),
-            buildAtividade(
-                solicitacao.getId(), TipoAtividadeSolicitacao.ATRIBUICAO, "Atribuído ao técnico"));
+            new FotoDaFicha("Foto de capa", true, png()),
+            new FotoDaFicha("Detalhe lateral", false, png()),
+            new FotoDaFicha("Vista superior", false, png()));
 
+    // Act
     final byte[] pdf =
-        service.gerarFicha(
-            modelo, List.of(evento), List.of(solicitacao), Map.of(solicitacao.getId(), atividades));
-    assertNotNull(pdf);
-    assertTrue(pdf.length > 100);
+        service.gerarFicha(ficha(modelo, List.of(solicitacao), atividades, fotos), "Gestor");
+
+    // Assert
+    final String texto = TextoDoPdf.de(pdf);
+    assertTrue(texto.contains("MOD-500"));
+    assertTrue(texto.contains("Fotos do Modelo"));
+    assertTrue(texto.contains("Capa — Foto de capa"));
+    assertTrue(texto.contains("Detalhe lateral"));
+    assertTrue(texto.contains("Eventos do Modelo"));
+    assertTrue(texto.contains("Troca de peça"));
+    assertTrue(texto.contains("Histórico de Solicitações"));
+    assertTrue(texto.contains("Trocar vedação"));
+    assertTrue(texto.contains("Peça substituída"));
+    assertFalse(texto.contains("Foto indisponível"));
   }
 
   @Test
-  void gerarFicha_modeloInativo() {
-    final Modelo modelo = buildModelo(false, false);
-    final byte[] pdf = service.gerarFicha(modelo, List.of(), List.of(), Map.of());
-    assertNotNull(pdf);
-    assertTrue(pdf.length > 100);
+  void shouldKeepTheFichaAndMarkThePhotoWhenItCouldNotBeRead() {
+    // Arrange
+    final var modelo = modelo("MOD-501", null, true);
+    final var fotos = List.of(new FotoDaFicha("Foto perdida", false, null));
+
+    // Act
+    final byte[] pdf = service.gerarFicha(ficha(modelo, List.of(), Map.of(), fotos), "Gestor");
+
+    // Assert
+    final String texto = TextoDoPdf.de(pdf);
+    assertTrue(texto.contains("MOD-501"));
+    assertTrue(texto.contains("Foto perdida"));
+    assertTrue(texto.contains("Foto indisponível"));
   }
 
   @Test
-  void gerarFicha_solicitacaoSemAtividades() {
-    final Modelo modelo = buildModelo(true, false);
-    final var solicitacao = buildSolicitacao(modelo.getId(), StatusSolicitacao.A_FAZER);
-    final byte[] pdf = service.gerarFicha(modelo, List.of(), List.of(solicitacao), Map.of());
-    assertNotNull(pdf);
-    assertTrue(pdf.length > 100);
-  }
+  void shouldOmitThePhotoSectionWhenTheModelHasNoPhotos() {
+    // Arrange
+    final var modelo = modelo("MOD-502", null, false);
 
-  @Test
-  void gerarFicha_multiplosStatus() {
-    final Modelo modelo = buildModelo(true, true);
-    final var sol1 = buildSolicitacao(modelo.getId(), StatusSolicitacao.A_FAZER);
-    final var sol2 = buildSolicitacao(modelo.getId(), StatusSolicitacao.EM_ANDAMENTO);
-    final var sol3 = buildSolicitacao(modelo.getId(), StatusSolicitacao.CANCELADA);
-    final var sol4 = buildSolicitacao(modelo.getId(), StatusSolicitacao.EM_VALIDACAO);
+    // Act
+    final byte[] pdf = service.gerarFicha(ficha(modelo, List.of(), Map.of(), List.of()), "Gestor");
 
-    final byte[] pdf =
-        service.gerarFicha(modelo, List.of(), List.of(sol1, sol2, sol3, sol4), Map.of());
-    assertNotNull(pdf);
-    assertTrue(pdf.length > 100);
+    // Assert
+    assertFalse(TextoDoPdf.de(pdf).contains("Fotos do Modelo"));
   }
 }

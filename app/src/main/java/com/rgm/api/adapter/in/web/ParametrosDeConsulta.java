@@ -19,6 +19,10 @@ public final class ParametrosDeConsulta {
 
   public static final int TAMANHO_MAXIMO_DA_PAGINA = 100;
   public static final int DIAS_MAXIMOS_DO_HISTORICO = 365;
+
+  /** Rede de segurança de memória dos PDFs: acima disso o PDF avisa que foi cortado. */
+  public static final int LIMITE_DE_LINHAS_DO_RELATORIO = 5000;
+
   public static final int BUSCA_MINIMA = 2;
   public static final int BUSCA_MAXIMA = 100;
   public static final List<Integer> PERIODOS_DO_PAINEL = List.of(7, 30, 90);

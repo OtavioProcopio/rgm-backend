@@ -2,6 +2,7 @@ package com.rgm.api.adapter.in.web.solicitacao;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -183,7 +184,7 @@ class SolicitacaoControllerSegurancaTest {
     // Arrange
     autenticarComo(TOKEN_OPERADOR, PerfilUsuario.OPERADOR);
     stubarMetricasPorModeloVazia();
-    when(modeloPdfService.gerarRankingModelos(any(), any())).thenReturn(new byte[] {1});
+    when(modeloPdfService.gerarRankingModelos(any(), any(), any())).thenReturn(new byte[] {1});
 
     // Act
     final var resposta =
@@ -246,7 +247,7 @@ class SolicitacaoControllerSegurancaTest {
     // Arrange
     autenticarComo(TOKEN_OPERADOR, PerfilUsuario.OPERADOR);
     stubarMetricasPorModeloVazia();
-    when(modeloPdfService.gerarRankingModelos(any(), any())).thenReturn(new byte[] {1});
+    when(modeloPdfService.gerarRankingModelos(any(), any(), any())).thenReturn(new byte[] {1});
 
     // Act
     final var resposta =
@@ -334,7 +335,7 @@ class SolicitacaoControllerSegurancaTest {
     // Arrange
     autenticarComo(TOKEN_GESTOR, PerfilUsuario.GESTOR);
     stubarMetricasPorModeloVazia();
-    when(modeloPdfService.gerarRankingModelos(any(), any())).thenReturn(new byte[] {1});
+    when(modeloPdfService.gerarRankingModelos(any(), any(), any())).thenReturn(new byte[] {1});
 
     // Act
     final var resposta =
@@ -345,9 +346,9 @@ class SolicitacaoControllerSegurancaTest {
     verify(obterMetricasPorModeloUseCase, times(1))
         .execute(
             new ObterMetricasPorModeloUseCase.Input(
-                OrdenacaoMetricaModelo.TEMPO_RESOLUCAO, false, 0, Integer.MAX_VALUE));
+                OrdenacaoMetricaModelo.TEMPO_RESOLUCAO, false, 0, 5000));
     verifyNoMoreInteractions(obterMetricasPorModeloUseCase);
-    verify(modeloPdfService, times(1)).gerarRankingModelos(List.of(), "Sistema");
+    verify(modeloPdfService, times(1)).gerarRankingModelos(eq(List.of()), eq("Sistema"), any());
     verifyNoMoreInteractions(modeloPdfService);
     verify(autenticarAcessoUseCase, times(1)).execute(TOKEN_GESTOR);
     verifyNoMoreInteractions(autenticarAcessoUseCase);

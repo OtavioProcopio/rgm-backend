@@ -8,24 +8,23 @@ import com.rgm.api.adapter.in.web.dto.response.ModeloResponse;
 import com.rgm.api.adapter.in.web.dto.response.PageResponse;
 import com.rgm.api.adapter.in.web.dto.response.ResumoModelosResponse;
 import com.rgm.api.adapter.in.web.dto.response.ResumoSolicitacoesModeloResponse;
+import com.rgm.api.adapter.out.report.ContextoDoRelatorio;
 import com.rgm.api.adapter.out.report.ModeloPdfService;
 import com.rgm.api.core.application.usecases.modelo.GerenciarModelosUseCase;
 import com.rgm.api.core.application.usecases.modelo.ListarModelosUseCase;
+import com.rgm.api.core.application.usecases.modelo.ObterFichaDoModeloUseCase;
 import com.rgm.api.core.application.usecases.modelo.ObterResumoModelosUseCase;
 import com.rgm.api.core.application.usecases.modelo.ObterResumoSolicitacoesModeloUseCase;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.model.aggregates.Modelo;
-import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.EventoModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.FotoGaleriaModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.ModeloRepository;
-import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
@@ -53,8 +52,7 @@ public class ModeloController {
   private final ListarModelosUseCase listarUseCase;
   private final ModeloRepository modeloRepository;
   private final EventoModeloRepository eventoModeloRepository;
-  private final SolicitacaoRepository solicitacaoRepository;
-  private final AtividadeSolicitacaoRepository atividadeRepository;
+  private final ObterFichaDoModeloUseCase obterFichaUseCase;
   private final ModeloPdfService modeloPdfService;
   private final UsuarioRepository usuarioRepository;
   private final FotoGaleriaModeloRepository fotoGaleriaModeloRepository;
@@ -66,8 +64,7 @@ public class ModeloController {
       final ListarModelosUseCase listarUseCase,
       final ModeloRepository modeloRepository,
       final EventoModeloRepository eventoModeloRepository,
-      final SolicitacaoRepository solicitacaoRepository,
-      final AtividadeSolicitacaoRepository atividadeRepository,
+      final ObterFichaDoModeloUseCase obterFichaUseCase,
       final ModeloPdfService modeloPdfService,
       final UsuarioRepository usuarioRepository,
       final FotoGaleriaModeloRepository fotoGaleriaModeloRepository,
@@ -77,8 +74,7 @@ public class ModeloController {
     this.listarUseCase = listarUseCase;
     this.modeloRepository = modeloRepository;
     this.eventoModeloRepository = eventoModeloRepository;
-    this.solicitacaoRepository = solicitacaoRepository;
-    this.atividadeRepository = atividadeRepository;
+    this.obterFichaUseCase = obterFichaUseCase;
     this.modeloPdfService = modeloPdfService;
     this.usuarioRepository = usuarioRepository;
     this.fotoGaleriaModeloRepository = fotoGaleriaModeloRepository;
@@ -208,11 +204,27 @@ public class ModeloController {
       @RequestParam(required = false) final String maquina,
       @RequestParam(required = false) final String descricao,
       final Authentication authentication) {
-    final var result =
+    final var pagina =
         listarUseCase.execute(
-            new ListarModelosUseCase.Input(ativo, codigo, maquina, descricao, 0, 1000));
+            new ListarModelosUseCase.Input(
+                ativo,
+                codigo,
+                maquina,
+                descricao,
+                0,
+                ParametrosDeConsulta.LIMITE_DE_LINHAS_DO_RELATORIO));
+    final var contexto =
+        new ContextoDoRelatorio(
+            new ContextoDoRelatorio.Filtros()
+                .com("Situação", ativo == null ? null : ativo ? "ativos" : "inativos")
+                .com("Código", codigo)
+                .com("Máquina", maquina)
+                .com("Descrição", descricao)
+                .build(),
+            pagina.totalElements(),
+            pagina.content().size());
     final String geradoPorNome = resolveNome(authentication);
-    final byte[] pdf = modeloPdfService.gerarLista(result.content(), geradoPorNome);
+    final byte[] pdf = modeloPdfService.gerarLista(pagina.content(), geradoPorNome, contexto);
     final var headers = new HttpHeaders();
     headers.setContentType(MediaType.APPLICATION_PDF);
     headers.setContentDispositionFormData("attachment", "relatorio-modelos.pdf");
@@ -222,48 +234,12 @@ public class ModeloController {
   @GetMapping("/{id}/relatorio")
   public ResponseEntity<byte[]> gerarFichaModelo(
       @PathVariable final UUID id, final Authentication authentication) {
-    final var modelo =
-        modeloRepository
-            .findById(id)
-            .orElseThrow(() -> new RecursoNaoEncontradoException("Modelo nao encontrado"));
-    final var eventos = eventoModeloRepository.findByModeloId(id);
-    final var solicitacoes = solicitacaoRepository.findByModeloId(id);
-    final var resumo = solicitacaoRepository.resumirPorModelo(id);
-    final var atividadesPorSolicitacao =
-        solicitacoes.stream()
-            .collect(
-                Collectors.toMap(
-                    s -> s.getId(), s -> atividadeRepository.findBySolicitacaoId(s.getId())));
-
-    final var userIds =
-        solicitacoes.stream()
-            .flatMap(
-                s -> {
-                  final var ids = new java.util.ArrayList<UUID>();
-                  if (s.getAbertaPorUsuarioId() != null) ids.add(s.getAbertaPorUsuarioId());
-                  return ids.stream();
-                })
-            .distinct()
-            .collect(Collectors.toList());
-    final Map<UUID, String> nomesPorUsuario =
-        usuarioRepository.findAllByIdIn(userIds).stream()
-            .collect(Collectors.toMap(u -> u.getId(), u -> u.getNome()));
-
-    final String geradoPorNome = resolveNome(authentication);
-    final byte[] pdf =
-        modeloPdfService.gerarFicha(
-            modelo,
-            eventos,
-            solicitacoes,
-            atividadesPorSolicitacao,
-            geradoPorNome,
-            nomesPorUsuario,
-            resumo.tempoMedioResolucaoSegundos(),
-            resumo.intervaloMedioSegundos());
+    final var ficha = obterFichaUseCase.execute(id);
+    final byte[] pdf = modeloPdfService.gerarFicha(ficha, resolveNome(authentication));
     final var headers = new HttpHeaders();
     headers.setContentType(MediaType.APPLICATION_PDF);
     final String filename =
-        "ficha-modelo-" + modelo.getCodigo().replaceAll("[^a-zA-Z0-9]", "-") + ".pdf";
+        "ficha-modelo-" + ficha.modelo().getCodigo().replaceAll("[^a-zA-Z0-9]", "-") + ".pdf";
     headers.setContentDispositionFormData("attachment", filename);
     return new ResponseEntity<>(pdf, headers, HttpStatus.OK);
   }

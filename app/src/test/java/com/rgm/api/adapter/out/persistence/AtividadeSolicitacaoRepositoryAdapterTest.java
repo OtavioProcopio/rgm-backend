@@ -102,4 +102,33 @@ class AtividadeSolicitacaoRepositoryAdapterTest {
     adapter.deleteBySolicitacaoId(solicitacaoId);
     verify(jpa).deleteBySolicitacaoId(solicitacaoId);
   }
+
+  @Test
+  void shouldFetchActivitiesOfSeveralSolicitacoesInOneJpaCall() {
+    // Arrange
+    final UUID a = UUID.randomUUID();
+    final UUID b = UUID.randomUUID();
+    when(jpa.findBySolicitacaoIdInOrderByCriadaEmAsc(java.util.List.of(a, b)))
+        .thenReturn(java.util.List.of(criarEntity(a), criarEntity(b)));
+
+    // Act
+    final var resultado = adapter.findBySolicitacaoIdIn(java.util.List.of(a, b));
+
+    // Assert
+    org.junit.jupiter.api.Assertions.assertEquals(2, resultado.size());
+    verify(jpa).findBySolicitacaoIdInOrderByCriadaEmAsc(java.util.List.of(a, b));
+  }
+
+  @Test
+  void shouldNotQueryWhenThereAreNoSolicitacoes() {
+    // Arrange
+    final java.util.List<UUID> vazio = java.util.List.of();
+
+    // Act
+    final var resultado = adapter.findBySolicitacaoIdIn(vazio);
+
+    // Assert
+    org.junit.jupiter.api.Assertions.assertTrue(resultado.isEmpty());
+    org.mockito.Mockito.verifyNoInteractions(jpa);
+  }
 }

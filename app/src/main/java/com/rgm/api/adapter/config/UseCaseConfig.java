@@ -19,6 +19,7 @@ import com.rgm.api.core.application.usecases.modelo.EditarFotoGaleriaUseCase;
 import com.rgm.api.core.application.usecases.modelo.GerenciarModelosUseCase;
 import com.rgm.api.core.application.usecases.modelo.ListarGaleriaModeloUseCase;
 import com.rgm.api.core.application.usecases.modelo.ListarModelosUseCase;
+import com.rgm.api.core.application.usecases.modelo.ObterFichaDoModeloUseCase;
 import com.rgm.api.core.application.usecases.modelo.ObterResumoModelosUseCase;
 import com.rgm.api.core.application.usecases.modelo.ObterResumoSolicitacoesModeloUseCase;
 import com.rgm.api.core.application.usecases.modelo.RecalcularPendenciaUseCase;
@@ -452,6 +453,25 @@ public class UseCaseConfig {
       final ZoneId fusoDaFabrica) {
     return new ObterIndicadoresDeGestaoUseCase(
         indicadoresDeGestaoRepository, fusoDaFabrica, Clock.systemUTC());
+  }
+
+  @Bean
+  public ObterFichaDoModeloUseCase obterFichaDoModeloUseCase(
+      final ModeloRepository modeloRepository,
+      final EventoModeloRepository eventoModeloRepository,
+      final SolicitacaoRepository solicitacaoRepository,
+      final AtividadeSolicitacaoRepository atividadeRepository,
+      final UsuarioRepository usuarioRepository,
+      final FotoGaleriaModeloRepository fotoGaleriaModeloRepository,
+      final StorageService storageService) {
+    return new ObterFichaDoModeloUseCase(
+        modeloRepository,
+        eventoModeloRepository,
+        solicitacaoRepository,
+        atividadeRepository,
+        usuarioRepository,
+        fotoGaleriaModeloRepository,
+        storageService);
   }
 
   @Bean

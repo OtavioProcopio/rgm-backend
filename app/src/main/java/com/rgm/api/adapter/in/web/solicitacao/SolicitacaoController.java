@@ -17,6 +17,7 @@ import com.rgm.api.adapter.in.web.dto.response.MetricasSolicitacaoResponse;
 import com.rgm.api.adapter.in.web.dto.response.PageResponse;
 import com.rgm.api.adapter.in.web.dto.response.PainelPorPeriodoResponse;
 import com.rgm.api.adapter.in.web.dto.response.SolicitacaoResponse;
+import com.rgm.api.adapter.out.report.ContextoDoRelatorio;
 import com.rgm.api.adapter.out.report.ModeloPdfService;
 import com.rgm.api.adapter.out.report.SolicitacaoPdfService;
 import com.rgm.api.core.application.usecases.solicitacao.AbrirSolicitacaoUseCase;
@@ -191,14 +192,24 @@ public class SolicitacaoController {
       @RequestParam(defaultValue = "desc") final String dir,
       final Authentication authentication) {
     log.info("SolicitacaoController.exportarMetricasPorModeloPdf sort={} dir={}", sort, dir);
-    final var linhas =
-        obterMetricasPorModeloUseCase
-            .execute(
-                new ObterMetricasPorModeloUseCase.Input(
-                    parseOrdenacao(sort), parseAscendente(dir), 0, Integer.MAX_VALUE))
-            .content();
+    final var pagina =
+        obterMetricasPorModeloUseCase.execute(
+            new ObterMetricasPorModeloUseCase.Input(
+                parseOrdenacao(sort),
+                parseAscendente(dir),
+                0,
+                ParametrosDeConsulta.LIMITE_DE_LINHAS_DO_RELATORIO));
+    final var linhas = pagina.content();
+    final var contexto =
+        new ContextoDoRelatorio(
+            new ContextoDoRelatorio.Filtros()
+                .comEnum("Ordenado por", sort)
+                .com("Sentido", "asc".equalsIgnoreCase(dir) ? "crescente" : "decrescente")
+                .build(),
+            pagina.totalElements(),
+            linhas.size());
     final String geradoPorNome = resolveNome(authentication);
-    final byte[] pdf = modeloPdfService.gerarRankingModelos(linhas, geradoPorNome);
+    final byte[] pdf = modeloPdfService.gerarRankingModelos(linhas, geradoPorNome, contexto);
     final var headers = new org.springframework.http.HttpHeaders();
     headers.setContentType(org.springframework.http.MediaType.APPLICATION_PDF);
     headers.setContentDispositionFormData("attachment", "ranking-modelos-por-tempo.pdf");
@@ -221,8 +232,13 @@ public class SolicitacaoController {
       @RequestParam(required = false) final String maquina,
       @RequestParam(required = false) final Boolean atrasada,
       @RequestParam(required = false) final Boolean emAberto,
+      @RequestParam(required = false) final String sort,
+      @RequestParam(required = false) final String dir,
+      @RequestParam(required = false) final String q,
       final Authentication authentication) {
     log.info("SolicitacaoController.gerarRelatorio iniciado");
+    final OrdenacaoSolicitacao ordenacao = ParametrosDeConsulta.ordenacao(sort, dir);
+    final String busca = ParametrosDeConsulta.busca("q", q);
     final var input =
         buildInput(
             status,
@@ -240,15 +256,17 @@ public class SolicitacaoController {
             atrasada,
             emAberto,
             usuarioAutenticadoId(authentication),
-            null,
-            OrdenacaoSolicitacao.PADRAO,
+            busca,
+            ordenacao,
             0,
-            Integer.MAX_VALUE);
-    final var solicitacoes = listarUseCase.execute(input).content();
+            ParametrosDeConsulta.LIMITE_DE_LINHAS_DO_RELATORIO);
+    final var pagina = listarUseCase.execute(input);
+    final var solicitacoes = pagina.content();
 
     final var solicitacaoUserIds =
-        solicitacoes.stream()
-            .map(s -> s.getAbertaPorUsuarioId())
+        java.util.stream.Stream.concat(
+                solicitacoes.stream().map(s -> s.getAbertaPorUsuarioId()),
+                java.util.stream.Stream.of(abertaPorUsuarioId, responsavelId))
             .filter(id -> id != null)
             .distinct()
             .collect(Collectors.toList());
@@ -258,7 +276,38 @@ public class SolicitacaoController {
 
     final String geradoPorNome = resolveNome(authentication);
 
-    final byte[] pdf = pdfService.gerar(solicitacoes, geradoPorNome, nomesPorUsuario);
+    final var modelo =
+        modeloId == null ? null : obterUseCase.resolverModelos(solicitacoes).get(modeloId);
+    final var contexto =
+        new ContextoDoRelatorio(
+            new ContextoDoRelatorio.Filtros()
+                .comEnum("Status", status)
+                .comEnum("Tipo", tipo)
+                .comEnum("Prioridade", prioridade)
+                .com(
+                    "Modelo",
+                    modeloId == null
+                        ? null
+                        : modelo != null ? modelo.codigo() + " v" + modelo.versao() : "selecionado")
+                .com("Máquina", maquina)
+                .com("Aberta por", nomesPorUsuario.get(abertaPorUsuarioId))
+                .com("Responsável", nomesPorUsuario.get(responsavelId))
+                .com("Atrasadas", atrasada == null ? null : atrasada ? "sim" : "não")
+                .com("Em aberto", Boolean.TRUE.equals(emAberto) ? "sim" : null)
+                .com(
+                    "Período",
+                    periodoEmTexto(tipoData, dataInicio, criadaEmInicio, dataFim, criadaEmFim))
+                .com("Busca", busca)
+                .com(
+                    "Ordenação",
+                    sort == null
+                        ? null
+                        : sort + ("desc".equals(dir) ? " (decrescente)" : " (crescente)"))
+                .build(),
+            pagina.totalElements(),
+            solicitacoes.size());
+
+    final byte[] pdf = pdfService.gerar(solicitacoes, geradoPorNome, nomesPorUsuario, contexto);
     final var headers = new org.springframework.http.HttpHeaders();
     headers.setContentType(org.springframework.http.MediaType.APPLICATION_PDF);
     headers.setContentDispositionFormData("attachment", "relatorio-solicitacoes.pdf");
@@ -605,6 +654,21 @@ public class SolicitacaoController {
   }
 
   /** Whitelist explicita - nunca interpolar o parametro de ordenacao direto em SQL. */
+  private static String periodoEmTexto(
+      final String tipoData,
+      final String dataInicio,
+      final String criadaEmInicio,
+      final String dataFim,
+      final String criadaEmFim) {
+    final String de = dataInicio != null ? dataInicio : criadaEmInicio;
+    final String ate = dataFim != null ? dataFim : criadaEmFim;
+    if (de == null && ate == null) {
+      return null;
+    }
+    final String base = "CONCLUSAO".equals(tipoData) ? "encerramento" : "criação";
+    return base + " de " + (de != null ? de : "…") + " até " + (ate != null ? ate : "…");
+  }
+
   private OrdenacaoMetricaModelo parseOrdenacao(final String sort) {
     try {
       return OrdenacaoMetricaModelo.valueOf(sort.toUpperCase());

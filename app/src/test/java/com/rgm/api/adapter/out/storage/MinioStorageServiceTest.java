@@ -108,4 +108,48 @@ class MinioStorageServiceTest {
 
     assertDoesNotThrow(() -> service.delete("http://localhost:9000/test-bucket/uuid-123/foto.jpg"));
   }
+
+  @Test
+  void shouldReturnObjectBytesWhenDownloadingByPublicUrl() throws Exception {
+    // Arrange
+    final var resposta = mock(io.minio.GetObjectResponse.class);
+    when(resposta.readAllBytes()).thenReturn(new byte[] {7, 8});
+    when(minioClient.getObject(any(io.minio.GetObjectArgs.class))).thenReturn(resposta);
+
+    // Act
+    final byte[] bytes = service.baixar("http://localhost:9000/test-bucket/abc-123.png");
+
+    // Assert
+    assertEquals(2, bytes.length);
+    verify(minioClient)
+        .getObject(argThat((io.minio.GetObjectArgs a) -> "abc-123.png".equals(a.object())));
+  }
+
+  @Test
+  void shouldFailWhenTheUrlIsOutsideTheBucket() {
+    // Arrange
+    final String url = "http://outro/host/arquivo.png";
+
+    // Act
+    final var acao = (org.junit.jupiter.api.function.Executable) () -> service.baixar(url);
+
+    // Assert
+    assertThrows(IllegalArgumentException.class, acao);
+  }
+
+  @Test
+  void shouldWrapTheFailureWhenTheDownloadBreaks() throws Exception {
+    // Arrange
+    when(minioClient.getObject(any(io.minio.GetObjectArgs.class)))
+        .thenThrow(new RuntimeException("minio fora"));
+
+    // Act
+    final RuntimeException erro =
+        assertThrows(
+            RuntimeException.class,
+            () -> service.baixar("http://localhost:9000/test-bucket/abc.png"));
+
+    // Assert
+    assertTrue(erro.getMessage().contains("MinIO"));
+  }
 }
