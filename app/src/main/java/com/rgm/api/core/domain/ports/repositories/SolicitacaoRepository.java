@@ -30,8 +30,6 @@ public interface SolicitacaoRepository {
 
   PageResult<Solicitacao> findAll(int page, int size);
 
-  PageResult<Solicitacao> findByStatus(StatusSolicitacao status, int page, int size);
-
   /**
    * {@code visivelParaUsuarioId} nulo nao restringe; preenchido traz so as solicitacoes que o
    * usuario abriu ou das quais e responsavel ativo. A ordenacao desempata sempre por criacao e id,
@@ -68,8 +66,6 @@ public interface SolicitacaoRepository {
   long count();
 
   long countByStatus(StatusSolicitacao status);
-
-  List<Solicitacao> findByStatus(StatusSolicitacao status);
 
   /**
    * Serie agregada no banco por data de criacao, em [inicio, fim), um ponto por dia local ou por

@@ -5,8 +5,8 @@
             "type": "java",
             "name": "Debug (Launch)-BackendApplication",
             "request": "launch",
-            "mainClass": "com.rgm.backend.BackendApplication",
-            "projectName": "backend",
+            "mainClass": "com.rgm.api.ApiApplication",
+            "projectName": "api",
             "envFile": "${workspaceFolder}/app/.env"
         }
     ]

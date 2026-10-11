@@ -1,6 +1,7 @@
 package com.rgm.api.adapter.out.storage;
 
 import com.rgm.api.core.domain.ports.services.StorageService;
+import io.minio.GetObjectArgs;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
 import io.minio.RemoveObjectArgs;
@@ -80,6 +81,27 @@ public class MinioStorageService implements StorageService {
     final String fileNamePart =
         URLDecoder.decode(objectName.substring(sepIdx + 1), StandardCharsets.UTF_8);
     return uuidPart + "/" + fileNamePart;
+  }
+
+  @Override
+  public byte[] baixar(final String fileUrl) {
+    final String objectName = objectNameDe(fileUrl);
+    try (var in =
+        minioClient.getObject(
+            GetObjectArgs.builder().bucket(bucketName).object(objectName).build())) {
+      return in.readAllBytes();
+    } catch (final Exception e) {
+      throw new RuntimeException("Erro ao baixar do MinIO: " + e.getMessage(), e);
+    }
+  }
+
+  private String objectNameDe(final String fileUrl) {
+    final String prefix = "/" + bucketName + "/";
+    final int idx = fileUrl == null ? -1 : fileUrl.indexOf(prefix);
+    if (idx == -1) {
+      throw new IllegalArgumentException("URL fora do bucket: " + fileUrl);
+    }
+    return decodeFileNameSegment(fileUrl.substring(idx + prefix.length()));
   }
 
   @Override

@@ -7,10 +7,9 @@ nasce em `specs/NNN-slug/` (spec, plan, checklists e tasks), conforme o Princíp
 
 - `specs/` — as 10 capacidades do sistema na v1.5.0. Leia como ponto de partida; o que
   mudou depois está na tabela abaixo.
-- `changes/archive/` — as 3 mudanças feitas em OpenSpec, todas entregues e sincronizadas.
-  Não há mudança aberta.
-- Os comandos `/opsx:*` e as skills `openspec-*` foram removidos de `.claude/`. O histórico
-  segue recuperável pelo git.
+- As 3 mudanças feitas em OpenSpec (`changes/archive/`) e o `config.yaml` da ferramenta foram
+  removidos: todas estavam entregues e sincronizadas em `specs/`, e o histórico segue
+  recuperável pelo git. Os comandos `/opsx:*` e as skills `openspec-*` também saíram de `.claude/`.
 
 ## O que mudou depois da v1.5.0
 
@@ -32,3 +31,6 @@ entra nesta tabela na mesma entrega.
 | `modelos` | `specs/012-correcao-dos-bugs-abertos-do-backend` — versão única por máquina e código (maior + 1), edição que colide responde 409, modelo de máquina inativa continua editável sem trocar a máquina; o tipo do modelo vira catálogo administrável como a máquina (`/api/tipos-modelo`, `/api/admin/tipos-modelo`) e renomear máquina ou tipo atualiza os modelos |
 | `solicitacoes-kanban` | `specs/012-correcao-dos-bugs-abertos-do-backend` — busca `q`, `sort=concluidaEm`, código, máquina e versão do modelo na listagem e no detalhe, `GET /api/solicitacoes/responsaveis-disponiveis`, edição com histórico (operador só em A Fazer), troca de responsáveis só depois da triagem, mesmo histórico ao cancelar pelos dois caminhos |
 | `metricas-dashboard` | `specs/012-correcao-dos-bugs-abertos-do-backend` — `/api/solicitacoes/metricas` traz `emAbertoPorTipo` e `emAbertoPorPrioridade` |
+| `metricas-dashboard` | `specs/013-indicadores-de-gestao-relatorios-em-pdf` — `GET /api/solicitacoes/metricas/gestao` (prazo cumprido, mediana e p90, idade do backlog, tempo por etapa, devolução, por máquina, reincidentes e carga por responsável; 7, 30 ou 90 dias) |
+| `solicitacoes-kanban` | `specs/013-indicadores-de-gestao-relatorios-em-pdf` — o PDF da lista segue os filtros, a busca `q` e a ordenação da tela e escreve os filtros e o total no cabeçalho; sem corte silencioso (aviso acima de 5000 linhas) |
+| `modelos` | `specs/013-indicadores-de-gestao-relatorios-em-pdf` — a lista em PDF acompanha os filtros e traz o tipo; a ficha traz histórico e fotos da galeria |

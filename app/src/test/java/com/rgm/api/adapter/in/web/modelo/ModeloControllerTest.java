@@ -26,10 +26,12 @@ import com.rgm.api.adapter.config.GlobalExceptionHandler;
 import com.rgm.api.adapter.in.web.WebMvcTestConfig;
 import com.rgm.api.adapter.in.web.dto.request.CriarModeloRequest;
 import com.rgm.api.adapter.in.web.dto.request.EditarModeloRequest;
+import com.rgm.api.adapter.out.report.ContextoDoRelatorio;
 import com.rgm.api.adapter.out.report.ModeloPdfService;
 import com.rgm.api.adapter.out.security.JwtAuthenticationFilter;
 import com.rgm.api.core.application.usecases.modelo.GerenciarModelosUseCase;
 import com.rgm.api.core.application.usecases.modelo.ListarModelosUseCase;
+import com.rgm.api.core.application.usecases.modelo.ObterFichaDoModeloUseCase;
 import com.rgm.api.core.application.usecases.modelo.ObterResumoModelosUseCase;
 import com.rgm.api.core.application.usecases.modelo.ObterResumoSolicitacoesModeloUseCase;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
@@ -41,7 +43,6 @@ import com.rgm.api.core.domain.model.enums.PerfilUsuario;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
 import com.rgm.api.core.domain.model.enums.TipoEventoModelo;
 import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
-import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.EventoModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.FotoGaleriaModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.ModeloRepository;
@@ -49,7 +50,6 @@ import com.rgm.api.core.domain.ports.repositories.PageResult;
 import com.rgm.api.core.domain.ports.repositories.QuantidadePorMaquina;
 import com.rgm.api.core.domain.ports.repositories.ResumoModelos;
 import com.rgm.api.core.domain.ports.repositories.ResumoSolicitacoesModelo;
-import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import com.rgm.api.core.domain.validation.LimitesTexto;
 import java.time.Instant;
 import java.util.List;
@@ -89,8 +89,7 @@ class ModeloControllerTest {
   @MockitoBean private ObterResumoSolicitacoesModeloUseCase resumoSolicitacoesUseCase;
   @MockitoBean private ModeloRepository modeloRepository;
   @MockitoBean private EventoModeloRepository eventoModeloRepository;
-  @MockitoBean private SolicitacaoRepository solicitacaoRepository;
-  @MockitoBean private AtividadeSolicitacaoRepository atividadeRepository;
+  @MockitoBean private ObterFichaDoModeloUseCase obterFichaUseCase;
   @MockitoBean private ModeloPdfService modeloPdfService;
   @MockitoBean private FotoGaleriaModeloRepository fotoGaleriaModeloRepository;
 
@@ -253,56 +252,42 @@ class ModeloControllerTest {
   @Test
   void exportarRelatorioLista() throws Exception {
     when(listarUseCase.execute(any())).thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
-    when(modeloPdfService.gerarLista(any())).thenReturn(new byte[] {1, 2, 3});
+    when(modeloPdfService.gerarLista(any(), any(), any())).thenReturn(new byte[] {1, 2, 3});
 
     mockMvc
         .perform(get("/api/modelos/relatorio").with(user(UUID.randomUUID().toString())))
         .andExpect(status().isOk());
   }
 
-  @Test
-  void exportarFichaModelo() throws Exception {
-    final Modelo modelo = criarModelo();
-    when(modeloRepository.findById(modelo.getId())).thenReturn(java.util.Optional.of(modelo));
-    when(eventoModeloRepository.findByModeloId(modelo.getId())).thenReturn(List.of());
-    when(solicitacaoRepository.findByModeloId(modelo.getId())).thenReturn(List.of());
-    when(solicitacaoRepository.resumirPorModelo(modelo.getId()))
-        .thenReturn(new ResumoSolicitacoesModelo(0, 0, 0, 0, null, null));
-    when(modeloPdfService.gerarFicha(any(), any(), any(), any(), any(), any(), any(), any()))
-        .thenReturn(new byte[] {1, 2, 3});
-
-    mockMvc
-        .perform(
-            get("/api/modelos/{id}/relatorio", modelo.getId())
-                .with(user(UUID.randomUUID().toString())))
-        .andExpect(status().isOk());
+  private ObterFichaDoModeloUseCase.Ficha fichaVazia(final Modelo modelo) {
+    return new ObterFichaDoModeloUseCase.Ficha(
+        modelo, List.of(), List.of(), Map.of(), Map.of(), null, null, List.of());
   }
 
   @Test
-  void shouldRepassarOsTemposDoResumoAoPdfWhenGeraAFichaDoModelo() throws Exception {
+  void shouldRenderTheFichaFromTheUseCaseAndNameTheFileAfterTheModelWhenExportingFicha()
+      throws Exception {
     // Arrange
     final Modelo modelo = criarModelo();
-    final Double tempoMedio = 172800.0;
-    final Double intervaloMedio = 864000.0;
+    final var ficha = fichaVazia(modelo);
     final byte[] pdf = {1, 2, 3};
-    when(modeloRepository.findById(modelo.getId())).thenReturn(java.util.Optional.of(modelo));
-    when(eventoModeloRepository.findByModeloId(modelo.getId())).thenReturn(List.of());
-    when(solicitacaoRepository.findByModeloId(modelo.getId())).thenReturn(List.of());
-    when(solicitacaoRepository.resumirPorModelo(modelo.getId()))
-        .thenReturn(new ResumoSolicitacoesModelo(4, 1, 2, 1, tempoMedio, intervaloMedio));
-    when(modeloPdfService.gerarFicha(
-            eq(modelo), any(), any(), any(), any(), any(), eq(tempoMedio), eq(intervaloMedio)))
-        .thenReturn(pdf);
+    when(obterFichaUseCase.execute(modelo.getId())).thenReturn(ficha);
+    when(modeloPdfService.gerarFicha(ficha, "Sistema")).thenReturn(pdf);
 
     // Act
     final var resposta =
         mockMvc.perform(
-            get("/api/modelos/{id}/relatorio", modelo.getId())
-                .with(user(UUID.randomUUID().toString())));
+            get("/api/modelos/{id}/relatorio", modelo.getId()).with(user("nao-e-uuid")));
 
     // Assert
-    resposta.andExpect(status().isOk()).andExpect(content().bytes(pdf));
-    verify(solicitacaoRepository, times(1)).resumirPorModelo(modelo.getId());
+    resposta
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.APPLICATION_PDF))
+        .andExpect(content().bytes(pdf))
+        .andExpect(
+            header().string("Content-Disposition", containsString("ficha-modelo-MOD-001.pdf")));
+    verify(obterFichaUseCase, times(1)).execute(modelo.getId());
+    verify(modeloPdfService, times(1)).gerarFicha(ficha, "Sistema");
   }
 
   @Test
@@ -616,7 +601,10 @@ class ModeloControllerTest {
   void shouldAnswerNotFoundWhenGeneratingFichaOfUnknownModelo() throws Exception {
     // Arrange
     final UUID id = UUID.randomUUID();
-    when(modeloRepository.findById(id)).thenReturn(Optional.empty());
+    when(obterFichaUseCase.execute(id))
+        .thenThrow(
+            new com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException(
+                "Modelo nao encontrado"));
 
     // Act
     final var resposta =
@@ -625,75 +613,8 @@ class ModeloControllerTest {
 
     // Assert
     resposta.andExpect(status().isNotFound());
-    verify(modeloRepository, times(1)).findById(id);
-    verifyNoMoreInteractions(modeloRepository);
-    verifyNoInteractions(
-        eventoModeloRepository, solicitacaoRepository, atividadeRepository, modeloPdfService);
-  }
-
-  @Test
-  void shouldRepassAtividadesAndNomesWhenGeneratingFichaWithSolicitacoes() throws Exception {
-    // Arrange
-    final Modelo modelo = criarModelo();
-    final UUID usuarioId = UUID.randomUUID();
-    final var primeira = criarSolicitacao(modelo.getId(), usuarioId);
-    final var segunda = criarSolicitacao(modelo.getId(), usuarioId);
-    final byte[] pdf = {9, 8, 7};
-    when(modeloRepository.findById(modelo.getId())).thenReturn(Optional.of(modelo));
-    when(eventoModeloRepository.findByModeloId(modelo.getId())).thenReturn(List.of());
-    when(solicitacaoRepository.findByModeloId(modelo.getId()))
-        .thenReturn(List.of(primeira, segunda));
-    when(solicitacaoRepository.resumirPorModelo(modelo.getId()))
-        .thenReturn(new ResumoSolicitacoesModelo(2, 2, 0, 0, null, null));
-    when(atividadeRepository.findBySolicitacaoId(primeira.getId())).thenReturn(List.of());
-    when(atividadeRepository.findBySolicitacaoId(segunda.getId())).thenReturn(List.of());
-    when(usuarioRepository.findAllByIdIn(List.of(usuarioId)))
-        .thenReturn(List.of(criarUsuario(usuarioId, "Maria")));
-    when(modeloPdfService.gerarFicha(
-            eq(modelo),
-            eq(List.of()),
-            eq(List.of(primeira, segunda)),
-            eq(Map.of(primeira.getId(), List.of(), segunda.getId(), List.of())),
-            eq("Sistema"),
-            eq(Map.of(usuarioId, "Maria")),
-            any(),
-            any()))
-        .thenReturn(pdf);
-
-    // Act
-    final var resposta = mockMvc.perform(get("/api/modelos/{id}/relatorio", modelo.getId()));
-
-    // Assert
-    resposta
-        .andExpect(status().isOk())
-        .andExpect(content().contentType(MediaType.APPLICATION_PDF))
-        .andExpect(content().bytes(pdf))
-        .andExpect(
-            header().string("Content-Disposition", containsString("ficha-modelo-MOD-001.pdf")));
-    verify(modeloRepository, times(1)).findById(modelo.getId());
-    verify(eventoModeloRepository, times(1)).findByModeloId(modelo.getId());
-    verify(solicitacaoRepository, times(1)).findByModeloId(modelo.getId());
-    verify(solicitacaoRepository, times(1)).resumirPorModelo(modelo.getId());
-    verify(atividadeRepository, times(1)).findBySolicitacaoId(primeira.getId());
-    verify(atividadeRepository, times(1)).findBySolicitacaoId(segunda.getId());
-    verify(usuarioRepository, times(1)).findAllByIdIn(List.of(usuarioId));
-    verify(modeloPdfService, times(1))
-        .gerarFicha(
-            modelo,
-            List.of(),
-            List.of(primeira, segunda),
-            Map.of(primeira.getId(), List.of(), segunda.getId(), List.of()),
-            "Sistema",
-            Map.of(usuarioId, "Maria"),
-            null,
-            null);
-    verifyNoMoreInteractions(
-        modeloRepository,
-        eventoModeloRepository,
-        solicitacaoRepository,
-        atividadeRepository,
-        usuarioRepository,
-        modeloPdfService);
+    verify(obterFichaUseCase, times(1)).execute(id);
+    verifyNoInteractions(modeloPdfService);
   }
 
   @Test
@@ -791,8 +712,8 @@ class ModeloControllerTest {
   @Test
   void shouldUseSistemaAsGeradoPorWhenGeneratingListaWithoutAuthentication() throws Exception {
     // Arrange
-    when(listarUseCase.execute(any())).thenReturn(new PageResult<>(List.of(), 0, 1000, 0, 0));
-    when(modeloPdfService.gerarLista(any(), eq("Sistema"))).thenReturn(new byte[] {1});
+    when(listarUseCase.execute(any())).thenReturn(new PageResult<>(List.of(), 0, 5000, 0, 0));
+    when(modeloPdfService.gerarLista(any(), eq("Sistema"), any())).thenReturn(new byte[] {1});
 
     // Act
     final var resposta = mockMvc.perform(get("/api/modelos/relatorio"));
@@ -800,8 +721,8 @@ class ModeloControllerTest {
     // Assert
     resposta.andExpect(status().isOk()).andExpect(content().bytes(new byte[] {1}));
     verify(listarUseCase, times(1))
-        .execute(new ListarModelosUseCase.Input(null, null, null, null, 0, 1000));
-    verify(modeloPdfService, times(1)).gerarLista(List.of(), "Sistema");
+        .execute(new ListarModelosUseCase.Input(null, null, null, null, 0, 5000));
+    verify(modeloPdfService, times(1)).gerarLista(eq(List.of()), eq("Sistema"), any());
     verifyNoMoreInteractions(listarUseCase, modeloPdfService);
     verifyNoInteractions(usuarioRepository);
   }
@@ -810,9 +731,9 @@ class ModeloControllerTest {
   void shouldUseSistemaAsGeradoPorWhenAuthenticatedUserIsNotFound() throws Exception {
     // Arrange
     final UUID usuarioId = UUID.randomUUID();
-    when(listarUseCase.execute(any())).thenReturn(new PageResult<>(List.of(), 0, 1000, 0, 0));
+    when(listarUseCase.execute(any())).thenReturn(new PageResult<>(List.of(), 0, 5000, 0, 0));
     when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.empty());
-    when(modeloPdfService.gerarLista(any(), eq("Sistema"))).thenReturn(new byte[] {1});
+    when(modeloPdfService.gerarLista(any(), eq("Sistema"), any())).thenReturn(new byte[] {1});
 
     // Act
     final var resposta =
@@ -821,17 +742,17 @@ class ModeloControllerTest {
     // Assert
     resposta.andExpect(status().isOk());
     verify(listarUseCase, times(1))
-        .execute(new ListarModelosUseCase.Input(null, null, null, null, 0, 1000));
+        .execute(new ListarModelosUseCase.Input(null, null, null, null, 0, 5000));
     verify(usuarioRepository, times(1)).findById(usuarioId);
-    verify(modeloPdfService, times(1)).gerarLista(List.of(), "Sistema");
+    verify(modeloPdfService, times(1)).gerarLista(eq(List.of()), eq("Sistema"), any());
     verifyNoMoreInteractions(listarUseCase, usuarioRepository, modeloPdfService);
   }
 
   @Test
   void shouldUseSistemaAsGeradoPorWhenAuthenticatedNameIsNotAUuid() throws Exception {
     // Arrange
-    when(listarUseCase.execute(any())).thenReturn(new PageResult<>(List.of(), 0, 1000, 0, 0));
-    when(modeloPdfService.gerarLista(any(), eq("Sistema"))).thenReturn(new byte[] {1});
+    when(listarUseCase.execute(any())).thenReturn(new PageResult<>(List.of(), 0, 5000, 0, 0));
+    when(modeloPdfService.gerarLista(any(), eq("Sistema"), any())).thenReturn(new byte[] {1});
 
     // Act
     final var resposta = mockMvc.perform(get("/api/modelos/relatorio").with(user("nao-e-uuid")));
@@ -839,8 +760,8 @@ class ModeloControllerTest {
     // Assert
     resposta.andExpect(status().isOk());
     verify(listarUseCase, times(1))
-        .execute(new ListarModelosUseCase.Input(null, null, null, null, 0, 1000));
-    verify(modeloPdfService, times(1)).gerarLista(List.of(), "Sistema");
+        .execute(new ListarModelosUseCase.Input(null, null, null, null, 0, 5000));
+    verify(modeloPdfService, times(1)).gerarLista(eq(List.of()), eq("Sistema"), any());
     verifyNoMoreInteractions(listarUseCase, modeloPdfService);
     verifyNoInteractions(usuarioRepository);
   }
@@ -849,10 +770,10 @@ class ModeloControllerTest {
   void shouldUseUsuarioNomeAsGeradoPorWhenAuthenticatedUserIsFound() throws Exception {
     // Arrange
     final UUID usuarioId = UUID.randomUUID();
-    when(listarUseCase.execute(any())).thenReturn(new PageResult<>(List.of(), 0, 1000, 0, 0));
+    when(listarUseCase.execute(any())).thenReturn(new PageResult<>(List.of(), 0, 5000, 0, 0));
     when(usuarioRepository.findById(usuarioId))
         .thenReturn(Optional.of(criarUsuario(usuarioId, "Maria")));
-    when(modeloPdfService.gerarLista(any(), eq("Maria"))).thenReturn(new byte[] {1});
+    when(modeloPdfService.gerarLista(any(), eq("Maria"), any())).thenReturn(new byte[] {1});
 
     // Act
     final var resposta =
@@ -861,9 +782,35 @@ class ModeloControllerTest {
     // Assert
     resposta.andExpect(status().isOk());
     verify(listarUseCase, times(1))
-        .execute(new ListarModelosUseCase.Input(null, null, null, null, 0, 1000));
+        .execute(new ListarModelosUseCase.Input(null, null, null, null, 0, 5000));
     verify(usuarioRepository, times(1)).findById(usuarioId);
-    verify(modeloPdfService, times(1)).gerarLista(List.of(), "Maria");
+    verify(modeloPdfService, times(1)).gerarLista(eq(List.of()), eq("Maria"), any());
     verifyNoMoreInteractions(listarUseCase, usuarioRepository, modeloPdfService);
+  }
+
+  @Test
+  void shouldPassTheAppliedFiltersAndTheTotalToThePdfWhenExportingTheList() throws Exception {
+    // Arrange
+    when(listarUseCase.execute(any())).thenReturn(new PageResult<>(List.of(), 0, 5000, 7, 1));
+    final var captor = ArgumentCaptor.forClass(ContextoDoRelatorio.class);
+    when(modeloPdfService.gerarLista(any(), any(), captor.capture())).thenReturn(new byte[] {1});
+
+    // Act
+    final var resposta =
+        mockMvc.perform(
+            get("/api/modelos/relatorio")
+                .param("ativo", "true")
+                .param("maquina", "FBOX")
+                .param("codigo", "MOD")
+                .with(user("nao-e-uuid")));
+
+    // Assert
+    resposta.andExpect(status().isOk());
+    verify(listarUseCase, times(1))
+        .execute(new ListarModelosUseCase.Input(true, "MOD", "FBOX", null, 0, 5000));
+    assertEquals(
+        List.of("Situação: ativos", "Código: MOD", "Máquina: FBOX"), captor.getValue().filtros());
+    assertEquals(7, captor.getValue().total());
+    assertEquals(0, captor.getValue().exibidas());
   }
 }

@@ -12,6 +12,7 @@ import com.lowagie.text.Rectangle;
 import com.lowagie.text.pdf.PdfPCell;
 import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
+import com.rgm.api.core.application.usecases.modelo.ObterFichaDoModeloUseCase;
 import com.rgm.api.core.domain.model.aggregates.EventoModelo;
 import com.rgm.api.core.domain.model.aggregates.Modelo;
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
@@ -55,50 +56,46 @@ public class ModeloPdfService {
 
   // ── API pública ───────────────────────────────────────────────────────────
 
-  /** Relatório de lista de modelos. */
-  public byte[] gerarLista(final List<Modelo> modelos, final String geradoPorNome) {
+  /** Relatório de lista de modelos: as linhas que a tela mostrava, com os filtros no cabeçalho. */
+  public byte[] gerarLista(
+      final List<Modelo> modelos, final String geradoPorNome, final ContextoDoRelatorio contexto) {
     final var out = new ByteArrayOutputStream();
     final var doc = new Document(PageSize.A4.rotate(), 40, 40, 55, 45);
     final PdfWriter writer = PdfWriter.getInstance(doc, out);
     writer.setPageEvent(new PdfFooterEvent(geradoPorNome));
     doc.open();
     addBanner(doc, "RGM Auto Parts — Relatório de Modelos");
-    addMeta(doc, modelos.size() + " modelo(s)", geradoPorNome);
+    addMeta(doc, contexto.total() + " modelo(s)", geradoPorNome);
+    addContexto(doc, contexto);
     addTabelaLista(doc, modelos);
     doc.close();
     return out.toByteArray();
   }
 
-  /** Mantém compatibilidade sem nome do solicitante. */
-  public byte[] gerarLista(final List<Modelo> modelos) {
-    return gerarLista(modelos, "Sistema");
-  }
-
   /** Ranking de modelos por tempo médio de resolução e intervalo médio entre solicitações. */
   public byte[] gerarRankingModelos(
-      final List<MetricaModeloRow> linhas, final String geradoPorNome) {
+      final List<MetricaModeloRow> linhas,
+      final String geradoPorNome,
+      final ContextoDoRelatorio contexto) {
     final var out = new ByteArrayOutputStream();
     final var doc = new Document(PageSize.A4.rotate(), 40, 40, 55, 45);
     final PdfWriter writer = PdfWriter.getInstance(doc, out);
     writer.setPageEvent(new PdfFooterEvent(geradoPorNome));
     doc.open();
     addBanner(doc, "RGM Auto Parts — Ranking de Modelos por Tempo");
-    addMeta(doc, linhas.size() + " modelo(s)", geradoPorNome);
+    addMeta(doc, contexto.total() + " modelo(s)", geradoPorNome);
+    addContexto(doc, contexto);
     addTabelaRanking(doc, linhas);
     doc.close();
     return out.toByteArray();
   }
 
-  /** Ficha completa de um modelo: dados + eventos + solicitações com histórico. */
+  /**
+   * Ficha de detalhe do modelo, como a tela: dados, fotos da galeria (capa em destaque), eventos e
+   * solicitações com o histórico de atividades.
+   */
   public byte[] gerarFicha(
-      final Modelo modelo,
-      final List<EventoModelo> eventos,
-      final List<Solicitacao> solicitacoes,
-      final Map<UUID, List<AtividadeSolicitacao>> atividadesPorSolicitacao,
-      final String geradoPorNome,
-      final Map<UUID, String> nomesPorUsuario,
-      final Double tempoMedioResolucaoSegundos,
-      final Double intervaloMedioSegundos) {
+      final ObterFichaDoModeloUseCase.Ficha ficha, final String geradoPorNome) {
     final var out = new ByteArrayOutputStream();
     final var doc = new Document(PageSize.A4, 40, 40, 55, 45);
     final PdfWriter writer = PdfWriter.getInstance(doc, out);
@@ -106,34 +103,31 @@ public class ModeloPdfService {
     doc.open();
     addFichaCabecalho(
         doc,
-        modelo,
-        solicitacoes,
+        ficha.modelo(),
+        ficha.solicitacoes(),
         geradoPorNome,
-        tempoMedioResolucaoSegundos,
-        intervaloMedioSegundos);
-    if (!eventos.isEmpty()) {
-      addSecao(doc, "Eventos do Modelo");
-      addTabelaEventos(doc, eventos, nomesPorUsuario);
+        ficha.tempoMedioResolucaoSegundos(),
+        ficha.intervaloMedioSegundos());
+    if (!ficha.fotos().isEmpty()) {
+      addSecao(doc, "Fotos do Modelo");
+      addFotos(doc, ficha.fotos());
     }
-    if (!solicitacoes.isEmpty()) {
+    if (!ficha.eventos().isEmpty()) {
+      addSecao(doc, "Eventos do Modelo");
+      addTabelaEventos(doc, ficha.eventos(), ficha.nomesPorUsuario());
+    }
+    if (!ficha.solicitacoes().isEmpty()) {
       addSecao(doc, "Histórico de Solicitações");
-      for (final Solicitacao s : solicitacoes) {
+      for (final Solicitacao s : ficha.solicitacoes()) {
         addSolicitacaoComHistorico(
-            doc, s, atividadesPorSolicitacao.getOrDefault(s.getId(), List.of()), nomesPorUsuario);
+            doc,
+            s,
+            ficha.atividadesPorSolicitacao().getOrDefault(s.getId(), List.of()),
+            ficha.nomesPorUsuario());
       }
     }
     doc.close();
     return out.toByteArray();
-  }
-
-  /** Mantém compatibilidade sem resolução de usuários nem métricas de tempo. */
-  public byte[] gerarFicha(
-      final Modelo modelo,
-      final List<EventoModelo> eventos,
-      final List<Solicitacao> solicitacoes,
-      final Map<UUID, List<AtividadeSolicitacao>> atividadesPorSolicitacao) {
-    return gerarFicha(
-        modelo, eventos, solicitacoes, atividadesPorSolicitacao, "Sistema", Map.of(), null, null);
   }
 
   // ── Cabeçalho / Banner ───────────────────────────────────────────────────
@@ -171,6 +165,74 @@ public class ModeloPdfService {
       doc.add(p);
     } catch (final Exception e) {
       throw new RuntimeException("Erro ao gerar meta PDF", e);
+    }
+  }
+
+  /** Filtros aplicados e, se o PDF foi cortado, o aviso (em destaque). */
+  private void addContexto(final Document doc, final ContextoDoRelatorio contexto) {
+    try {
+      final var filtros = new Paragraph(contexto.filtrosEmTexto(), SUBTITLE_FONT);
+      filtros.setSpacingAfter(contexto.aviso() == null ? 10 : 4);
+      doc.add(filtros);
+      if (contexto.aviso() != null) {
+        final var aviso =
+            new Paragraph(
+                contexto.aviso(),
+                FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9, new Color(180, 40, 40)));
+        aviso.setSpacingAfter(10);
+        doc.add(aviso);
+      }
+    } catch (final Exception e) {
+      throw new RuntimeException("Erro ao gerar filtros do PDF", e);
+    }
+  }
+
+  /** Grade de duas fotos por linha; a capa vem primeiro e marcada. Foto ilegível vira aviso. */
+  private void addFotos(
+      final Document doc, final List<ObterFichaDoModeloUseCase.FotoDaFicha> fotos) {
+    try {
+      final var table = new PdfPTable(2);
+      table.setWidthPercentage(100);
+      for (final var foto : fotos) {
+        final var cell = new PdfPCell();
+        cell.setPadding(6);
+        cell.setBorderColor(new Color(220, 220, 220));
+        final String legenda =
+            (foto.principal() ? "Capa — " : "")
+                + (foto.identificacao() != null ? foto.identificacao() : "Foto");
+        cell.addElement(
+            new Paragraph(
+                legenda,
+                foto.principal()
+                    ? FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8)
+                    : FontFactory.getFont(FontFactory.HELVETICA, 8)));
+        addImagem(cell, foto);
+        table.addCell(cell);
+      }
+      if (fotos.size() % 2 == 1) {
+        final var vazia = new PdfPCell(new Phrase(""));
+        vazia.setBorder(Rectangle.NO_BORDER);
+        table.addCell(vazia);
+      }
+      doc.add(table);
+    } catch (final Exception e) {
+      throw new RuntimeException("Erro ao gerar fotos da ficha", e);
+    }
+  }
+
+  private void addImagem(final PdfPCell cell, final ObterFichaDoModeloUseCase.FotoDaFicha foto) {
+    try {
+      if (foto.conteudo() == null) {
+        throw new IllegalStateException("sem conteudo");
+      }
+      final var imagem = com.lowagie.text.Image.getInstance(foto.conteudo());
+      imagem.scaleToFit(230, 170);
+      cell.addElement(imagem);
+    } catch (final Exception e) {
+      cell.addElement(
+          new Paragraph(
+              "Foto indisponível",
+              FontFactory.getFont(FontFactory.HELVETICA_OBLIQUE, 8, new Color(150, 50, 50))));
     }
   }
 
@@ -295,8 +357,9 @@ public class ModeloPdfService {
 
   private void addTabelaLista(final Document doc, final List<Modelo> modelos) {
     try {
-      // Código | Versão | Máquina | Descrição | Estado atual | Status | Pendência | Criado em
-      final float[] widths = {3f, 1.5f, 3.5f, 5f, 4f, 2f, 2.5f, 3f};
+      // Código | Versão | Máquina | Tipo | Descrição | Estado atual | Status | Pendência | Criado
+      // em
+      final float[] widths = {3f, 1.5f, 3.5f, 3f, 4.5f, 4f, 2f, 2.5f, 3f};
       final var table = new PdfPTable(widths.length);
       table.setWidthPercentage(100);
       table.setWidths(widths);
@@ -307,6 +370,7 @@ public class ModeloPdfService {
           "Código",
           "Versão",
           "Máquina",
+          "Tipo",
           "Descrição",
           "Estado atual",
           "Status",
@@ -319,6 +383,7 @@ public class ModeloPdfService {
         addCell(table, m.getCodigo(), bg, CELL_BOLD);
         addCell(table, "v" + m.getVersao(), bg, CELL_FONT);
         addCell(table, m.getMaquina(), bg, CELL_FONT);
+        addCell(table, m.getTipo() != null ? m.getTipo() : "—", bg, CELL_FONT);
         addCell(table, m.getDescricao(), bg, CELL_FONT);
         addCell(
             table,

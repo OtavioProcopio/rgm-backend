@@ -75,8 +75,6 @@ public interface SolicitacaoJpaRepository extends JpaRepository<SolicitacaoJpaEn
 
   List<SolicitacaoJpaEntity> findByModeloId(UUID modeloId);
 
-  Page<SolicitacaoJpaEntity> findByStatus(StatusSolicitacao status, Pageable pageable);
-
   /** Origem e filtros da listagem; compartilhados pela consulta e pela contagem. */
   String LISTAGEM_FROM_WHERE =
       "FROM solicitacoes s "
@@ -188,8 +186,6 @@ public interface SolicitacaoJpaRepository extends JpaRepository<SolicitacaoJpaEn
   List<Object[]> countEmAbertoPorPrioridade();
 
   long countByStatus(StatusSolicitacao status);
-
-  List<SolicitacaoJpaEntity> findByStatus(StatusSolicitacao status);
 
   /**
    * Serie por data de criacao em [inicio, fim): dia local ou segunda-feira da semana no fuso,

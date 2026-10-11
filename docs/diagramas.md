@@ -196,11 +196,6 @@ classDiagram
         +datetime criadoEm
     }
 
-    class EventoModeloEvidencia {
-        +UUID eventoModeloId
-        +UUID evidenciaId
-    }
-
     class PerfilUsuario {
         <<enumeration>>
         OPERADOR
@@ -264,8 +259,6 @@ classDiagram
     Evidencia "1" --> "0..*" SolicitacaoEvidencia : emSolicitacoes
 
     Modelo "1" --> "0..*" EventoModelo : timeline
-    EventoModelo "1" --> "0..*" EventoModeloEvidencia : anexos
-    Evidencia "1" --> "0..*" EventoModeloEvidencia : emEventos
 
     Modelo "1" --> "0..*" FotoGaleriaModelo : galeria
 ```

@@ -4,6 +4,7 @@ import com.rgm.api.adapter.out.persistence.mapper.AtividadeSolicitacaoMapper;
 import com.rgm.api.adapter.out.persistence.repository.AtividadeSolicitacaoJpaRepository;
 import com.rgm.api.core.domain.model.entities.AtividadeSolicitacao;
 import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Repository;
@@ -27,6 +28,16 @@ public class AtividadeSolicitacaoRepositoryAdapter implements AtividadeSolicitac
   @Override
   public List<AtividadeSolicitacao> findBySolicitacaoId(final UUID solicitacaoId) {
     return jpa.findBySolicitacaoId(solicitacaoId).stream()
+        .map(AtividadeSolicitacaoMapper::toDomain)
+        .toList();
+  }
+
+  @Override
+  public List<AtividadeSolicitacao> findBySolicitacaoIdIn(final Collection<UUID> solicitacaoIds) {
+    if (solicitacaoIds.isEmpty()) {
+      return List.of();
+    }
+    return jpa.findBySolicitacaoIdInOrderByCriadaEmAsc(solicitacaoIds).stream()
         .map(AtividadeSolicitacaoMapper::toDomain)
         .toList();
   }

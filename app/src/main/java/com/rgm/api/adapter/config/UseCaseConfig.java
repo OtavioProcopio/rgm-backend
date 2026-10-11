@@ -19,6 +19,7 @@ import com.rgm.api.core.application.usecases.modelo.EditarFotoGaleriaUseCase;
 import com.rgm.api.core.application.usecases.modelo.GerenciarModelosUseCase;
 import com.rgm.api.core.application.usecases.modelo.ListarGaleriaModeloUseCase;
 import com.rgm.api.core.application.usecases.modelo.ListarModelosUseCase;
+import com.rgm.api.core.application.usecases.modelo.ObterFichaDoModeloUseCase;
 import com.rgm.api.core.application.usecases.modelo.ObterResumoModelosUseCase;
 import com.rgm.api.core.application.usecases.modelo.ObterResumoSolicitacoesModeloUseCase;
 import com.rgm.api.core.application.usecases.modelo.RecalcularPendenciaUseCase;
@@ -35,6 +36,7 @@ import com.rgm.api.core.application.usecases.solicitacao.ListarAtividadesUseCase
 import com.rgm.api.core.application.usecases.solicitacao.ListarResponsaveisDisponiveisUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ListarSolicitacoesUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ObterHistoricoMetricasUseCase;
+import com.rgm.api.core.application.usecases.solicitacao.ObterIndicadoresDeGestaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ObterMetricasPorModeloUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ObterMetricasSolicitacoesUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ObterPainelPorPeriodoUseCase;
@@ -47,6 +49,7 @@ import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository
 import com.rgm.api.core.domain.ports.repositories.EventoModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.EvidenciaRepository;
 import com.rgm.api.core.domain.ports.repositories.FotoGaleriaModeloRepository;
+import com.rgm.api.core.domain.ports.repositories.IndicadoresDeGestaoRepository;
 import com.rgm.api.core.domain.ports.repositories.MaquinaRepository;
 import com.rgm.api.core.domain.ports.repositories.ModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoAtribuicaoRepository;
@@ -442,6 +445,33 @@ public class UseCaseConfig {
       final SolicitacaoRepository solicitacaoRepository, final ZoneId fusoDaFabrica) {
     return new ObterPainelPorPeriodoUseCase(
         solicitacaoRepository, fusoDaFabrica, Clock.systemUTC());
+  }
+
+  @Bean
+  public ObterIndicadoresDeGestaoUseCase obterIndicadoresDeGestaoUseCase(
+      final IndicadoresDeGestaoRepository indicadoresDeGestaoRepository,
+      final ZoneId fusoDaFabrica) {
+    return new ObterIndicadoresDeGestaoUseCase(
+        indicadoresDeGestaoRepository, fusoDaFabrica, Clock.systemUTC());
+  }
+
+  @Bean
+  public ObterFichaDoModeloUseCase obterFichaDoModeloUseCase(
+      final ModeloRepository modeloRepository,
+      final EventoModeloRepository eventoModeloRepository,
+      final SolicitacaoRepository solicitacaoRepository,
+      final AtividadeSolicitacaoRepository atividadeRepository,
+      final UsuarioRepository usuarioRepository,
+      final FotoGaleriaModeloRepository fotoGaleriaModeloRepository,
+      final StorageService storageService) {
+    return new ObterFichaDoModeloUseCase(
+        modeloRepository,
+        eventoModeloRepository,
+        solicitacaoRepository,
+        atividadeRepository,
+        usuarioRepository,
+        fotoGaleriaModeloRepository,
+        storageService);
   }
 
   @Bean

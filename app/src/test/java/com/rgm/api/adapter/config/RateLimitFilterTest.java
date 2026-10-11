@@ -1,7 +1,9 @@
 package com.rgm.api.adapter.config;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -92,21 +94,22 @@ class RateLimitFilterTest {
   }
 
   @Test
-  void evictExpiredEntries_deveSerAcionadoNoCentesimoRequest() throws Exception {
-    final HttpServletRequest request = mock(HttpServletRequest.class);
+  void shouldKeepServingDistinctClientsWhenExpiredEntriesAreEvictedAtTheHundredthRequest()
+      throws Exception {
+    // Arrange
     final HttpServletResponse response = mock(HttpServletResponse.class);
     final FilterChain filterChain = mock(FilterChain.class);
 
-    when(request.getRequestURI()).thenReturn("/api/auth/login");
-    when(request.getRemoteAddr()).thenReturn("127.0.0.3");
-
-    // Simula 105 requests para forçar o evictExpiredEntries a rodar (acumulando requests no
-    // counter)
+    // Act: 105 clientes diferentes forçam a limpeza de entradas vencidas (a cada 100 requests)
     for (int i = 0; i < 105; i++) {
       final HttpServletRequest req = mock(HttpServletRequest.class);
       when(req.getRequestURI()).thenReturn("/api/auth/login");
       when(req.getRemoteAddr()).thenReturn("127.0.0." + i);
       filter.doFilterInternal(req, response, filterChain);
     }
+
+    // Assert
+    verify(filterChain, times(105)).doFilter(any(), any());
+    verify(response, never()).setStatus(429);
   }
 }

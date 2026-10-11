@@ -357,4 +357,34 @@ class MapperRoundtripTest {
     assertEquals(solRelacionada, result.getSolicitacaoRelacionadaId());
     assertEquals(T1, result.getCriadoEm());
   }
+
+  @Test
+  void shouldKeepOptimisticLockVersionWhenSolicitacaoIsMappedToJpaAndBack() {
+    // Arrange
+    final Solicitacao original =
+        new Solicitacao(
+            UUID.randomUUID(),
+            "T",
+            "D",
+            TipoSolicitacao.REPARO,
+            StatusSolicitacao.EM_ANDAMENTO,
+            PrioridadeSolicitacao.MEDIA,
+            UUID.randomUUID(),
+            null,
+            null,
+            null,
+            UUID.randomUUID(),
+            null,
+            T1,
+            T1,
+            null,
+            null,
+            5L);
+
+    // Act
+    final Solicitacao result = SolicitacaoMapper.toDomain(SolicitacaoMapper.toJpa(original));
+
+    // Assert
+    assertEquals(5L, result.getVersion());
+  }
 }

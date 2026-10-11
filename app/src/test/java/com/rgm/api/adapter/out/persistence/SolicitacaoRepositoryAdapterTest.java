@@ -169,27 +169,6 @@ class SolicitacaoRepositoryAdapterTest {
   }
 
   @Test
-  void findByStatus_paginado_retornaPaginado() {
-    final SolicitacaoJpaEntity e = criarEntity();
-    final Page<SolicitacaoJpaEntity> page = new PageImpl<>(List.of(e), PageRequest.of(0, 10), 1);
-    when(jpa.findByStatus(any(StatusSolicitacao.class), any(PageRequest.class))).thenReturn(page);
-
-    final PageResult<Solicitacao> result = adapter.findByStatus(StatusSolicitacao.A_FAZER, 0, 10);
-
-    assertEquals(1, result.content().size());
-  }
-
-  @Test
-  void findByStatus_lista_retornaLista() {
-    final SolicitacaoJpaEntity e = criarEntity();
-    when(jpa.findByStatus(StatusSolicitacao.A_FAZER)).thenReturn(List.of(e));
-
-    final List<Solicitacao> result = adapter.findByStatus(StatusSolicitacao.A_FAZER);
-
-    assertEquals(1, result.size());
-  }
-
-  @Test
   void shouldConverterEnumsEmTextoEMapearAPaginaWhenFiltraPorStatusETipo() {
     // Arrange
     final SolicitacaoJpaEntity e = criarEntity();

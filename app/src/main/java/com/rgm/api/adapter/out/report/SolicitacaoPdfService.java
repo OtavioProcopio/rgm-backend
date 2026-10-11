@@ -54,7 +54,8 @@ public class SolicitacaoPdfService {
   public byte[] gerar(
       final List<Solicitacao> solicitacoes,
       final String geradoPorNome,
-      final Map<UUID, String> nomesPorUsuario) {
+      final Map<UUID, String> nomesPorUsuario,
+      final ContextoDoRelatorio contexto) {
 
     final var out = new ByteArrayOutputStream();
     final var doc = new Document(PageSize.A4.rotate(), 40, 40, 55, 45);
@@ -62,21 +63,17 @@ public class SolicitacaoPdfService {
     writer.setPageEvent(new PdfFooterEvent(geradoPorNome));
     doc.open();
 
-    addCabecalho(doc, solicitacoes.size(), geradoPorNome);
+    addCabecalho(doc, contexto, geradoPorNome);
     addTabela(doc, solicitacoes, nomesPorUsuario);
 
     doc.close();
     return out.toByteArray();
   }
 
-  /** Mantém compatibilidade com chamadas sem resolução de usuários. */
-  public byte[] gerar(final List<Solicitacao> solicitacoes) {
-    return gerar(solicitacoes, "Sistema", Map.of());
-  }
-
   // ── Cabeçalho ────────────────────────────────────────────────────────────
 
-  private void addCabecalho(final Document doc, final int total, final String geradoPorNome) {
+  private void addCabecalho(
+      final Document doc, final ContextoDoRelatorio contexto, final String geradoPorNome) {
     try {
       // Barra azul de identidade
       final PdfPTable banner = new PdfPTable(1);
@@ -97,14 +94,26 @@ public class SolicitacaoPdfService {
           "Gerado em: "
               + FMT.format(java.time.Instant.now())
               + "   ·   Total: "
-              + total
+              + contexto.total()
               + " solicitação(ões)"
               + "   ·   Solicitado por: "
               + geradoPorNome;
       final var sub = new Paragraph(metaLine, SUBTITLE_FONT);
       sub.setAlignment(Element.ALIGN_LEFT);
-      sub.setSpacingAfter(12);
+      sub.setSpacingAfter(4);
       doc.add(sub);
+
+      final var filtros = new Paragraph(contexto.filtrosEmTexto(), SUBTITLE_FONT);
+      filtros.setSpacingAfter(contexto.aviso() == null ? 12 : 4);
+      doc.add(filtros);
+      if (contexto.aviso() != null) {
+        final var aviso =
+            new Paragraph(
+                contexto.aviso(),
+                FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9, new Color(180, 40, 40)));
+        aviso.setSpacingAfter(12);
+        doc.add(aviso);
+      }
     } catch (final Exception e) {
       throw new RuntimeException("Erro ao gerar cabeçalho do PDF", e);
     }

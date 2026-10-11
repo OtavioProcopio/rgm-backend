@@ -290,7 +290,8 @@ class SolicitacaoControllerTest {
         new com.rgm.api.core.domain.ports.repositories.PageResult<>(
             java.util.List.of(row), 0, Integer.MAX_VALUE, 1L, 1);
     when(obterMetricasPorModeloUseCase.execute(any())).thenReturn(pageResult);
-    when(modeloPdfService.gerarRankingModelos(any(), any())).thenReturn(new byte[] {1, 2, 3});
+    when(modeloPdfService.gerarRankingModelos(any(), any(), any()))
+        .thenReturn(new byte[] {1, 2, 3});
 
     mockMvc
         .perform(get("/api/solicitacoes/metricas/por-modelo/pdf").with(user("admin")))
@@ -558,7 +559,7 @@ class SolicitacaoControllerTest {
     final Solicitacao sol = criarSolicitacao();
     when(listarUseCase.execute(any()))
         .thenReturn(new PageResult<>(List.of(sol), 0, Integer.MAX_VALUE, 1, 1));
-    when(pdfService.gerar(any(), any(), any()))
+    when(pdfService.gerar(any(), any(), any(), any()))
         .thenReturn(new byte[] {37, 80, 68, 70}); // %PDF magic bytes
     when(usuarioRepository.findAllByIdIn(any())).thenReturn(java.util.List.of());
     when(usuarioRepository.findById(any())).thenReturn(java.util.Optional.empty());
@@ -604,7 +605,7 @@ class SolicitacaoControllerTest {
     final var captor = org.mockito.ArgumentCaptor.forClass(ListarSolicitacoesUseCase.Input.class);
     when(listarUseCase.execute(captor.capture()))
         .thenReturn(new PageResult<>(List.of(), 0, Integer.MAX_VALUE, 0, 0));
-    when(pdfService.gerar(any(), any(), any())).thenReturn(new byte[] {37, 80, 68, 70});
+    when(pdfService.gerar(any(), any(), any(), any())).thenReturn(new byte[] {37, 80, 68, 70});
     when(usuarioRepository.findAllByIdIn(any())).thenReturn(java.util.List.of());
     when(usuarioRepository.findById(any())).thenReturn(java.util.Optional.empty());
 
@@ -616,6 +617,67 @@ class SolicitacaoControllerTest {
     // Assert
     resposta.andExpect(status().isOk());
     org.junit.jupiter.api.Assertions.assertEquals(Boolean.TRUE, captor.getValue().emAberto());
+  }
+
+  @Test
+  void shouldFollowTheScreenWhenTheReportReceivesSearchSortAndFilters() throws Exception {
+    // Arrange
+    final var entrada = org.mockito.ArgumentCaptor.forClass(ListarSolicitacoesUseCase.Input.class);
+    final var contexto =
+        org.mockito.ArgumentCaptor.forClass(
+            com.rgm.api.adapter.out.report.ContextoDoRelatorio.class);
+    final Solicitacao sol = criarSolicitacao();
+    when(listarUseCase.execute(entrada.capture()))
+        .thenReturn(new PageResult<>(List.of(sol), 0, 5000, 7000, 2));
+    when(pdfService.gerar(any(), any(), any(), contexto.capture()))
+        .thenReturn(new byte[] {37, 80, 68, 70});
+    when(usuarioRepository.findAllByIdIn(any())).thenReturn(java.util.List.of());
+    when(usuarioRepository.findById(any())).thenReturn(java.util.Optional.empty());
+
+    // Act
+    final var resposta =
+        mockMvc.perform(
+            get("/api/solicitacoes/relatorio")
+                .param("maquina", "FBOX")
+                .param("atrasada", "true")
+                .param("status", "EM_ANDAMENTO")
+                .param("q", "correia")
+                .param("sort", "prazoLimite")
+                .param("dir", "asc")
+                .with(user("u")));
+
+    // Assert
+    resposta.andExpect(status().isOk());
+    final var input = entrada.getValue();
+    org.junit.jupiter.api.Assertions.assertEquals("correia", input.busca());
+    org.junit.jupiter.api.Assertions.assertEquals(
+        new OrdenacaoSolicitacao(CriterioOrdenacaoSolicitacao.PRAZO_LIMITE, true),
+        input.ordenacao());
+    org.junit.jupiter.api.Assertions.assertEquals(5000, input.size());
+    org.junit.jupiter.api.Assertions.assertEquals(7000, contexto.getValue().total());
+    org.junit.jupiter.api.Assertions.assertEquals(1, contexto.getValue().exibidas());
+    org.junit.jupiter.api.Assertions.assertEquals(
+        List.of(
+            "Status: Em andamento",
+            "Máquina: FBOX",
+            "Atrasadas: sim",
+            "Busca: correia",
+            "Ordenação: prazoLimite (crescente)"),
+        contexto.getValue().filtros());
+  }
+
+  @Test
+  void shouldRespond400WhenTheReportReceivesAnInvalidSort() throws Exception {
+    // Arrange
+    final String sort = "titulo";
+
+    // Act
+    final var resposta =
+        mockMvc.perform(get("/api/solicitacoes/relatorio").param("sort", sort).with(user("u")));
+
+    // Assert
+    resposta.andExpect(status().isBadRequest());
+    verifyNoMoreInteractions(listarUseCase);
   }
 
   @Test
