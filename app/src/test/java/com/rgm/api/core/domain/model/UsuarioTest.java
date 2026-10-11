@@ -65,4 +65,91 @@ class UsuarioTest {
     assertFalse(desativado.isAtivo());
     assertEquals(usuario.getId(), desativado.getId());
   }
+
+  @Test
+  void shouldStartAtCredentialVersionZeroWhenCreated() {
+    // Arrange
+    final int esperado = 0;
+
+    // Act
+    final Usuario usuario =
+        Usuario.criarInterno("Admin", "admin@rgm.com", "hash", PerfilUsuario.GESTOR, AGORA);
+
+    // Assert
+    assertEquals(esperado, usuario.getVersaoCredencial());
+  }
+
+  @Test
+  void shouldIncrementCredentialVersionWhenPasswordChanges() {
+    // Arrange
+    final Usuario usuario = comVersao(3);
+
+    // Act
+    final Usuario alterado = usuario.withSenha("novo-hash", AGORA);
+
+    // Assert
+    assertEquals(usuario.getVersaoCredencial() + 1, alterado.getVersaoCredencial());
+  }
+
+  @Test
+  void shouldKeepCredentialVersionWhenProfileChanges() {
+    // Arrange
+    final Usuario usuario = comVersao(3);
+
+    // Act
+    final Usuario alterado = usuario.alterarPerfil(PerfilUsuario.OPERADOR, AGORA);
+
+    // Assert
+    assertEquals(usuario.getVersaoCredencial(), alterado.getVersaoCredencial());
+  }
+
+  @Test
+  void shouldKeepCredentialVersionWhenEdited() {
+    // Arrange
+    final Usuario usuario = comVersao(3);
+
+    // Act
+    final Usuario alterado = usuario.editar("Outro", "outro@rgm.com", AGORA);
+
+    // Assert
+    assertEquals(usuario.getVersaoCredencial(), alterado.getVersaoCredencial());
+  }
+
+  @Test
+  void shouldKeepCredentialVersionWhenDeactivated() {
+    // Arrange
+    final Usuario usuario = comVersao(3);
+
+    // Act
+    final Usuario alterado = usuario.withAtivo(false, AGORA);
+
+    // Assert
+    assertEquals(usuario.getVersaoCredencial(), alterado.getVersaoCredencial());
+  }
+
+  @Test
+  void shouldRejectCredentialVersionWhenNegative() {
+    // Arrange
+    final int versaoInvalida = -1;
+
+    // Act
+    final IllegalArgumentException erro =
+        assertThrows(IllegalArgumentException.class, () -> comVersao(versaoInvalida));
+
+    // Assert
+    assertEquals("versaoCredencial deve ser >= 0", erro.getMessage());
+  }
+
+  private static Usuario comVersao(final int versao) {
+    return new Usuario(
+        java.util.UUID.randomUUID(),
+        "Admin",
+        "admin@rgm.com",
+        "hash",
+        PerfilUsuario.GESTOR,
+        true,
+        AGORA,
+        AGORA,
+        versao);
+  }
 }

@@ -68,21 +68,77 @@ class EditarFotoGaleriaUseCaseTest {
   }
 
   @Test
-  void deveMarcarComoPrincipalELimparAAnterior() {
+  void shouldSalvarComoPrincipalWhenPrincipalVerdadeiro() {
+    // Arrange
     final Usuario gestor = criarGestor();
     final UUID modeloId = UUID.randomUUID();
     final FotoGaleriaModelo foto = criarFoto(modeloId);
-
     when(usuarioRepository.findById(gestor.getId())).thenReturn(Optional.of(gestor));
     when(fotoGaleriaModeloRepository.findById(foto.getId())).thenReturn(Optional.of(foto));
-    when(fotoGaleriaModeloRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(fotoGaleriaModeloRepository.salvarComoPrincipal(any()))
+        .thenAnswer(inv -> inv.getArgument(0));
 
+    // Act
     final FotoGaleriaModelo resultado =
         useCase.execute(
             new EditarFotoGaleriaUseCase.Input(modeloId, foto.getId(), null, true, gestor.getId()));
 
+    // Assert
     assertTrue(resultado.isPrincipal());
-    verify(fotoGaleriaModeloRepository).limparPrincipal(modeloId);
+    verify(fotoGaleriaModeloRepository).findById(foto.getId());
+    verify(fotoGaleriaModeloRepository).salvarComoPrincipal(resultado);
+    verify(usuarioRepository).findById(gestor.getId());
+    verifyNoMoreInteractions(fotoGaleriaModeloRepository, usuarioRepository);
+  }
+
+  @Test
+  void shouldSalvarComoPrincipalComLegendaNovaWhenIdentificacaoEPrincipalJuntas() {
+    // Arrange
+    final Usuario gestor = criarGestor();
+    final UUID modeloId = UUID.randomUUID();
+    final FotoGaleriaModelo foto = criarFoto(modeloId);
+    when(usuarioRepository.findById(gestor.getId())).thenReturn(Optional.of(gestor));
+    when(fotoGaleriaModeloRepository.findById(foto.getId())).thenReturn(Optional.of(foto));
+    when(fotoGaleriaModeloRepository.salvarComoPrincipal(any()))
+        .thenAnswer(inv -> inv.getArgument(0));
+
+    // Act
+    final FotoGaleriaModelo resultado =
+        useCase.execute(
+            new EditarFotoGaleriaUseCase.Input(
+                modeloId, foto.getId(), " Contra-macho ", true, gestor.getId()));
+
+    // Assert
+    assertEquals("Contra-macho", resultado.getIdentificacao());
+    assertTrue(resultado.isPrincipal());
+    verify(fotoGaleriaModeloRepository).findById(foto.getId());
+    verify(fotoGaleriaModeloRepository).salvarComoPrincipal(resultado);
+    verify(usuarioRepository).findById(gestor.getId());
+    verifyNoMoreInteractions(fotoGaleriaModeloRepository, usuarioRepository);
+  }
+
+  @Test
+  void shouldSalvarSemLimparCapaWhenPrincipalFalso() {
+    // Arrange
+    final Usuario gestor = criarGestor();
+    final UUID modeloId = UUID.randomUUID();
+    final FotoGaleriaModelo foto = criarFoto(modeloId).comPrincipal(true);
+    when(usuarioRepository.findById(gestor.getId())).thenReturn(Optional.of(gestor));
+    when(fotoGaleriaModeloRepository.findById(foto.getId())).thenReturn(Optional.of(foto));
+    when(fotoGaleriaModeloRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    // Act
+    final FotoGaleriaModelo resultado =
+        useCase.execute(
+            new EditarFotoGaleriaUseCase.Input(
+                modeloId, foto.getId(), null, false, gestor.getId()));
+
+    // Assert
+    assertFalse(resultado.isPrincipal());
+    verify(fotoGaleriaModeloRepository).findById(foto.getId());
+    verify(fotoGaleriaModeloRepository).save(resultado);
+    verify(usuarioRepository).findById(gestor.getId());
+    verifyNoMoreInteractions(fotoGaleriaModeloRepository, usuarioRepository);
   }
 
   @Test

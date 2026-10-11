@@ -5,10 +5,11 @@ import static org.mockito.Mockito.*;
 
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
 import com.rgm.api.core.domain.model.aggregates.Usuario;
+import com.rgm.api.core.domain.model.enums.CriterioOrdenacaoSolicitacao;
 import com.rgm.api.core.domain.model.enums.PerfilUsuario;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
 import com.rgm.api.core.domain.model.enums.TipoFiltroData;
-import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
+import com.rgm.api.core.domain.ports.repositories.OrdenacaoSolicitacao;
 import com.rgm.api.core.domain.ports.repositories.PageResult;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
@@ -82,6 +83,30 @@ class ListarSolicitacoesUseCaseTest {
       final String maquina,
       final Boolean atrasada,
       final UUID usuarioAutenticadoId) {
+    return input(
+        status,
+        tipoData,
+        dataInicio,
+        dataFim,
+        abertaPorUsuarioId,
+        responsavelId,
+        maquina,
+        atrasada,
+        null,
+        usuarioAutenticadoId);
+  }
+
+  private ListarSolicitacoesUseCase.Input input(
+      final StatusSolicitacao status,
+      final TipoFiltroData tipoData,
+      final Instant dataInicio,
+      final Instant dataFim,
+      final UUID abertaPorUsuarioId,
+      final UUID responsavelId,
+      final String maquina,
+      final Boolean atrasada,
+      final Boolean emAberto,
+      final UUID usuarioAutenticadoId) {
     return new ListarSolicitacoesUseCase.Input(
         status,
         null,
@@ -94,9 +119,19 @@ class ListarSolicitacoesUseCaseTest {
         responsavelId,
         maquina,
         atrasada,
+        emAberto,
         usuarioAutenticadoId,
+        null,
+        null,
         0,
         20);
+  }
+
+  private ListarSolicitacoesUseCase.Input inputOrdenado(
+      final StatusSolicitacao status, final OrdenacaoSolicitacao ordenacao) {
+    return new ListarSolicitacoesUseCase.Input(
+        status, null, null, null, null, null, null, null, null, null, null, null, null, null,
+        ordenacao, 0, 20);
   }
 
   private Usuario usuarioComPerfil(final UUID id, final PerfilUsuario perfil) {
@@ -107,225 +142,820 @@ class ListarSolicitacoesUseCaseTest {
   }
 
   @Test
-  void deveListarTodas() {
-    final Solicitacao sol =
-        Solicitacao.abrir(
-            "T", "D", TipoSolicitacao.REPARO, UUID.randomUUID(), UUID.randomUUID(), Instant.now());
-    when(solicitacaoRepository.findAll(0, 20))
-        .thenReturn(new PageResult<>(List.of(sol), 0, 20, 1, 1));
+  void shouldListarTudoWhenNaoHaFiltroNemUsuarioAutenticado() {
+    // Arrange
+    final PageResult<Solicitacao> esperado = new PageResult<>(List.of(), 0, 20, 0, 0);
+    when(solicitacaoRepository.findAll(0, 20)).thenReturn(esperado);
 
+    // Act
     final PageResult<Solicitacao> result =
         useCase.execute(input(null, null, null, null, null, null, null));
 
-    assertEquals(1, result.totalElements());
-    verify(solicitacaoRepository).findAll(0, 20);
+    // Assert
+    assertSame(esperado, result);
+    verify(solicitacaoRepository, times(1)).findAll(0, 20);
+    verifyNoMoreInteractions(solicitacaoRepository, usuarioRepository);
   }
 
   @Test
-  void deveListarPorStatus() {
+  void shouldUsarAConsultaDeFiltrosWhenFiltraPorStatus() {
+    // Arrange
+    final PageResult<Solicitacao> esperado = new PageResult<>(List.of(), 0, 20, 0, 0);
     when(solicitacaoRepository.findByFilters(
-            eq(StatusSolicitacao.EM_ANDAMENTO),
-            isNull(),
-            isNull(),
-            isNull(),
-            isNull(),
-            isNull(),
-            isNull(),
-            isNull(),
-            isNull(),
-            isNull(),
-            isNull(),
-            isNull(),
-            eq(0),
-            eq(20)))
-        .thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
+            StatusSolicitacao.EM_ANDAMENTO,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            false,
+            null,
+            null,
+            OrdenacaoSolicitacao.PADRAO,
+            0,
+            20))
+        .thenReturn(esperado);
 
+    // Act
     final PageResult<Solicitacao> result =
         useCase.execute(input(StatusSolicitacao.EM_ANDAMENTO, null, null, null, null, null, null));
 
-    assertEquals(0, result.totalElements());
-    verify(solicitacaoRepository, never()).findAll(anyInt(), anyInt());
+    // Assert
+    assertSame(esperado, result);
+    verify(solicitacaoRepository, times(1))
+        .findByFilters(
+            StatusSolicitacao.EM_ANDAMENTO,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            false,
+            null,
+            null,
+            OrdenacaoSolicitacao.PADRAO,
+            0,
+            20);
+    verifyNoMoreInteractions(solicitacaoRepository, usuarioRepository);
   }
 
   @Test
-  void deveListarPorMaquina() {
+  void shouldRepassarAOrdenacaoInformadaWhenFiltraPorStatus() {
+    // Arrange
+    final OrdenacaoSolicitacao ordenacao =
+        new OrdenacaoSolicitacao(CriterioOrdenacaoSolicitacao.PRAZO_LIMITE, false);
+    final PageResult<Solicitacao> esperado = new PageResult<>(List.of(), 0, 20, 0, 0);
     when(solicitacaoRepository.findByFilters(
-            isNull(),
-            isNull(),
-            isNull(),
-            isNull(),
-            isNull(),
-            isNull(),
-            isNull(),
-            isNull(),
-            isNull(),
-            isNull(),
-            eq("VICK"),
-            isNull(),
-            eq(0),
-            eq(20)))
-        .thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
+            StatusSolicitacao.A_FAZER,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            false,
+            null,
+            null,
+            ordenacao,
+            0,
+            20))
+        .thenReturn(esperado);
 
+    // Act
+    final PageResult<Solicitacao> result =
+        useCase.execute(inputOrdenado(StatusSolicitacao.A_FAZER, ordenacao));
+
+    // Assert
+    assertSame(esperado, result);
+    verify(solicitacaoRepository, times(1))
+        .findByFilters(
+            StatusSolicitacao.A_FAZER,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            false,
+            null,
+            null,
+            ordenacao,
+            0,
+            20);
+    verifyNoMoreInteractions(solicitacaoRepository, usuarioRepository);
+  }
+
+  @Test
+  void shouldUsarAConsultaDeFiltrosWhenSoHaOrdenacaoDiferenteDoPadrao() {
+    // Arrange
+    final OrdenacaoSolicitacao ordenacao =
+        new OrdenacaoSolicitacao(CriterioOrdenacaoSolicitacao.PRIORIDADE, true);
+    final PageResult<Solicitacao> esperado = new PageResult<>(List.of(), 0, 20, 0, 0);
+    when(solicitacaoRepository.findByFilters(
+            null, null, null, null, null, null, null, null, null, null, null, null, false, null,
+            null, ordenacao, 0, 20))
+        .thenReturn(esperado);
+
+    // Act
+    final PageResult<Solicitacao> result = useCase.execute(inputOrdenado(null, ordenacao));
+
+    // Assert
+    assertSame(esperado, result);
+    verify(solicitacaoRepository, times(1))
+        .findByFilters(
+            null, null, null, null, null, null, null, null, null, null, null, null, false, null,
+            null, ordenacao, 0, 20);
+    verifyNoMoreInteractions(solicitacaoRepository, usuarioRepository);
+  }
+
+  @Test
+  void shouldListarTudoWhenOrdenacaoEOPadraoSemFiltro() {
+    // Arrange
+    final PageResult<Solicitacao> esperado = new PageResult<>(List.of(), 0, 20, 0, 0);
+    when(solicitacaoRepository.findAll(0, 20)).thenReturn(esperado);
+
+    // Act
+    final PageResult<Solicitacao> result =
+        useCase.execute(inputOrdenado(null, OrdenacaoSolicitacao.PADRAO));
+
+    // Assert
+    assertSame(esperado, result);
+    verify(solicitacaoRepository, times(1)).findAll(0, 20);
+    verifyNoMoreInteractions(solicitacaoRepository, usuarioRepository);
+  }
+
+  @Test
+  void shouldUsarAConsultaDeFiltrosWhenFiltraPorMaquina() {
+    // Arrange
+    final PageResult<Solicitacao> esperado = new PageResult<>(List.of(), 0, 20, 0, 0);
+    when(solicitacaoRepository.findByFilters(
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            "VICK",
+            null,
+            false,
+            null,
+            null,
+            OrdenacaoSolicitacao.PADRAO,
+            0,
+            20))
+        .thenReturn(esperado);
+
+    // Act
     final PageResult<Solicitacao> result =
         useCase.execute(input(null, null, null, null, null, null, "VICK", null));
 
-    assertEquals(0, result.totalElements());
-    verify(solicitacaoRepository, never()).findAll(anyInt(), anyInt());
+    // Assert
+    assertSame(esperado, result);
+    verify(solicitacaoRepository, times(1))
+        .findByFilters(
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            "VICK",
+            null,
+            false,
+            null,
+            null,
+            OrdenacaoSolicitacao.PADRAO,
+            0,
+            20);
+    verifyNoMoreInteractions(solicitacaoRepository, usuarioRepository);
   }
 
   @Test
-  void deveListarPorAtrasada() {
+  void shouldUsarAConsultaDeFiltrosWhenFiltraPorAtrasada() {
+    // Arrange
+    final PageResult<Solicitacao> esperado = new PageResult<>(List.of(), 0, 20, 0, 0);
     when(solicitacaoRepository.findByFilters(
-            isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(),
-            isNull(), isNull(), isNull(), eq(true), eq(0), eq(20)))
-        .thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            true,
+            false,
+            null,
+            null,
+            OrdenacaoSolicitacao.PADRAO,
+            0,
+            20))
+        .thenReturn(esperado);
 
+    // Act
     final PageResult<Solicitacao> result =
         useCase.execute(input(null, null, null, null, null, null, null, true, null));
 
-    assertEquals(0, result.totalElements());
-    verify(solicitacaoRepository, never()).findAll(anyInt(), anyInt());
+    // Assert
+    assertSame(esperado, result);
+    verify(solicitacaoRepository, times(1))
+        .findByFilters(
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            true,
+            false,
+            null,
+            null,
+            OrdenacaoSolicitacao.PADRAO,
+            0,
+            20);
+    verifyNoMoreInteractions(solicitacaoRepository, usuarioRepository);
   }
 
   @Test
-  void operadorSoVeAsSuas() {
+  void shouldRestringirAoQueOOperadorVeWhenOperadorListaSemFiltro() {
+    // Arrange
     final UUID operadorId = UUID.randomUUID();
-    final UUID outroResponsavel = UUID.randomUUID();
-    usuarioComPerfil(operadorId, PerfilUsuario.OPERADOR);
+    final Usuario operador = usuarioComPerfil(operadorId, PerfilUsuario.OPERADOR);
+    final PageResult<Solicitacao> esperado = new PageResult<>(List.of(), 0, 20, 0, 0);
     when(solicitacaoRepository.findByFilters(
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            eq(operadorId),
-            any(),
-            any(),
-            anyInt(),
-            anyInt()))
-        .thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            false,
+            operadorId,
+            null,
+            OrdenacaoSolicitacao.PADRAO,
+            0,
+            20))
+        .thenReturn(esperado);
 
-    useCase.execute(input(null, null, null, null, null, outroResponsavel, operadorId));
+    // Act
+    final PageResult<Solicitacao> result =
+        useCase.execute(input(null, null, null, null, null, null, operadorId));
 
-    verify(solicitacaoRepository)
+    // Assert
+    assertSame(esperado, result);
+    verify(usuarioRepository, times(1)).findById(operadorId);
+    verify(operador, times(1)).getPerfil();
+    verify(solicitacaoRepository, times(1))
         .findByFilters(
-            isNull(),
-            isNull(),
-            isNull(),
-            isNull(),
-            isNull(),
-            isNull(),
-            isNull(),
-            isNull(),
-            isNull(),
-            eq(operadorId),
-            isNull(),
-            isNull(),
-            eq(0),
-            eq(20));
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            false,
+            operadorId,
+            null,
+            OrdenacaoSolicitacao.PADRAO,
+            0,
+            20);
+    verifyNoMoreInteractions(solicitacaoRepository, usuarioRepository, operador);
   }
 
   @Test
-  void gestorMantemResponsavelDoClient() {
+  void shouldRepassarOsFiltrosDoOperadorSemTrocarOResponsavelWhenOperadorFiltra() {
+    // Arrange
+    final UUID operadorId = UUID.randomUUID();
+    final UUID abertaPor = UUID.randomUUID();
+    final UUID responsavel = UUID.randomUUID();
+    final Usuario operador = usuarioComPerfil(operadorId, PerfilUsuario.OPERADOR);
+    final PageResult<Solicitacao> esperado = new PageResult<>(List.of(), 0, 20, 0, 0);
+    when(solicitacaoRepository.findByFilters(
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            abertaPor,
+            responsavel,
+            null,
+            null,
+            false,
+            operadorId,
+            null,
+            OrdenacaoSolicitacao.PADRAO,
+            0,
+            20))
+        .thenReturn(esperado);
+
+    // Act
+    final PageResult<Solicitacao> result =
+        useCase.execute(input(null, null, null, null, abertaPor, responsavel, operadorId));
+
+    // Assert
+    assertSame(esperado, result);
+    verify(usuarioRepository, times(1)).findById(operadorId);
+    verify(operador, times(1)).getPerfil();
+    verify(solicitacaoRepository, times(1))
+        .findByFilters(
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            abertaPor,
+            responsavel,
+            null,
+            null,
+            false,
+            operadorId,
+            null,
+            OrdenacaoSolicitacao.PADRAO,
+            0,
+            20);
+    verifyNoMoreInteractions(solicitacaoRepository, usuarioRepository, operador);
+  }
+
+  @Test
+  void shouldListarTudoWhenGestorListaSemFiltro() {
+    // Arrange
     final UUID gestorId = UUID.randomUUID();
-    final UUID responsavelFiltrado = UUID.randomUUID();
-    usuarioComPerfil(gestorId, PerfilUsuario.GESTOR);
-    when(solicitacaoRepository.findByFilters(
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            eq(responsavelFiltrado),
-            any(),
-            any(),
-            anyInt(),
-            anyInt()))
-        .thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
+    final Usuario gestor = usuarioComPerfil(gestorId, PerfilUsuario.GESTOR);
+    final PageResult<Solicitacao> esperado = new PageResult<>(List.of(), 0, 20, 0, 0);
+    when(solicitacaoRepository.findAll(0, 20)).thenReturn(esperado);
 
-    useCase.execute(input(null, null, null, null, null, responsavelFiltrado, gestorId));
+    // Act
+    final PageResult<Solicitacao> result =
+        useCase.execute(input(null, null, null, null, null, null, gestorId));
 
-    verify(solicitacaoRepository)
-        .findByFilters(
-            isNull(),
-            isNull(),
-            isNull(),
-            isNull(),
-            isNull(),
-            isNull(),
-            isNull(),
-            isNull(),
-            isNull(),
-            eq(responsavelFiltrado),
-            isNull(),
-            isNull(),
-            eq(0),
-            eq(20));
+    // Assert
+    assertSame(esperado, result);
+    verify(usuarioRepository, times(1)).findById(gestorId);
+    verify(gestor, times(1)).getPerfil();
+    verify(solicitacaoRepository, times(1)).findAll(0, 20);
+    verifyNoMoreInteractions(solicitacaoRepository, usuarioRepository, gestor);
   }
 
   @Test
-  void filtroPorConclusaoRoteiaParaConcluidaEm() {
-    final Instant inicio = Instant.parse("2026-01-01T00:00:00Z");
-    final Instant fim = Instant.parse("2026-02-01T00:00:00Z");
+  void shouldNaoRestringirAVisibilidadeWhenAdministradorFiltra() {
+    // Arrange
+    final UUID adminId = UUID.randomUUID();
+    final UUID abertaPor = UUID.randomUUID();
+    final Usuario admin = usuarioComPerfil(adminId, PerfilUsuario.ADMINISTRADOR);
+    final PageResult<Solicitacao> esperado = new PageResult<>(List.of(), 0, 20, 0, 0);
     when(solicitacaoRepository.findByFilters(
-            any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
-            anyInt(), anyInt()))
-        .thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            abertaPor,
+            null,
+            null,
+            null,
+            false,
+            null,
+            null,
+            OrdenacaoSolicitacao.PADRAO,
+            0,
+            20))
+        .thenReturn(esperado);
 
-    useCase.execute(input(null, TipoFiltroData.CONCLUSAO, inicio, fim, null, null, null));
+    // Act
+    final PageResult<Solicitacao> result =
+        useCase.execute(input(null, null, null, null, abertaPor, null, adminId));
 
-    verify(solicitacaoRepository)
+    // Assert
+    assertSame(esperado, result);
+    verify(usuarioRepository, times(1)).findById(adminId);
+    verify(admin, times(1)).getPerfil();
+    verify(solicitacaoRepository, times(1))
         .findByFilters(
-            isNull(),
-            isNull(),
-            isNull(),
-            isNull(),
-            isNull(),
-            isNull(),
-            eq(inicio),
-            eq(fim),
-            isNull(),
-            isNull(),
-            isNull(),
-            isNull(),
-            eq(0),
-            eq(20));
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            abertaPor,
+            null,
+            null,
+            null,
+            false,
+            null,
+            null,
+            OrdenacaoSolicitacao.PADRAO,
+            0,
+            20);
+    verifyNoMoreInteractions(solicitacaoRepository, usuarioRepository, admin);
   }
 
   @Test
-  void filtroPorCriacaoRoteiaParaCriadaEm() {
+  void shouldManterOResponsavelPedidoWhenGestorFiltraPorResponsavel() {
+    // Arrange
+    final UUID gestorId = UUID.randomUUID();
+    final UUID responsavel = UUID.randomUUID();
+    final Usuario gestor = usuarioComPerfil(gestorId, PerfilUsuario.GESTOR);
+    final PageResult<Solicitacao> esperado = new PageResult<>(List.of(), 0, 20, 0, 0);
+    when(solicitacaoRepository.findByFilters(
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            responsavel,
+            null,
+            null,
+            false,
+            null,
+            null,
+            OrdenacaoSolicitacao.PADRAO,
+            0,
+            20))
+        .thenReturn(esperado);
+
+    // Act
+    final PageResult<Solicitacao> result =
+        useCase.execute(input(null, null, null, null, null, responsavel, gestorId));
+
+    // Assert
+    assertSame(esperado, result);
+    verify(usuarioRepository, times(1)).findById(gestorId);
+    verify(gestor, times(1)).getPerfil();
+    verify(solicitacaoRepository, times(1))
+        .findByFilters(
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            responsavel,
+            null,
+            null,
+            false,
+            null,
+            null,
+            OrdenacaoSolicitacao.PADRAO,
+            0,
+            20);
+    verifyNoMoreInteractions(solicitacaoRepository, usuarioRepository, gestor);
+  }
+
+  @Test
+  void shouldCompararADataDeEncerramentoWhenFiltroEPorConclusao() {
+    // Arrange
     final Instant inicio = Instant.parse("2026-01-01T00:00:00Z");
     final Instant fim = Instant.parse("2026-02-01T00:00:00Z");
+    final PageResult<Solicitacao> esperado = new PageResult<>(List.of(), 0, 20, 0, 0);
     when(solicitacaoRepository.findByFilters(
-            any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
-            anyInt(), anyInt()))
-        .thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            inicio,
+            fim,
+            null,
+            null,
+            null,
+            null,
+            false,
+            null,
+            null,
+            OrdenacaoSolicitacao.PADRAO,
+            0,
+            20))
+        .thenReturn(esperado);
 
-    useCase.execute(input(null, TipoFiltroData.CRIACAO, inicio, fim, null, null, null));
+    // Act
+    final PageResult<Solicitacao> result =
+        useCase.execute(input(null, TipoFiltroData.CONCLUSAO, inicio, fim, null, null, null));
 
-    verify(solicitacaoRepository)
+    // Assert
+    assertSame(esperado, result);
+    verify(solicitacaoRepository, times(1))
         .findByFilters(
-            isNull(),
-            isNull(),
-            isNull(),
-            isNull(),
-            eq(inicio),
-            eq(fim),
-            isNull(),
-            isNull(),
-            isNull(),
-            isNull(),
-            isNull(),
-            isNull(),
-            eq(0),
-            eq(20));
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            inicio,
+            fim,
+            null,
+            null,
+            null,
+            null,
+            false,
+            null,
+            null,
+            OrdenacaoSolicitacao.PADRAO,
+            0,
+            20);
+    verifyNoMoreInteractions(solicitacaoRepository, usuarioRepository);
+  }
+
+  @Test
+  void shouldCompararADataDeCriacaoWhenFiltroEPorCriacao() {
+    // Arrange
+    final Instant inicio = Instant.parse("2026-01-01T00:00:00Z");
+    final Instant fim = Instant.parse("2026-02-01T00:00:00Z");
+    final PageResult<Solicitacao> esperado = new PageResult<>(List.of(), 0, 20, 0, 0);
+    when(solicitacaoRepository.findByFilters(
+            null,
+            null,
+            null,
+            null,
+            inicio,
+            fim,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            false,
+            null,
+            null,
+            OrdenacaoSolicitacao.PADRAO,
+            0,
+            20))
+        .thenReturn(esperado);
+
+    // Act
+    final PageResult<Solicitacao> result =
+        useCase.execute(input(null, TipoFiltroData.CRIACAO, inicio, fim, null, null, null));
+
+    // Assert
+    assertSame(esperado, result);
+    verify(solicitacaoRepository, times(1))
+        .findByFilters(
+            null,
+            null,
+            null,
+            null,
+            inicio,
+            fim,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            false,
+            null,
+            null,
+            OrdenacaoSolicitacao.PADRAO,
+            0,
+            20);
+    verifyNoMoreInteractions(solicitacaoRepository, usuarioRepository);
+  }
+
+  @Test
+  void shouldRepassarEmAbertoAoRepositorioWhenFiltroVemLigadoComOutroFiltro() {
+    // Arrange
+    final UUID abertaPor = UUID.randomUUID();
+    final PageResult<Solicitacao> esperado = new PageResult<>(List.of(), 0, 20, 0, 0);
+    when(solicitacaoRepository.findByFilters(
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            abertaPor,
+            null,
+            null,
+            null,
+            true,
+            null,
+            null,
+            OrdenacaoSolicitacao.PADRAO,
+            0,
+            20))
+        .thenReturn(esperado);
+
+    // Act
+    final PageResult<Solicitacao> result =
+        useCase.execute(input(null, null, null, null, abertaPor, null, null, null, true, null));
+
+    // Assert
+    assertSame(esperado, result);
+    verify(solicitacaoRepository, times(1))
+        .findByFilters(
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            abertaPor,
+            null,
+            null,
+            null,
+            true,
+            null,
+            null,
+            OrdenacaoSolicitacao.PADRAO,
+            0,
+            20);
+    verifyNoMoreInteractions(solicitacaoRepository);
+  }
+
+  @Test
+  void shouldUsarAConsultaDeFiltrosWhenEmAbertoEOUnicoFiltro() {
+    // Arrange
+    final PageResult<Solicitacao> esperado = new PageResult<>(List.of(), 0, 20, 0, 0);
+    when(solicitacaoRepository.findByFilters(
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            true,
+            null,
+            null,
+            OrdenacaoSolicitacao.PADRAO,
+            0,
+            20))
+        .thenReturn(esperado);
+
+    // Act
+    final PageResult<Solicitacao> result =
+        useCase.execute(input(null, null, null, null, null, null, null, null, true, null));
+
+    // Assert
+    assertSame(esperado, result);
+    verify(solicitacaoRepository, times(1))
+        .findByFilters(
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            true,
+            null,
+            null,
+            OrdenacaoSolicitacao.PADRAO,
+            0,
+            20);
+    verifyNoMoreInteractions(solicitacaoRepository);
+  }
+
+  @Test
+  void shouldListarTudoWhenEmAbertoVemDesligadoSemOutroFiltro() {
+    // Arrange
+    final PageResult<Solicitacao> esperado = new PageResult<>(List.of(), 0, 20, 0, 0);
+    when(solicitacaoRepository.findAll(0, 20)).thenReturn(esperado);
+
+    // Act
+    final PageResult<Solicitacao> result =
+        useCase.execute(input(null, null, null, null, null, null, null, null, false, null));
+
+    // Assert
+    assertSame(esperado, result);
+    verify(solicitacaoRepository, times(1)).findAll(0, 20);
+    verifyNoMoreInteractions(solicitacaoRepository);
+  }
+
+  @Test
+  void shouldUsarAConsultaDeFiltrosWhenSoHaBusca() {
+    // Arrange
+    final PageResult<Solicitacao> esperado = new PageResult<>(List.of(), 0, 20, 0, 0);
+    when(solicitacaoRepository.findByFilters(
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            false,
+            null,
+            "correia",
+            OrdenacaoSolicitacao.PADRAO,
+            0,
+            20))
+        .thenReturn(esperado);
+    final var input =
+        new ListarSolicitacoesUseCase.Input(
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            "correia",
+            OrdenacaoSolicitacao.PADRAO,
+            0,
+            20);
+
+    // Act
+    final PageResult<Solicitacao> result = useCase.execute(input);
+
+    // Assert
+    assertSame(esperado, result);
+    verify(solicitacaoRepository, never()).findAll(0, 20);
   }
 }

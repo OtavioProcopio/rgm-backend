@@ -5,7 +5,6 @@ import static com.rgm.api.core.domain.validation.DomainValidations.requireNonBla
 import static com.rgm.api.core.domain.validation.DomainValidations.requireNonNull;
 import static com.rgm.api.core.domain.validation.DomainValidations.requirePositiveOrZero;
 
-import com.rgm.api.core.domain.model.enums.TipoModelo;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -21,7 +20,7 @@ public final class Modelo {
   private final Instant estadoAtualAtualizadoEm;
   private final boolean ativo;
   private final String maquina;
-  private final TipoModelo tipo;
+  private final String tipo;
   private final boolean temPendenciaAberta;
   private final Instant criadoEm;
   private final Instant atualizadoEm;
@@ -36,7 +35,7 @@ public final class Modelo {
       final Instant estadoAtualAtualizadoEm,
       final boolean ativo,
       final String maquina,
-      final TipoModelo tipo,
+      final String tipo,
       final boolean temPendenciaAberta,
       final Instant criadoEm,
       final Instant atualizadoEm) {
@@ -61,7 +60,7 @@ public final class Modelo {
       final String descricao,
       final String observacoes,
       final String maquina,
-      final TipoModelo tipo,
+      final String tipo,
       final int versao,
       final Instant agora) {
     return new Modelo(
@@ -158,7 +157,7 @@ public final class Modelo {
       final String novaDescricao,
       final String novasObservacoes,
       final String novaMaquina,
-      final TipoModelo novoTipo,
+      final String novoTipo,
       final Instant novoAtualizadoEm) {
     return new Modelo(
         id,
@@ -212,7 +211,7 @@ public final class Modelo {
     return maquina;
   }
 
-  public TipoModelo getTipo() {
+  public String getTipo() {
     return tipo;
   }
 

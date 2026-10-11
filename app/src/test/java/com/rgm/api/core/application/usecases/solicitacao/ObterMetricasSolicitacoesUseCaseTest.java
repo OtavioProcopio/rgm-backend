@@ -136,4 +136,22 @@ class ObterMetricasSolicitacoesUseCaseTest {
     assertEquals(0L, metricas.tempoMedioResolucaoSegundos());
     assertTrue(metricas.solicitacoesPorModelo().isEmpty());
   }
+
+  @Test
+  void shouldReturnOpenDistributionByTypeAndPriorityWhenGettingMetrics() {
+    // Arrange
+    final Map<String, Long> porTipo = Map.of("REPARO", 5L, "INSPECAO", 2L);
+    final Map<String, Long> porPrioridade = Map.of("ALTA", 4L, "SEM_PRIORIDADE", 3L);
+    when(solicitacaoRepository.countEmAbertoPorTipo()).thenReturn(porTipo);
+    when(solicitacaoRepository.countEmAbertoPorPrioridade()).thenReturn(porPrioridade);
+
+    // Act
+    final ObterMetricasSolicitacoesUseCase.Output output = useCase.execute();
+
+    // Assert
+    assertEquals(porTipo, output.emAbertoPorTipo());
+    assertEquals(porPrioridade, output.emAbertoPorPrioridade());
+    verify(solicitacaoRepository, times(1)).countEmAbertoPorTipo();
+    verify(solicitacaoRepository, times(1)).countEmAbertoPorPrioridade();
+  }
 }

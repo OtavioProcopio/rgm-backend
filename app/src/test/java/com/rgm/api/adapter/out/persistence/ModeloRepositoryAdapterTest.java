@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -116,13 +117,47 @@ class ModeloRepositoryAdapterTest {
   }
 
   @Test
-  void countByMaquinaAndCodigo_deveDelegarAoJpa() {
-    when(jpa.countByMaquinaAndCodigo("MANUAL", "MOD-001")).thenReturn(5);
+  void shouldDelegateLargestVersionToJpaWhenAskingForMaiorVersao() {
+    // Arrange
+    when(jpa.maiorVersao("MANUAL", "MOD-001")).thenReturn(5);
 
-    final int result = adapter.countByMaquinaAndCodigo("MANUAL", "MOD-001");
+    // Act
+    final int result = adapter.maiorVersao("MANUAL", "MOD-001");
 
+    // Assert
     assertEquals(5, result);
-    verify(jpa).countByMaquinaAndCodigo("MANUAL", "MOD-001");
+    verify(jpa, times(1)).maiorVersao("MANUAL", "MOD-001");
+  }
+
+  @Test
+  void shouldDelegateIdentificationCheckToJpaWhenLookingForAnotherModelo() {
+    // Arrange
+    final UUID id = UUID.randomUUID();
+    when(jpa.existsByMaquinaAndCodigoAndVersaoAndIdNot("MANUAL", "MOD-001", 2, id))
+        .thenReturn(true);
+
+    // Act
+    final boolean result = adapter.existeOutroComIdentificacao("MANUAL", "MOD-001", 2, id);
+
+    // Assert
+    assertTrue(result);
+    verify(jpa, times(1)).existsByMaquinaAndCodigoAndVersaoAndIdNot("MANUAL", "MOD-001", 2, id);
+  }
+
+  @Test
+  void shouldMapEntitiesWhenFindingAllByIdIn() {
+    // Arrange
+    final ModeloJpaEntity entity = criarJpaEntity();
+    final List<UUID> ids = List.of(entity.getId());
+    when(jpa.findAllById(ids)).thenReturn(List.of(entity));
+
+    // Act
+    final List<Modelo> result = adapter.findAllByIdIn(ids);
+
+    // Assert
+    assertEquals(1, result.size());
+    assertEquals(entity.getId(), result.get(0).getId());
+    verify(jpa, times(1)).findAllById(ids);
   }
 
   @Test
@@ -162,5 +197,35 @@ class ModeloRepositoryAdapterTest {
     assertEquals(1, result.content().size());
     assertEquals("MOD-001", result.content().get(0).getCodigo());
     verify(jpa).findByFilters(any(), any(), any(), any(), any(PageRequest.class));
+  }
+
+  @Test
+  void shouldMontarOResumoComInativosCalculadosWhenResume() {
+    // Arrange
+    final List<Object[]> contagens = new java.util.ArrayList<>();
+    contagens.add(new Object[] {7L, 5L, 2L});
+    final List<Object[]> porMaquina = new java.util.ArrayList<>();
+    porMaquina.add(new Object[] {"DISA", 4L});
+    porMaquina.add(new Object[] {"FBOX", 3L});
+    when(jpa.resumirContagens()).thenReturn(contagens);
+    when(jpa.contarPorMaquina()).thenReturn(porMaquina);
+    final var esperado =
+        new com.rgm.api.core.domain.ports.repositories.ResumoModelos(
+            7,
+            5,
+            2,
+            2,
+            List.of(
+                new com.rgm.api.core.domain.ports.repositories.QuantidadePorMaquina("DISA", 4),
+                new com.rgm.api.core.domain.ports.repositories.QuantidadePorMaquina("FBOX", 3)));
+
+    // Act
+    final var resumo = adapter.resumir();
+
+    // Assert
+    assertEquals(esperado, resumo);
+    verify(jpa, org.mockito.Mockito.times(1)).resumirContagens();
+    verify(jpa, org.mockito.Mockito.times(1)).contarPorMaquina();
+    org.mockito.Mockito.verifyNoMoreInteractions(jpa);
   }
 }

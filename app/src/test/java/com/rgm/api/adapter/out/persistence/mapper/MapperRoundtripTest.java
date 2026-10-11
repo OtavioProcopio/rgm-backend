@@ -18,6 +18,7 @@ import com.rgm.api.core.domain.model.enums.TipoEventoModelo;
 import com.rgm.api.core.domain.model.enums.TipoEvidencia;
 import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
@@ -36,22 +37,45 @@ class MapperRoundtripTest {
   // ──────── UsuarioMapper ────────
 
   @Test
-  void usuarioMapper_fullRoundtrip() {
-    final UUID id = UUID.randomUUID();
+  void shouldKeepEveryUserFieldWhenMappedToJpaAndBack() {
+    // Arrange
     final Usuario original =
         new Usuario(
-            id, "Carol", "carol@x.com", "hashXYZ", PerfilUsuario.ADMINISTRADOR, true, T1, T2);
+            UUID.randomUUID(),
+            "Carol",
+            "carol@x.com",
+            "hashXYZ",
+            PerfilUsuario.ADMINISTRADOR,
+            true,
+            T1,
+            T2,
+            5);
 
+    // Act
     final Usuario result = UsuarioMapper.toDomain(UsuarioMapper.toJpa(original));
 
-    assertEquals(id, result.getId());
-    assertEquals("Carol", result.getNome());
-    assertEquals("carol@x.com", result.getEmail());
-    assertEquals("hashXYZ", result.getSenhaHash());
-    assertEquals(PerfilUsuario.ADMINISTRADOR, result.getPerfil());
-    assertEquals(true, result.isAtivo());
-    assertEquals(T1, result.getCriadoEm());
-    assertEquals(T2, result.getAtualizadoEm());
+    // Assert
+    assertEquals(
+        List.of(
+            original.getId(),
+            original.getNome(),
+            original.getEmail(),
+            original.getSenhaHash(),
+            original.getPerfil(),
+            original.isAtivo(),
+            original.getCriadoEm(),
+            original.getAtualizadoEm(),
+            original.getVersaoCredencial()),
+        List.of(
+            result.getId(),
+            result.getNome(),
+            result.getEmail(),
+            result.getSenhaHash(),
+            result.getPerfil(),
+            result.isAtivo(),
+            result.getCriadoEm(),
+            result.getAtualizadoEm(),
+            result.getVersaoCredencial()));
   }
 
   // ──────── SolicitacaoMapper ────────
@@ -332,5 +356,35 @@ class MapperRoundtripTest {
     assertEquals(executadoPor, result.getExecutadoPorUsuarioId());
     assertEquals(solRelacionada, result.getSolicitacaoRelacionadaId());
     assertEquals(T1, result.getCriadoEm());
+  }
+
+  @Test
+  void shouldKeepOptimisticLockVersionWhenSolicitacaoIsMappedToJpaAndBack() {
+    // Arrange
+    final Solicitacao original =
+        new Solicitacao(
+            UUID.randomUUID(),
+            "T",
+            "D",
+            TipoSolicitacao.REPARO,
+            StatusSolicitacao.EM_ANDAMENTO,
+            PrioridadeSolicitacao.MEDIA,
+            UUID.randomUUID(),
+            null,
+            null,
+            null,
+            UUID.randomUUID(),
+            null,
+            T1,
+            T1,
+            null,
+            null,
+            5L);
+
+    // Act
+    final Solicitacao result = SolicitacaoMapper.toDomain(SolicitacaoMapper.toJpa(original));
+
+    // Assert
+    assertEquals(5L, result.getVersion());
   }
 }

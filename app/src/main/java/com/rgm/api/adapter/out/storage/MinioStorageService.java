@@ -1,6 +1,7 @@
 package com.rgm.api.adapter.out.storage;
 
 import com.rgm.api.core.domain.ports.services.StorageService;
+import io.minio.GetObjectArgs;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
 import io.minio.RemoveObjectArgs;
@@ -8,6 +9,7 @@ import java.io.InputStream;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,11 +34,14 @@ public class MinioStorageService implements StorageService {
     this.publicUrl = publicUrl;
   }
 
+  /**
+   * O nome do objeto e gerado aqui (UUID + extensao do tipo); o nome enviado pelo cliente nao entra
+   * no endereco. O nome original fica so nos dados da evidencia.
+   */
   @Override
   public String upload(
       final String fileName, final String contentType, final InputStream content, final long size) {
-    final String uuid = UUID.randomUUID().toString();
-    final String objectName = uuid + "/" + fileName;
+    final String objectName = UUID.randomUUID() + extensaoDoTipo(contentType);
     try {
       minioClient.putObject(
           PutObjectArgs.builder().bucket(bucketName).object(objectName).stream(content, size, -1)
@@ -45,7 +50,22 @@ public class MinioStorageService implements StorageService {
     } catch (final Exception e) {
       throw new RuntimeException("Erro ao fazer upload para MinIO: " + e.getMessage(), e);
     }
-    return publicUrl + "/" + bucketName + "/" + uuid + "/" + encodeSegment(fileName);
+    return publicUrl + "/" + bucketName + "/" + objectName;
+  }
+
+  private static String extensaoDoTipo(final String contentType) {
+    if (contentType == null) {
+      return "";
+    }
+    return switch (contentType.toLowerCase(Locale.ROOT)) {
+      case "image/jpeg" -> ".jpg";
+      case "image/png" -> ".png";
+      case "image/gif" -> ".gif";
+      case "image/webp" -> ".webp";
+      case "application/pdf" -> ".pdf";
+      case "video/mp4" -> ".mp4";
+      default -> "";
+    };
   }
 
   private String encodeSegment(final String segment) {
@@ -61,6 +81,27 @@ public class MinioStorageService implements StorageService {
     final String fileNamePart =
         URLDecoder.decode(objectName.substring(sepIdx + 1), StandardCharsets.UTF_8);
     return uuidPart + "/" + fileNamePart;
+  }
+
+  @Override
+  public byte[] baixar(final String fileUrl) {
+    final String objectName = objectNameDe(fileUrl);
+    try (var in =
+        minioClient.getObject(
+            GetObjectArgs.builder().bucket(bucketName).object(objectName).build())) {
+      return in.readAllBytes();
+    } catch (final Exception e) {
+      throw new RuntimeException("Erro ao baixar do MinIO: " + e.getMessage(), e);
+    }
+  }
+
+  private String objectNameDe(final String fileUrl) {
+    final String prefix = "/" + bucketName + "/";
+    final int idx = fileUrl == null ? -1 : fileUrl.indexOf(prefix);
+    if (idx == -1) {
+      throw new IllegalArgumentException("URL fora do bucket: " + fileUrl);
+    }
+    return decodeFileNameSegment(fileUrl.substring(idx + prefix.length()));
   }
 
   @Override

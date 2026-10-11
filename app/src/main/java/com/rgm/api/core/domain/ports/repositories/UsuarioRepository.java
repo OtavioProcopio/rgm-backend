@@ -26,5 +26,11 @@ public interface UsuarioRepository {
 
   PageResult<Usuario> findByFilters(PerfilUsuario perfil, Boolean ativo, int page, int size);
 
+  /**
+   * Usuarios ativos de perfil atribuivel como responsavel, ordenados por nome. {@code busca} (nulo
+   * nao filtra) casa com parte do nome, sem diferenciar caixa e acento.
+   */
+  PageResult<Usuario> buscarAtribuiveis(String busca, int page, int size);
+
   long count();
 }

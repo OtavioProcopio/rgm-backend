@@ -1,6 +1,7 @@
 package com.rgm.api.adapter.in.web.maquina;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -18,6 +19,7 @@ import com.rgm.api.adapter.in.web.dto.request.EditarMaquinaRequest;
 import com.rgm.api.adapter.out.security.JwtAuthenticationFilter;
 import com.rgm.api.core.application.usecases.admin.GerenciarMaquinasUseCase;
 import com.rgm.api.core.domain.model.aggregates.Maquina;
+import com.rgm.api.core.domain.validation.LimitesTexto;
 import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -97,5 +99,49 @@ class MaquinaAdminControllerTest {
             patch("/api/admin/maquinas/{id}/ativar", UUID.randomUUID())
                 .with(user(UUID.randomUUID().toString())))
         .andExpect(status().isOk());
+  }
+
+  private static final String NOME_LONGO = "x".repeat(LimitesTexto.MAQUINA_NOME + 1);
+  private static final String MENSAGEM_LIMITE =
+      "nome: deve ter no máximo " + LimitesTexto.MAQUINA_NOME + " caracteres";
+
+  @Test
+  void shouldAnswerBadRequestWhenCreatingMaquinaWithNameAboveLimit() throws Exception {
+    // Arrange
+    final String corpo = objectMapper.writeValueAsString(new CriarMaquinaRequest(NOME_LONGO));
+
+    // Act
+    final var resposta =
+        mockMvc.perform(
+            post("/api/admin/maquinas")
+                .with(user(UUID.randomUUID().toString()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(corpo));
+
+    // Assert
+    resposta
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.message").value(MENSAGEM_LIMITE));
+    verifyNoMoreInteractions(gerenciarMaquinasUseCase);
+  }
+
+  @Test
+  void shouldAnswerBadRequestWhenRenamingMaquinaWithNameAboveLimit() throws Exception {
+    // Arrange
+    final String corpo = objectMapper.writeValueAsString(new EditarMaquinaRequest(NOME_LONGO));
+
+    // Act
+    final var resposta =
+        mockMvc.perform(
+            put("/api/admin/maquinas/{id}", UUID.randomUUID())
+                .with(user(UUID.randomUUID().toString()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(corpo));
+
+    // Assert
+    resposta
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.message").value(MENSAGEM_LIMITE));
+    verifyNoMoreInteractions(gerenciarMaquinasUseCase);
   }
 }

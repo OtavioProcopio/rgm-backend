@@ -1,14 +1,11 @@
 package com.rgm.api.adapter.in.web.solicitacao;
 
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
+import com.rgm.api.core.application.usecases.auth.AutenticarAcessoUseCase;
+import com.rgm.api.core.domain.exceptions.NaoAutorizadoException;
+import com.rgm.api.core.domain.model.aggregates.Usuario;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import javax.crypto.SecretKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,44 +20,40 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 public class SolicitacaoSseController {
 
   private static final Logger log = LoggerFactory.getLogger(SolicitacaoSseController.class);
-  private static final long TIMEOUT_MS = 300_000L;
+  private static final long TIMEOUT_MS = 30L * 60L * 1000L;
 
   private final SolicitacaoEventPublisher publisher;
-  private final SecretKey key;
+  private final AutenticarAcessoUseCase autenticarAcessoUseCase;
 
   public SolicitacaoSseController(
-      final SolicitacaoEventPublisher publisher, @Value("${jwt.secret}") final String secret) {
+      final SolicitacaoEventPublisher publisher,
+      final AutenticarAcessoUseCase autenticarAcessoUseCase) {
     this.publisher = publisher;
-    this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+    this.autenticarAcessoUseCase = autenticarAcessoUseCase;
   }
 
   @GetMapping(produces = MediaType.TEXT_EVENT_STREAM_VALUE)
   public SseEmitter subscribe(@RequestParam(required = false) final String token) {
-    validateToken(token);
+    final Usuario usuario = autenticar(token);
 
     final SseEmitter emitter = new SseEmitter(TIMEOUT_MS);
-    publisher.addEmitter(emitter);
+    publisher.addEmitter(usuario.getId(), emitter);
     try {
       emitter.send(SseEmitter.event().name("connected").data("ok"));
-    } catch (final IOException e) {
+    } catch (final IOException | IllegalStateException e) {
+      // IllegalStateException: a conexao foi encerrada entre o registro e o primeiro envio.
       log.debug("Falha ao enviar evento inicial SSE: {}", e.getMessage());
     }
     return emitter;
   }
 
-  private void validateToken(final String token) {
+  private Usuario autenticar(final String token) {
     if (token == null || token.isBlank()) {
       throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Token ausente");
     }
     try {
-      final Claims claims =
-          Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload();
-      if (!"access".equals(claims.get("type", String.class))) {
-        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Token inválido");
-      }
-    } catch (final ResponseStatusException e) {
-      throw e;
-    } catch (final Exception e) {
+      return autenticarAcessoUseCase.execute(token);
+    } catch (final NaoAutorizadoException e) {
       throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Token inválido");
     }
   }

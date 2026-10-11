@@ -1,8 +1,8 @@
 package com.rgm.api.core.application.usecases.evidencia;
 
-import com.rgm.api.core.domain.exceptions.NaoAutorizadoException;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.model.aggregates.Evidencia;
+import com.rgm.api.core.domain.model.aggregates.Solicitacao;
 import com.rgm.api.core.domain.model.aggregates.Usuario;
 import com.rgm.api.core.domain.model.entities.SolicitacaoEvidencia;
 import com.rgm.api.core.domain.ports.repositories.EvidenciaRepository;
@@ -10,6 +10,7 @@ import com.rgm.api.core.domain.ports.repositories.SolicitacaoAtribuicaoRepositor
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoEvidenciaRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
+import com.rgm.api.core.domain.validation.AcessoEvidenciaSolicitacao;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -39,11 +40,12 @@ public final class VisualizarEvidenciaUseCase {
   public record Input(UUID solicitacaoId, UUID usuarioId) {}
 
   public List<Evidencia> execute(final Input input) {
-    solicitacaoRepository
-        .findById(input.solicitacaoId())
-        .orElseThrow(() -> new RecursoNaoEncontradoException("Solicitacao nao encontrada"));
+    final Solicitacao solicitacao =
+        solicitacaoRepository
+            .findById(input.solicitacaoId())
+            .orElseThrow(() -> new RecursoNaoEncontradoException("Solicitacao nao encontrada"));
 
-    validarAcesso(input.solicitacaoId(), input.usuarioId());
+    validarAcesso(solicitacao, input.usuarioId());
 
     final List<SolicitacaoEvidencia> vinculos =
         solicitacaoEvidenciaRepository.findBySolicitacaoId(input.solicitacaoId());
@@ -56,22 +58,17 @@ public final class VisualizarEvidenciaUseCase {
     return evidencias;
   }
 
-  private void validarAcesso(final UUID solicitacaoId, final UUID usuarioId) {
+  private void validarAcesso(final Solicitacao solicitacao, final UUID usuarioId) {
     final Usuario usuario =
         usuarioRepository
             .findById(usuarioId)
             .orElseThrow(() -> new RecursoNaoEncontradoException("Usuario nao encontrado"));
 
-    if (usuario.getPerfil().podeGerenciarModelos()
-        || usuario.getPerfil().podeGerenciarUsuariosEMaquinas()) {
-      return;
-    }
-
-    final boolean atribuido =
-        atribuicaoRepository.existsBySolicitacaoIdAndUsuarioIdAndRemovidoEmIsNull(
-            solicitacaoId, usuarioId);
-    if (!atribuido) {
-      throw new NaoAutorizadoException("Usuario nao tem acesso a esta solicitacao");
-    }
+    AcessoEvidenciaSolicitacao.validarListagem(
+        usuario,
+        solicitacao,
+        () ->
+            atribuicaoRepository.existsBySolicitacaoIdAndUsuarioIdAndRemovidoEmIsNull(
+                solicitacao.getId(), usuarioId));
   }
 }

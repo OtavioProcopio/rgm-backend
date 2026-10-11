@@ -12,6 +12,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 @Repository
 public class FotoGaleriaModeloRepositoryAdapter implements FotoGaleriaModeloRepository {
@@ -45,8 +46,10 @@ public class FotoGaleriaModeloRepositoryAdapter implements FotoGaleriaModeloRepo
   }
 
   @Override
-  public void limparPrincipal(final UUID modeloId) {
-    jpa.limparPrincipal(modeloId);
+  @Transactional
+  public FotoGaleriaModelo salvarComoPrincipal(final FotoGaleriaModelo foto) {
+    jpa.limparPrincipal(foto.getModeloId());
+    return save(foto);
   }
 
   @Override

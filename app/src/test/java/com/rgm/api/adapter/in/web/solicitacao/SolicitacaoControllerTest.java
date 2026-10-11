@@ -1,8 +1,15 @@
 package com.rgm.api.adapter.in.web.solicitacao;
 
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -23,6 +30,7 @@ import com.rgm.api.adapter.in.web.dto.request.EditarSolicitacaoRequest;
 import com.rgm.api.adapter.in.web.dto.request.EncerrarSolicitacaoRequest;
 import com.rgm.api.adapter.in.web.dto.request.GerenciarResponsaveisRequest;
 import com.rgm.api.adapter.in.web.dto.request.TriarSolicitacaoRequest;
+import com.rgm.api.adapter.in.web.dto.response.SolicitacaoResponse;
 import com.rgm.api.adapter.out.security.JwtAuthenticationFilter;
 import com.rgm.api.core.application.usecases.solicitacao.AbrirSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.CancelarSolicitacaoUseCase;
@@ -37,17 +45,28 @@ import com.rgm.api.core.application.usecases.solicitacao.ObterMetricasSolicitaco
 import com.rgm.api.core.application.usecases.solicitacao.ObterSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.RegistrarComentarioUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.TriarSolicitacaoUseCase;
+import com.rgm.api.core.domain.exceptions.NaoAutorizadoException;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
 import com.rgm.api.core.domain.model.entities.AtividadeSolicitacao;
+import com.rgm.api.core.domain.model.enums.CriterioOrdenacaoSolicitacao;
 import com.rgm.api.core.domain.model.enums.PrioridadeSolicitacao;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
 import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
+import com.rgm.api.core.domain.ports.repositories.OrdenacaoSolicitacao;
 import com.rgm.api.core.domain.ports.repositories.PageResult;
+import com.rgm.api.core.domain.validation.LimitesTexto;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.ComponentScan;
@@ -56,6 +75,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 @WebMvcTest(
     controllers = SolicitacaoController.class,
@@ -90,6 +110,10 @@ class SolicitacaoControllerTest {
   @MockitoBean
   private com.rgm.api.core.application.usecases.solicitacao.ObterHistoricoMetricasUseCase
       obterHistoricoMetricasUseCase;
+
+  @MockitoBean
+  private com.rgm.api.core.application.usecases.solicitacao.ObterPainelPorPeriodoUseCase
+      obterPainelPorPeriodoUseCase;
 
   @MockitoBean
   private com.rgm.api.core.application.usecases.solicitacao.ObterMetricasPorModeloUseCase
@@ -266,7 +290,8 @@ class SolicitacaoControllerTest {
         new com.rgm.api.core.domain.ports.repositories.PageResult<>(
             java.util.List.of(row), 0, Integer.MAX_VALUE, 1L, 1);
     when(obterMetricasPorModeloUseCase.execute(any())).thenReturn(pageResult);
-    when(modeloPdfService.gerarRankingModelos(any(), any())).thenReturn(new byte[] {1, 2, 3});
+    when(modeloPdfService.gerarRankingModelos(any(), any(), any()))
+        .thenReturn(new byte[] {1, 2, 3});
 
     mockMvc
         .perform(get("/api/solicitacoes/metricas/por-modelo/pdf").with(user("admin")))
@@ -297,11 +322,14 @@ class SolicitacaoControllerTest {
   void buscarPorId() throws Exception {
     final UUID solId = UUID.randomUUID();
     final Solicitacao sol = criarSolicitacao();
-    when(obterUseCase.execute(solId))
-        .thenReturn(new ObterSolicitacaoUseCase.Output(sol, List.of()));
+    final UUID userId = UUID.randomUUID();
+    when(obterUseCase.execute(new ObterSolicitacaoUseCase.Input(solId, userId)))
+        .thenReturn(
+            new ObterSolicitacaoUseCase.Output(
+                sol, List.of(), List.of(), null, java.util.Set.of()));
 
     mockMvc
-        .perform(get("/api/solicitacoes/{id}", solId).with(user("u")))
+        .perform(get("/api/solicitacoes/{id}", solId).with(user(userId.toString())))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.titulo").value("Titulo"));
   }
@@ -309,29 +337,38 @@ class SolicitacaoControllerTest {
   @Test
   void buscarPorId_naoEncontrado() throws Exception {
     final UUID solId = UUID.randomUUID();
-    when(obterUseCase.execute(solId))
+    final UUID userId = UUID.randomUUID();
+    when(obterUseCase.execute(new ObterSolicitacaoUseCase.Input(solId, userId)))
         .thenThrow(new RecursoNaoEncontradoException("Solicitacao nao encontrada"));
 
     mockMvc
-        .perform(get("/api/solicitacoes/{id}", solId).with(user("u")))
+        .perform(get("/api/solicitacoes/{id}", solId).with(user(userId.toString())))
         .andExpect(status().isNotFound());
   }
 
   @Test
-  void listarAtividades() throws Exception {
+  void shouldReturnHistoryWithAuthorNameWhenUserHasAccess() throws Exception {
+    // Arrange
     final UUID solId = UUID.randomUUID();
     final UUID autorId = UUID.randomUUID();
     final AtividadeSolicitacao atividade =
         AtividadeSolicitacao.abertura(solId, autorId, Instant.now());
-
-    when(listarAtividadesUseCase.execute(solId))
+    final ListarAtividadesUseCase.Input entrada = new ListarAtividadesUseCase.Input(solId, autorId);
+    when(listarAtividadesUseCase.execute(entrada))
         .thenReturn(List.of(new ListarAtividadesUseCase.AtividadeComAutor(atividade, "Alice")));
 
-    mockMvc
-        .perform(get("/api/solicitacoes/{id}/atividades", solId).with(user("u")))
+    // Act
+    final var resposta =
+        mockMvc.perform(
+            get("/api/solicitacoes/{id}/atividades", solId).with(user(autorId.toString())));
+
+    // Assert
+    resposta
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$").isArray())
+        .andExpect(jsonPath("$.length()").value(1))
         .andExpect(jsonPath("$[0].autorNome").value("Alice"));
+    verify(listarAtividadesUseCase, times(1)).execute(entrada);
+    verifyNoMoreInteractions(listarAtividadesUseCase, eventPublisher);
   }
 
   @Test
@@ -522,7 +559,7 @@ class SolicitacaoControllerTest {
     final Solicitacao sol = criarSolicitacao();
     when(listarUseCase.execute(any()))
         .thenReturn(new PageResult<>(List.of(sol), 0, Integer.MAX_VALUE, 1, 1));
-    when(pdfService.gerar(any(), any(), any()))
+    when(pdfService.gerar(any(), any(), any(), any()))
         .thenReturn(new byte[] {37, 80, 68, 70}); // %PDF magic bytes
     when(usuarioRepository.findAllByIdIn(any())).thenReturn(java.util.List.of());
     when(usuarioRepository.findById(any())).thenReturn(java.util.Optional.empty());
@@ -531,20 +568,1023 @@ class SolicitacaoControllerTest {
   }
 
   @Test
-  void gerenciarResponsaveis() throws Exception {
+  void shouldLevarEmAbertoAoCasoDeUsoWhenListagemRecebeOFiltro() throws Exception {
+    // Arrange
+    final var captor = org.mockito.ArgumentCaptor.forClass(ListarSolicitacoesUseCase.Input.class);
+    when(listarUseCase.execute(captor.capture()))
+        .thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
+    when(obterUseCase.listarResponsaveisBatch(any())).thenReturn(java.util.Map.of());
+
+    // Act
+    final var resposta = mockMvc.perform(get("/api/solicitacoes").param("emAberto", "true"));
+
+    // Assert
+    resposta.andExpect(status().isOk());
+    org.junit.jupiter.api.Assertions.assertEquals(Boolean.TRUE, captor.getValue().emAberto());
+  }
+
+  @Test
+  void shouldDeixarEmAbertoVazioWhenListagemNaoRecebeOFiltro() throws Exception {
+    // Arrange
+    final var captor = org.mockito.ArgumentCaptor.forClass(ListarSolicitacoesUseCase.Input.class);
+    when(listarUseCase.execute(captor.capture()))
+        .thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
+    when(obterUseCase.listarResponsaveisBatch(any())).thenReturn(java.util.Map.of());
+
+    // Act
+    final var resposta = mockMvc.perform(get("/api/solicitacoes"));
+
+    // Assert
+    resposta.andExpect(status().isOk());
+    org.junit.jupiter.api.Assertions.assertNull(captor.getValue().emAberto());
+  }
+
+  @Test
+  void shouldLevarEmAbertoAoCasoDeUsoWhenRelatorioRecebeOFiltro() throws Exception {
+    // Arrange
+    final var captor = org.mockito.ArgumentCaptor.forClass(ListarSolicitacoesUseCase.Input.class);
+    when(listarUseCase.execute(captor.capture()))
+        .thenReturn(new PageResult<>(List.of(), 0, Integer.MAX_VALUE, 0, 0));
+    when(pdfService.gerar(any(), any(), any(), any())).thenReturn(new byte[] {37, 80, 68, 70});
+    when(usuarioRepository.findAllByIdIn(any())).thenReturn(java.util.List.of());
+    when(usuarioRepository.findById(any())).thenReturn(java.util.Optional.empty());
+
+    // Act
+    final var resposta =
+        mockMvc.perform(
+            get("/api/solicitacoes/relatorio").param("emAberto", "true").with(user("u")));
+
+    // Assert
+    resposta.andExpect(status().isOk());
+    org.junit.jupiter.api.Assertions.assertEquals(Boolean.TRUE, captor.getValue().emAberto());
+  }
+
+  @Test
+  void shouldFollowTheScreenWhenTheReportReceivesSearchSortAndFilters() throws Exception {
+    // Arrange
+    final var entrada = org.mockito.ArgumentCaptor.forClass(ListarSolicitacoesUseCase.Input.class);
+    final var contexto =
+        org.mockito.ArgumentCaptor.forClass(
+            com.rgm.api.adapter.out.report.ContextoDoRelatorio.class);
+    final Solicitacao sol = criarSolicitacao();
+    when(listarUseCase.execute(entrada.capture()))
+        .thenReturn(new PageResult<>(List.of(sol), 0, 5000, 7000, 2));
+    when(pdfService.gerar(any(), any(), any(), contexto.capture()))
+        .thenReturn(new byte[] {37, 80, 68, 70});
+    when(usuarioRepository.findAllByIdIn(any())).thenReturn(java.util.List.of());
+    when(usuarioRepository.findById(any())).thenReturn(java.util.Optional.empty());
+
+    // Act
+    final var resposta =
+        mockMvc.perform(
+            get("/api/solicitacoes/relatorio")
+                .param("maquina", "FBOX")
+                .param("atrasada", "true")
+                .param("status", "EM_ANDAMENTO")
+                .param("q", "correia")
+                .param("sort", "prazoLimite")
+                .param("dir", "asc")
+                .with(user("u")));
+
+    // Assert
+    resposta.andExpect(status().isOk());
+    final var input = entrada.getValue();
+    org.junit.jupiter.api.Assertions.assertEquals("correia", input.busca());
+    org.junit.jupiter.api.Assertions.assertEquals(
+        new OrdenacaoSolicitacao(CriterioOrdenacaoSolicitacao.PRAZO_LIMITE, true),
+        input.ordenacao());
+    org.junit.jupiter.api.Assertions.assertEquals(5000, input.size());
+    org.junit.jupiter.api.Assertions.assertEquals(7000, contexto.getValue().total());
+    org.junit.jupiter.api.Assertions.assertEquals(1, contexto.getValue().exibidas());
+    org.junit.jupiter.api.Assertions.assertEquals(
+        List.of(
+            "Status: Em andamento",
+            "Máquina: FBOX",
+            "Atrasadas: sim",
+            "Busca: correia",
+            "Ordenação: prazoLimite (crescente)"),
+        contexto.getValue().filtros());
+  }
+
+  @Test
+  void shouldRespond400WhenTheReportReceivesAnInvalidSort() throws Exception {
+    // Arrange
+    final String sort = "titulo";
+
+    // Act
+    final var resposta =
+        mockMvc.perform(get("/api/solicitacoes/relatorio").param("sort", sort).with(user("u")));
+
+    // Assert
+    resposta.andExpect(status().isBadRequest());
+    verifyNoMoreInteractions(listarUseCase);
+  }
+
+  @Test
+  void shouldPublishAbertaEventWhenSolicitacaoIsOpened() throws Exception {
+    // Arrange
     final Solicitacao sol = criarSolicitacao();
     final UUID userId = UUID.randomUUID();
-    when(gerenciarResponsaveisUseCase.execute(any())).thenReturn(sol);
+    final UUID modeloId = UUID.randomUUID();
+    final AbrirSolicitacaoUseCase.Input entrada =
+        new AbrirSolicitacaoUseCase.Input(
+            "Titulo", "Desc", TipoSolicitacao.REPARO, modeloId, null, null, null, userId);
+    when(abrirUseCase.execute(entrada)).thenReturn(sol);
 
-    mockMvc
-        .perform(
-            patch("/api/solicitacoes/{id}/responsaveis", sol.getId())
+    // Act
+    final var resposta =
+        mockMvc.perform(
+            post("/api/solicitacoes")
                 .with(user(userId.toString()))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     objectMapper.writeValueAsString(
-                        new GerenciarResponsaveisRequest(List.of(UUID.randomUUID())))))
+                        new AbrirSolicitacaoRequest(
+                            "Titulo", "Desc", "REPARO", modeloId, null, null, null))));
+
+    // Assert
+    resposta.andExpect(status().isCreated());
+    verify(abrirUseCase, times(1)).execute(entrada);
+    verify(eventPublisher, times(1))
+        .publish(
+            "solicitacao",
+            new SolicitacaoEvent("aberta", SolicitacaoResponse.from(sol)),
+            sol.getId(),
+            List.of());
+    verifyNoMoreInteractions(abrirUseCase, eventPublisher);
+  }
+
+  @Test
+  void shouldPublishEditadaEventWhenSolicitacaoIsEdited() throws Exception {
+    // Arrange
+    final Solicitacao sol = criarSolicitacao();
+    final UUID userId = UUID.randomUUID();
+    final EditarSolicitacaoUseCase.Input entrada =
+        new EditarSolicitacaoUseCase.Input(
+            sol.getId(), "Novo Titulo", "Nova Desc", TipoSolicitacao.REPARO, userId);
+    when(editarUseCase.execute(entrada)).thenReturn(sol);
+
+    // Act
+    final var resposta =
+        mockMvc.perform(
+            put("/api/solicitacoes/{id}", sol.getId())
+                .with(user(userId.toString()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        new EditarSolicitacaoRequest("Novo Titulo", "Nova Desc", "REPARO"))));
+
+    // Assert
+    resposta.andExpect(status().isOk());
+    verify(editarUseCase, times(1)).execute(entrada);
+    verify(eventPublisher, times(1))
+        .publish(
+            "solicitacao",
+            new SolicitacaoEvent("editada", SolicitacaoResponse.from(sol)),
+            sol.getId(),
+            List.of());
+    verifyNoMoreInteractions(editarUseCase, eventPublisher);
+  }
+
+  @Test
+  void shouldPublishResponsaveisAlteradosEventWhenAssigneesChange() throws Exception {
+    // Arrange
+    final Solicitacao sol = criarSolicitacao();
+    final UUID gestorId = UUID.randomUUID();
+    final List<UUID> responsaveis = List.of(UUID.randomUUID());
+    final GerenciarResponsaveisUseCase.Input entrada =
+        new GerenciarResponsaveisUseCase.Input(sol.getId(), responsaveis, gestorId);
+    when(gerenciarResponsaveisUseCase.execute(entrada))
+        .thenReturn(new GerenciarResponsaveisUseCase.Output(sol, List.of()));
+
+    // Act
+    final var resposta =
+        mockMvc.perform(
+            patch("/api/solicitacoes/{id}/responsaveis", sol.getId())
+                .with(user(gestorId.toString()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        new GerenciarResponsaveisRequest(responsaveis))));
+
+    // Assert
+    resposta.andExpect(status().isOk());
+    verify(gerenciarResponsaveisUseCase, times(1)).execute(entrada);
+    verify(eventPublisher, times(1))
+        .publish(
+            "solicitacao",
+            new SolicitacaoEvent(
+                "responsaveis_alterados", SolicitacaoResponse.from(sol, responsaveis)),
+            sol.getId(),
+            List.of());
+    verifyNoMoreInteractions(gerenciarResponsaveisUseCase, eventPublisher);
+  }
+
+  @Test
+  void shouldReturnAllowedActionsWhenSolicitacaoIsFetchedById() throws Exception {
+    // Arrange
+    final Solicitacao sol = criarSolicitacao();
+    final UUID userId = UUID.randomUUID();
+    final ObterSolicitacaoUseCase.Input entrada =
+        new ObterSolicitacaoUseCase.Input(sol.getId(), userId);
+    when(obterUseCase.execute(entrada))
+        .thenReturn(
+            new ObterSolicitacaoUseCase.Output(
+                sol,
+                List.of(),
+                List.of(),
+                null,
+                java.util.EnumSet.of(
+                    com.rgm.api.core.domain.model.enums.AcaoSolicitacao.EDITAR,
+                    com.rgm.api.core.domain.model.enums.AcaoSolicitacao.COMENTAR)));
+
+    // Act
+    final var resposta =
+        mockMvc.perform(get("/api/solicitacoes/{id}", sol.getId()).with(user(userId.toString())));
+
+    // Assert
+    resposta
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.id").value(sol.getId().toString()));
+        .andExpect(jsonPath("$.acoesPermitidas.length()").value(2))
+        .andExpect(jsonPath("$.acoesPermitidas[0]").value("EDITAR"))
+        .andExpect(jsonPath("$.acoesPermitidas[1]").value("COMENTAR"));
+    verify(obterUseCase, times(1)).execute(entrada);
+    verifyNoMoreInteractions(obterUseCase, eventPublisher);
+  }
+
+  @Test
+  void shouldReturnNullAllowedActionsWhenSolicitacoesAreListed() throws Exception {
+    // Arrange
+    final Solicitacao sol = criarSolicitacao();
+    when(listarUseCase.execute(any())).thenReturn(new PageResult<>(List.of(sol), 0, 20, 1, 1));
+    when(obterUseCase.listarResponsaveisBatch(List.of(sol.getId()))).thenReturn(java.util.Map.of());
+    when(obterUseCase.resolverNomes(List.of(sol.getAbertaPorUsuarioId())))
+        .thenReturn(java.util.Map.of());
+
+    // Act
+    final var resposta = mockMvc.perform(get("/api/solicitacoes"));
+
+    // Assert
+    resposta
+        .andExpect(status().isOk())
+        .andExpect(
+            jsonPath("$.content[0].acoesPermitidas").value(org.hamcrest.Matchers.nullValue()));
+    verify(obterUseCase, times(1)).listarResponsaveisBatch(List.of(sol.getId()));
+    verify(obterUseCase, times(1)).resolverNomes(List.of(sol.getAbertaPorUsuarioId()));
+    verify(obterUseCase, times(1)).resolverModelos(any());
+    verifyNoMoreInteractions(obterUseCase, eventPublisher);
+  }
+
+  @Test
+  void shouldReturnNamesAndKeepIdsWhenSolicitacaoIsFetchedById() throws Exception {
+    // Arrange
+    final Solicitacao sol = criarSolicitacao();
+    final UUID userId = UUID.randomUUID();
+    final UUID brunoId = UUID.randomUUID();
+    final UUID carlaId = UUID.randomUUID();
+    final ObterSolicitacaoUseCase.Input entrada =
+        new ObterSolicitacaoUseCase.Input(sol.getId(), userId);
+    when(obterUseCase.execute(entrada))
+        .thenReturn(
+            new ObterSolicitacaoUseCase.Output(
+                sol,
+                List.of(brunoId, carlaId),
+                List.of(
+                    new ObterSolicitacaoUseCase.ResponsavelNome(brunoId, "Bruno"),
+                    new ObterSolicitacaoUseCase.ResponsavelNome(carlaId, "Carla")),
+                "Ana",
+                java.util.Set.of()));
+
+    // Act
+    final var resposta =
+        mockMvc.perform(get("/api/solicitacoes/{id}", sol.getId()).with(user(userId.toString())));
+
+    // Assert
+    resposta
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.responsavelIds[0]").value(brunoId.toString()))
+        .andExpect(jsonPath("$.responsavelIds[1]").value(carlaId.toString()))
+        .andExpect(jsonPath("$.abertaPorUsuarioId").value(sol.getAbertaPorUsuarioId().toString()))
+        .andExpect(jsonPath("$.responsaveis.length()").value(2))
+        .andExpect(jsonPath("$.responsaveis[0].id").value(brunoId.toString()))
+        .andExpect(jsonPath("$.responsaveis[0].nome").value("Bruno"))
+        .andExpect(jsonPath("$.responsaveis[1].nome").value("Carla"))
+        .andExpect(jsonPath("$.abertaPorNome").value("Ana"));
+    verify(obterUseCase, times(1)).execute(entrada);
+    verifyNoMoreInteractions(obterUseCase, eventPublisher);
+  }
+
+  @Test
+  void shouldReturnNamesInOneLookupWhenSolicitacoesAreListed() throws Exception {
+    // Arrange
+    final Solicitacao primeira = criarSolicitacao();
+    final Solicitacao segunda = criarSolicitacao();
+    final UUID brunoId = UUID.randomUUID();
+    final UUID carlaId = UUID.randomUUID();
+    when(listarUseCase.execute(any()))
+        .thenReturn(new PageResult<>(List.of(primeira, segunda), 0, 20, 2, 1));
+    when(obterUseCase.listarResponsaveisBatch(List.of(primeira.getId(), segunda.getId())))
+        .thenReturn(java.util.Map.of(primeira.getId(), List.of(brunoId, carlaId)));
+    when(obterUseCase.resolverNomes(
+            List.of(
+                brunoId,
+                carlaId,
+                primeira.getAbertaPorUsuarioId(),
+                segunda.getAbertaPorUsuarioId())))
+        .thenReturn(
+            java.util.Map.of(
+                brunoId, "Bruno", carlaId, "Carla", primeira.getAbertaPorUsuarioId(), "Ana"));
+
+    // Act
+    final var resposta = mockMvc.perform(get("/api/solicitacoes"));
+
+    // Assert
+    resposta
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.content[0].responsavelIds.length()").value(2))
+        .andExpect(jsonPath("$.content[0].responsaveis[0].nome").value("Bruno"))
+        .andExpect(jsonPath("$.content[0].responsaveis[1].nome").value("Carla"))
+        .andExpect(jsonPath("$.content[0].abertaPorNome").value("Ana"))
+        .andExpect(jsonPath("$.content[1].responsavelIds.length()").value(0))
+        .andExpect(jsonPath("$.content[1].responsaveis.length()").value(0))
+        .andExpect(jsonPath("$.content[1].abertaPorNome").value(org.hamcrest.Matchers.nullValue()));
+    verify(obterUseCase, times(1))
+        .listarResponsaveisBatch(List.of(primeira.getId(), segunda.getId()));
+    verify(obterUseCase, times(1))
+        .resolverNomes(
+            List.of(
+                brunoId,
+                carlaId,
+                primeira.getAbertaPorUsuarioId(),
+                segunda.getAbertaPorUsuarioId()));
+    verify(obterUseCase, times(1)).resolverModelos(any());
+    verifyNoMoreInteractions(obterUseCase, eventPublisher);
+  }
+
+  @Test
+  void shouldNotReturnNamesNorPublishThemWhenSolicitacaoIsOpened() throws Exception {
+    // Arrange
+    final Solicitacao sol = criarSolicitacao();
+    final UUID userId = UUID.randomUUID();
+    final UUID modeloId = UUID.randomUUID();
+    when(abrirUseCase.execute(any())).thenReturn(sol);
+
+    // Act
+    final var resposta =
+        mockMvc.perform(
+            post("/api/solicitacoes")
+                .with(user(userId.toString()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        new AbrirSolicitacaoRequest(
+                            "Titulo", "Desc", "REPARO", modeloId, null, null, null))));
+
+    // Assert
+    resposta
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.responsaveis").value(org.hamcrest.Matchers.nullValue()))
+        .andExpect(jsonPath("$.abertaPorNome").value(org.hamcrest.Matchers.nullValue()));
+    final org.mockito.ArgumentCaptor<SolicitacaoEvent> evento =
+        org.mockito.ArgumentCaptor.forClass(SolicitacaoEvent.class);
+    verify(eventPublisher, times(1)).publish(eq("solicitacao"), evento.capture(), any(), any());
+    assertNull(evento.getValue().solicitacao().responsaveis());
+    assertNull(evento.getValue().solicitacao().abertaPorNome());
+    verifyNoMoreInteractions(eventPublisher);
+  }
+
+  @Test
+  void shouldReturnResultingAssigneesWhenAssigneesChange() throws Exception {
+    // Arrange
+    final Solicitacao sol = criarSolicitacao();
+    final UUID gestorId = UUID.randomUUID();
+    final UUID responsavelId = UUID.randomUUID();
+    final GerenciarResponsaveisUseCase.Input entrada =
+        new GerenciarResponsaveisUseCase.Input(sol.getId(), List.of(responsavelId), gestorId);
+    when(gerenciarResponsaveisUseCase.execute(entrada))
+        .thenReturn(new GerenciarResponsaveisUseCase.Output(sol, List.of()));
+
+    // Act
+    final var resposta =
+        mockMvc.perform(
+            patch("/api/solicitacoes/{id}/responsaveis", sol.getId())
+                .with(user(gestorId.toString()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        new GerenciarResponsaveisRequest(List.of(responsavelId)))));
+
+    // Assert
+    resposta
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.responsavelIds.length()").value(1))
+        .andExpect(jsonPath("$.responsavelIds[0]").value(responsavelId.toString()));
+    verify(gerenciarResponsaveisUseCase, times(1)).execute(entrada);
+    verify(eventPublisher, times(1))
+        .publish(
+            "solicitacao",
+            new SolicitacaoEvent(
+                "responsaveis_alterados", SolicitacaoResponse.from(sol, List.of(responsavelId))),
+            sol.getId(),
+            List.of());
+    verifyNoMoreInteractions(gerenciarResponsaveisUseCase, eventPublisher);
+  }
+
+  @Test
+  void shouldPublishComentadaActivityEventWhenCommentIsRegistered() throws Exception {
+    // Arrange
+    final UUID solId = UUID.randomUUID();
+    final UUID autorId = UUID.randomUUID();
+    final RegistrarComentarioUseCase.Input entrada =
+        new RegistrarComentarioUseCase.Input(solId, "Peca trocada", autorId);
+    when(comentarioUseCase.execute(entrada)).thenReturn(null);
+
+    // Act
+    final var resposta =
+        mockMvc.perform(
+            post("/api/solicitacoes/{id}/comentarios", solId)
+                .with(user(autorId.toString()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(new ComentarioRequest("Peca trocada"))));
+
+    // Assert
+    resposta.andExpect(status().isCreated());
+    verify(comentarioUseCase, times(1)).execute(entrada);
+    verify(eventPublisher, times(1))
+        .publish("solicitacao_atividade", new SolicitacaoAtividadeEvent("comentada", solId), solId);
+    verifyNoMoreInteractions(comentarioUseCase, eventPublisher);
+  }
+
+  @Test
+  void shouldNotPublishEventWhenCommentIsDenied() throws Exception {
+    // Arrange
+    final UUID solId = UUID.randomUUID();
+    final UUID autorId = UUID.randomUUID();
+    final RegistrarComentarioUseCase.Input entrada =
+        new RegistrarComentarioUseCase.Input(solId, "Peca trocada", autorId);
+    when(comentarioUseCase.execute(entrada))
+        .thenThrow(new NaoAutorizadoException("Usuario nao tem permissao para comentar"));
+
+    // Act
+    final var resposta =
+        mockMvc.perform(
+            post("/api/solicitacoes/{id}/comentarios", solId)
+                .with(user(autorId.toString()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(new ComentarioRequest("Peca trocada"))));
+
+    // Assert
+    resposta.andExpect(status().isForbidden());
+    verify(comentarioUseCase, times(1)).execute(entrada);
+    verifyNoMoreInteractions(comentarioUseCase, eventPublisher);
+  }
+
+  @Test
+  void shouldAnswerForbiddenWhenOperatorReadsSolicitacaoOfSomeoneElse() throws Exception {
+    // Arrange
+    final UUID solId = UUID.randomUUID();
+    final UUID operadorId = UUID.randomUUID();
+    final ObterSolicitacaoUseCase.Input entrada =
+        new ObterSolicitacaoUseCase.Input(solId, operadorId);
+    when(obterUseCase.execute(entrada))
+        .thenThrow(new NaoAutorizadoException("Usuario nao tem acesso a esta solicitacao"));
+
+    // Act
+    final var resposta =
+        mockMvc.perform(get("/api/solicitacoes/{id}", solId).with(user(operadorId.toString())));
+
+    // Assert
+    resposta
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.message").value("Usuario nao tem acesso a esta solicitacao"));
+    verify(obterUseCase, times(1)).execute(entrada);
+    verifyNoMoreInteractions(obterUseCase, eventPublisher);
+  }
+
+  @Test
+  void shouldAnswerForbiddenWhenOperatorReadsHistoryOfSomeoneElse() throws Exception {
+    // Arrange
+    final UUID solId = UUID.randomUUID();
+    final UUID operadorId = UUID.randomUUID();
+    final ListarAtividadesUseCase.Input entrada =
+        new ListarAtividadesUseCase.Input(solId, operadorId);
+    when(listarAtividadesUseCase.execute(entrada))
+        .thenThrow(new NaoAutorizadoException("Usuario nao tem acesso a esta solicitacao"));
+
+    // Act
+    final var resposta =
+        mockMvc.perform(
+            get("/api/solicitacoes/{id}/atividades", solId).with(user(operadorId.toString())));
+
+    // Assert
+    resposta
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.message").value("Usuario nao tem acesso a esta solicitacao"));
+    verify(listarAtividadesUseCase, times(1)).execute(entrada);
+    verifyNoMoreInteractions(listarAtividadesUseCase, eventPublisher);
+  }
+
+  @Test
+  void shouldTellPublisherWhoLostAccessWhenAssigneesAreRemoved() throws Exception {
+    // Arrange
+    final Solicitacao sol = criarSolicitacao();
+    final UUID gestorId = UUID.randomUUID();
+    final UUID removido = UUID.randomUUID();
+    final List<UUID> responsaveis = List.of(UUID.randomUUID());
+    final GerenciarResponsaveisUseCase.Input entrada =
+        new GerenciarResponsaveisUseCase.Input(sol.getId(), responsaveis, gestorId);
+    when(gerenciarResponsaveisUseCase.execute(entrada))
+        .thenReturn(new GerenciarResponsaveisUseCase.Output(sol, List.of(removido)));
+
+    // Act
+    final var resposta =
+        mockMvc.perform(
+            patch("/api/solicitacoes/{id}/responsaveis", sol.getId())
+                .with(user(gestorId.toString()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        new GerenciarResponsaveisRequest(responsaveis))));
+
+    // Assert
+    resposta.andExpect(status().isOk());
+    verify(gerenciarResponsaveisUseCase, times(1)).execute(entrada);
+    verify(eventPublisher, times(1))
+        .publish(
+            "solicitacao",
+            new SolicitacaoEvent(
+                "responsaveis_alterados", SolicitacaoResponse.from(sol, responsaveis)),
+            sol.getId(),
+            List.of(removido));
+    verifyNoMoreInteractions(gerenciarResponsaveisUseCase, eventPublisher);
+  }
+
+  private static String texto(final int tamanho) {
+    return "x".repeat(tamanho);
+  }
+
+  private static Stream<Arguments> textosAcimaDoLimite() {
+    final UUID id = UUID.randomUUID();
+    final UUID modeloId = UUID.randomUUID();
+    return Stream.of(
+        Arguments.of(
+            post("/api/solicitacoes"),
+            new AbrirSolicitacaoRequest(
+                texto(LimitesTexto.SOLICITACAO_TITULO + 1),
+                "D",
+                "REPARO",
+                modeloId,
+                null,
+                null,
+                null),
+            "titulo",
+            LimitesTexto.SOLICITACAO_TITULO),
+        Arguments.of(
+            post("/api/solicitacoes"),
+            new AbrirSolicitacaoRequest(
+                "T",
+                texto(LimitesTexto.SOLICITACAO_DESCRICAO + 1),
+                "REPARO",
+                modeloId,
+                null,
+                null,
+                null),
+            "descricao",
+            LimitesTexto.SOLICITACAO_DESCRICAO),
+        Arguments.of(
+            post("/api/solicitacoes"),
+            new AbrirSolicitacaoRequest(
+                "T",
+                "D",
+                "CRIACAO",
+                null,
+                texto(LimitesTexto.MODELO_PRETENDIDO_CODIGO + 1),
+                "FBOX",
+                null),
+            "modeloCodigo",
+            LimitesTexto.MODELO_PRETENDIDO_CODIGO),
+        Arguments.of(
+            post("/api/solicitacoes"),
+            new AbrirSolicitacaoRequest(
+                "T",
+                "D",
+                "CRIACAO",
+                null,
+                "COD",
+                texto(LimitesTexto.MODELO_PRETENDIDO_MAQUINA + 1),
+                null),
+            "modeloMaquina",
+            LimitesTexto.MODELO_PRETENDIDO_MAQUINA),
+        Arguments.of(
+            post("/api/solicitacoes"),
+            new AbrirSolicitacaoRequest(
+                "T",
+                "D",
+                "CRIACAO",
+                null,
+                "COD",
+                "FBOX",
+                texto(LimitesTexto.MODELO_PRETENDIDO_OBSERVACOES + 1)),
+            "modeloObservacoes",
+            LimitesTexto.MODELO_PRETENDIDO_OBSERVACOES),
+        Arguments.of(
+            put("/api/solicitacoes/{id}", id),
+            new EditarSolicitacaoRequest(texto(LimitesTexto.SOLICITACAO_TITULO + 1), "D", "REPARO"),
+            "titulo",
+            LimitesTexto.SOLICITACAO_TITULO),
+        Arguments.of(
+            put("/api/solicitacoes/{id}", id),
+            new EditarSolicitacaoRequest(
+                "T", texto(LimitesTexto.SOLICITACAO_DESCRICAO + 1), "REPARO"),
+            "descricao",
+            LimitesTexto.SOLICITACAO_DESCRICAO),
+        Arguments.of(
+            post("/api/solicitacoes/{id}/comentarios", id),
+            new ComentarioRequest(texto(LimitesTexto.COMENTARIO + 1)),
+            "comentario",
+            LimitesTexto.COMENTARIO),
+        Arguments.of(
+            patch("/api/solicitacoes/{id}/cancelar", id),
+            new CancelarSolicitacaoRequest(texto(LimitesTexto.COMENTARIO + 1)),
+            "motivo",
+            LimitesTexto.COMENTARIO),
+        Arguments.of(
+            patch("/api/solicitacoes/{id}/devolver", id),
+            new DevolverSolicitacaoRequest(texto(LimitesTexto.COMENTARIO + 1), null),
+            "motivo",
+            LimitesTexto.COMENTARIO),
+        Arguments.of(
+            patch("/api/solicitacoes/{id}/encerrar", id),
+            new EncerrarSolicitacaoRequest(true, texto(LimitesTexto.COMENTARIO + 1)),
+            "comentario",
+            LimitesTexto.COMENTARIO));
+  }
+
+  @ParameterizedTest
+  @MethodSource("textosAcimaDoLimite")
+  void shouldAnswerBadRequestNamingFieldAndLimitWhenTextIsOneCharacterAboveLimit(
+      final MockHttpServletRequestBuilder chamada,
+      final Object corpo,
+      final String campo,
+      final int limite)
+      throws Exception {
+    // Arrange
+    final String mensagem = campo + ": deve ter no máximo " + limite + " caracteres";
+
+    // Act
+    final var resposta =
+        mockMvc.perform(
+            chamada
+                .with(user(UUID.randomUUID().toString()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(corpo)));
+
+    // Assert
+    resposta.andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value(mensagem));
+    verifyNoMoreInteractions(
+        abrirUseCase,
+        editarUseCase,
+        comentarioUseCase,
+        cancelarUseCase,
+        devolverUseCase,
+        encerrarUseCase,
+        eventPublisher);
+  }
+
+  @Test
+  void shouldOpenSolicitacaoWhenTitleIsExactlyAtLimit() throws Exception {
+    // Arrange
+    final Solicitacao sol = criarSolicitacao();
+    final UUID userId = UUID.randomUUID();
+    final UUID modeloId = UUID.randomUUID();
+    final String noLimite = texto(LimitesTexto.SOLICITACAO_TITULO);
+    final AbrirSolicitacaoUseCase.Input entrada =
+        new AbrirSolicitacaoUseCase.Input(
+            noLimite, "Desc", TipoSolicitacao.REPARO, modeloId, null, null, null, userId);
+    when(abrirUseCase.execute(entrada)).thenReturn(sol);
+
+    // Act
+    final var resposta =
+        mockMvc.perform(
+            post("/api/solicitacoes")
+                .with(user(userId.toString()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        new AbrirSolicitacaoRequest(
+                            noLimite, "Desc", "REPARO", modeloId, null, null, null))));
+
+    // Assert
+    resposta.andExpect(status().isCreated());
+    verify(abrirUseCase, times(1)).execute(entrada);
+    verify(eventPublisher, times(1))
+        .publish(
+            "solicitacao",
+            new SolicitacaoEvent("aberta", SolicitacaoResponse.from(sol)),
+            sol.getId(),
+            List.of());
+    verifyNoMoreInteractions(abrirUseCase, eventPublisher);
+  }
+
+  @Test
+  void shouldRespond400WithoutCallingUseCaseWhenPageIsNegative() throws Exception {
+    // Arrange
+    final String pagina = "-1";
+
+    // Act
+    final var resposta = mockMvc.perform(get("/api/solicitacoes").param("page", pagina));
+
+    // Assert
+    resposta.andExpect(status().isBadRequest());
+    verifyNoInteractions(listarUseCase);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"0", "-5", "101", "5000"})
+  void shouldRespond400WithoutCallingUseCaseWhenSizeIsOutOfRange(final String tamanho)
+      throws Exception {
+    // Act
+    final var resposta = mockMvc.perform(get("/api/solicitacoes").param("size", tamanho));
+
+    // Assert
+    resposta.andExpect(status().isBadRequest());
+    verifyNoInteractions(listarUseCase);
+  }
+
+  @Test
+  void shouldAcceptSizeWhenSizeIsTheMaximumOf100() throws Exception {
+    // Arrange
+    when(listarUseCase.execute(any())).thenReturn(new PageResult<>(List.of(), 0, 100, 0, 0));
+    when(obterUseCase.listarResponsaveisBatch(any())).thenReturn(java.util.Map.of());
+    final ArgumentCaptor<ListarSolicitacoesUseCase.Input> captor =
+        ArgumentCaptor.forClass(ListarSolicitacoesUseCase.Input.class);
+
+    // Act
+    final var resposta = mockMvc.perform(get("/api/solicitacoes").param("size", "100"));
+
+    // Assert
+    resposta.andExpect(status().isOk());
+    verify(listarUseCase, times(1)).execute(captor.capture());
+    assertEquals(100, captor.getValue().size());
+    assertEquals(0, captor.getValue().page());
+    verifyNoMoreInteractions(listarUseCase);
+    verify(obterUseCase, times(1)).listarResponsaveisBatch(List.of());
+    verify(obterUseCase, times(1)).resolverNomes(List.of());
+    verify(obterUseCase, times(1)).resolverModelos(any());
+    verifyNoMoreInteractions(obterUseCase);
+  }
+
+  @Test
+  void shouldUseSize20WhenSizeIsNotInformed() throws Exception {
+    // Arrange
+    when(listarUseCase.execute(any())).thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
+    when(obterUseCase.listarResponsaveisBatch(any())).thenReturn(java.util.Map.of());
+    final ArgumentCaptor<ListarSolicitacoesUseCase.Input> captor =
+        ArgumentCaptor.forClass(ListarSolicitacoesUseCase.Input.class);
+
+    // Act
+    final var resposta = mockMvc.perform(get("/api/solicitacoes"));
+
+    // Assert
+    resposta.andExpect(status().isOk());
+    verify(listarUseCase, times(1)).execute(captor.capture());
+    assertEquals(20, captor.getValue().size());
+    verifyNoMoreInteractions(listarUseCase);
+    verify(obterUseCase, times(1)).listarResponsaveisBatch(List.of());
+    verify(obterUseCase, times(1)).resolverNomes(List.of());
+    verify(obterUseCase, times(1)).resolverModelos(any());
+    verifyNoMoreInteractions(obterUseCase);
+  }
+
+  @Test
+  void shouldLevarCriterioESentidoAoCasoDeUsoWhenListagemRecebeSortEDir() throws Exception {
+    // Arrange
+    when(listarUseCase.execute(any())).thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
+    when(obterUseCase.listarResponsaveisBatch(any())).thenReturn(java.util.Map.of());
+    final ArgumentCaptor<ListarSolicitacoesUseCase.Input> captor =
+        ArgumentCaptor.forClass(ListarSolicitacoesUseCase.Input.class);
+
+    // Act
+    final var resposta =
+        mockMvc.perform(get("/api/solicitacoes").param("sort", "prazoLimite").param("dir", "desc"));
+
+    // Assert
+    resposta.andExpect(status().isOk());
+    verify(listarUseCase, times(1)).execute(captor.capture());
+    assertEquals(
+        new OrdenacaoSolicitacao(CriterioOrdenacaoSolicitacao.PRAZO_LIMITE, false),
+        captor.getValue().ordenacao());
+    verifyNoMoreInteractions(listarUseCase);
+  }
+
+  @Test
+  void shouldLevarABuscaAoCasoDeUsoWhenListagemRecebeQ() throws Exception {
+    // Arrange
+    when(listarUseCase.execute(any())).thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
+    when(obterUseCase.listarResponsaveisBatch(any())).thenReturn(java.util.Map.of());
+    final ArgumentCaptor<ListarSolicitacoesUseCase.Input> captor =
+        ArgumentCaptor.forClass(ListarSolicitacoesUseCase.Input.class);
+
+    // Act
+    final var resposta = mockMvc.perform(get("/api/solicitacoes").param("q", "  correia "));
+
+    // Assert
+    resposta.andExpect(status().isOk());
+    verify(listarUseCase, times(1)).execute(captor.capture());
+    assertEquals("correia", captor.getValue().busca());
+  }
+
+  @Test
+  void shouldRespond400WhenQHasOneCharacter() throws Exception {
+    // Arrange
+    final String q = "a";
+
+    // Act
+    final var resposta = mockMvc.perform(get("/api/solicitacoes").param("q", q));
+
+    // Assert
+    resposta
+        .andExpect(status().isBadRequest())
+        .andExpect(
+            jsonPath("$.message")
+                .value("Parâmetro 'q' deve ter de 2 a 100 caracteres (recebido: 1)"));
+    verifyNoMoreInteractions(listarUseCase);
+  }
+
+  @Test
+  void shouldFillModeloCodeMachineAndVersionWhenSolicitacoesAreListed() throws Exception {
+    // Arrange
+    final UUID modeloId = UUID.randomUUID();
+    final Solicitacao sol =
+        Solicitacao.abrir(
+            "T", "D", TipoSolicitacao.REPARO, modeloId, UUID.randomUUID(), Instant.now());
+    when(listarUseCase.execute(any())).thenReturn(new PageResult<>(List.of(sol), 0, 20, 1, 1));
+    when(obterUseCase.listarResponsaveisBatch(any())).thenReturn(java.util.Map.of());
+    when(obterUseCase.resolverModelos(any()))
+        .thenReturn(
+            java.util.Map.of(
+                modeloId, new ObterSolicitacaoUseCase.ResumoModelo("COR-1", "FBOX", 4)));
+
+    // Act
+    final var resposta = mockMvc.perform(get("/api/solicitacoes"));
+
+    // Assert
+    resposta
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.content[0].modeloCodigo").value("COR-1"))
+        .andExpect(jsonPath("$.content[0].modeloMaquina").value("FBOX"))
+        .andExpect(jsonPath("$.content[0].modeloVersao").value(4));
+  }
+
+  @Test
+  void shouldLevarAOrdenacaoPadraoAoCasoDeUsoWhenListagemNaoRecebeSort() throws Exception {
+    // Arrange
+    when(listarUseCase.execute(any())).thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
+    when(obterUseCase.listarResponsaveisBatch(any())).thenReturn(java.util.Map.of());
+    final ArgumentCaptor<ListarSolicitacoesUseCase.Input> captor =
+        ArgumentCaptor.forClass(ListarSolicitacoesUseCase.Input.class);
+
+    // Act
+    final var resposta = mockMvc.perform(get("/api/solicitacoes"));
+
+    // Assert
+    resposta.andExpect(status().isOk());
+    verify(listarUseCase, times(1)).execute(captor.capture());
+    assertEquals(OrdenacaoSolicitacao.PADRAO, captor.getValue().ordenacao());
+    verifyNoMoreInteractions(listarUseCase);
+  }
+
+  @Test
+  void shouldRespond400NamingSortAndAcceptedValuesWhenSortIsInvalid() throws Exception {
+    // Arrange
+    final String sortInvalido = "titulo";
+    final String esperado =
+        "Parâmetro 'sort' inválido (recebido: titulo)."
+            + " Valores aceitos: criadaEm, prazoLimite, prioridade, concluidaEm";
+
+    // Act
+    final var resposta = mockMvc.perform(get("/api/solicitacoes").param("sort", sortInvalido));
+
+    // Assert
+    resposta.andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value(esperado));
+    verifyNoInteractions(listarUseCase);
+  }
+
+  @Test
+  void shouldRespond400NamingDirAndAcceptedValuesWhenDirIsInvalid() throws Exception {
+    // Arrange
+    final String dirInvalido = "up";
+    final String esperado = "Parâmetro 'dir' inválido (recebido: up). Valores aceitos: asc, desc";
+
+    // Act
+    final var resposta =
+        mockMvc.perform(
+            get("/api/solicitacoes").param("sort", "criadaEm").param("dir", dirInvalido));
+
+    // Assert
+    resposta.andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value(esperado));
+    verifyNoInteractions(listarUseCase);
+  }
+
+  @ParameterizedTest
+  @CsvSource({"criadaEmInicio,ontem", "criadaEmFim,ontem", "dataInicio,32/13/2026", "dataFim,xx"})
+  void shouldRespond400NamingTheParameterWhenDateIsNotIso8601(
+      final String parametro, final String valor) throws Exception {
+    // Act
+    final var resposta = mockMvc.perform(get("/api/solicitacoes").param(parametro, valor));
+
+    // Assert
+    resposta
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.message").value(containsString(parametro)));
+    verifyNoInteractions(listarUseCase);
+  }
+
+  @ParameterizedTest
+  @CsvSource({"status,INVALIDO", "tipo,INVALIDO", "prioridade,INVALIDA", "tipoData,INVALIDO"})
+  void shouldRespond400WithoutLeakingClassNameWhenEnumerationIsInvalid(
+      final String parametro, final String valor) throws Exception {
+    // Act
+    final var resposta = mockMvc.perform(get("/api/solicitacoes").param(parametro, valor));
+
+    // Assert
+    resposta
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.message").value(containsString(parametro)))
+        .andExpect(jsonPath("$.message").value(not(containsString("com.rgm"))))
+        .andExpect(jsonPath("$.message").value(not(containsString("No enum constant"))));
+    verifyNoInteractions(listarUseCase);
+  }
+
+  @Test
+  void shouldRespond400WithoutCallingUseCaseWhenMetricsByModelSizeExceedsMaximum()
+      throws Exception {
+    // Arrange
+    final String tamanho = "101";
+
+    // Act
+    final var resposta =
+        mockMvc.perform(get("/api/solicitacoes/metricas/por-modelo").param("size", tamanho));
+
+    // Assert
+    resposta.andExpect(status().isBadRequest());
+    verifyNoInteractions(obterMetricasPorModeloUseCase);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"0", "-1", "366"})
+  void shouldRespond400WithoutCallingUseCaseWhenHistoryDaysIsOutOfRange(final String dias)
+      throws Exception {
+    // Arrange
+    final String esperado = "Parâmetro 'dias' deve estar entre 1 e 365 (recebido: " + dias + ")";
+
+    // Act
+    final var resposta =
+        mockMvc.perform(
+            get("/api/solicitacoes/metricas/historico").param("dias", dias).with(user("admin")));
+
+    // Assert
+    resposta.andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value(esperado));
+    verifyNoInteractions(obterHistoricoMetricasUseCase);
+  }
+
+  @Test
+  void shouldPassHistoryDaysToUseCaseWhenDaysIsAtMaximum() throws Exception {
+    // Arrange
+    when(obterHistoricoMetricasUseCase.execute(any()))
+        .thenReturn(
+            new com.rgm.api.core.application.usecases.solicitacao.ObterHistoricoMetricasUseCase
+                .Output(List.of(), 0, "Últimos 365 dias"));
+
+    // Act
+    final var resposta =
+        mockMvc.perform(
+            get("/api/solicitacoes/metricas/historico").param("dias", "365").with(user("admin")));
+
+    // Assert
+    resposta.andExpect(status().isOk());
+    verify(obterHistoricoMetricasUseCase, times(1))
+        .execute(
+            new com.rgm.api.core.application.usecases.solicitacao.ObterHistoricoMetricasUseCase
+                .Input(365, null));
+    verifyNoMoreInteractions(obterHistoricoMetricasUseCase);
+  }
+
+  @Test
+  void shouldRespond400WithoutCallingUseCaseWhenOpenBodyIsMalformedJson() throws Exception {
+    // Arrange
+    final String corpo = "{ json quebrado";
+
+    // Act
+    final var resposta =
+        mockMvc.perform(
+            post("/api/solicitacoes")
+                .with(user(UUID.randomUUID().toString()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(corpo));
+
+    // Assert
+    resposta.andExpect(status().isBadRequest());
+    verifyNoInteractions(abrirUseCase);
   }
 }

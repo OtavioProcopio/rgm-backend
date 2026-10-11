@@ -5,7 +5,9 @@ import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.model.aggregates.Usuario;
 import com.rgm.api.core.domain.model.enums.PerfilUsuario;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
+import com.rgm.api.core.domain.ports.services.AccessTokenIssuer;
 import com.rgm.api.core.domain.ports.services.PasswordHasher;
+import com.rgm.api.core.domain.validation.PoliticaSenha;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -14,24 +16,29 @@ public final class AlterarSenhaPropriaUseCase {
 
   private final UsuarioRepository usuarioRepository;
   private final PasswordHasher passwordHasher;
+  private final AccessTokenIssuer tokenIssuer;
 
   public AlterarSenhaPropriaUseCase(
-      final UsuarioRepository usuarioRepository, final PasswordHasher passwordHasher) {
+      final UsuarioRepository usuarioRepository,
+      final PasswordHasher passwordHasher,
+      final AccessTokenIssuer tokenIssuer) {
     this.usuarioRepository = usuarioRepository;
     this.passwordHasher = passwordHasher;
+    this.tokenIssuer = tokenIssuer;
   }
 
   public record Input(UUID usuarioId, String senhaAtual, String novaSenha) {}
 
-  public Usuario execute(final Input input) {
+  /** As credenciais novas mantem aberta a sessao que trocou a senha; as antigas deixam de valer. */
+  public record Output(Usuario usuario, String token, String refreshToken) {}
+
+  public Output execute(final Input input) {
     final Instant agora = Instant.now();
 
     if (input.senhaAtual() == null || input.senhaAtual().isBlank()) {
       throw new BusinessRuleException("Senha atual e obrigatoria");
     }
-    if (input.novaSenha() == null || input.novaSenha().isBlank()) {
-      throw new BusinessRuleException("Nova senha e obrigatoria");
-    }
+    PoliticaSenha.validar(input.novaSenha());
 
     final Usuario usuario =
         usuarioRepository
@@ -47,6 +54,7 @@ public final class AlterarSenhaPropriaUseCase {
     }
 
     final String novaSenhaHash = passwordHasher.hash(input.novaSenha());
-    return usuarioRepository.save(usuario.withSenha(novaSenhaHash, agora));
+    final Usuario salvo = usuarioRepository.save(usuario.withSenha(novaSenhaHash, agora));
+    return new Output(salvo, tokenIssuer.issue(salvo), tokenIssuer.issueRefreshToken(salvo));
   }
 }

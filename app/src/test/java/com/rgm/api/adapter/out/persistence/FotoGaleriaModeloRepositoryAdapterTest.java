@@ -5,13 +5,16 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import com.rgm.api.adapter.out.persistence.entity.FotoGaleriaModeloJpaEntity;
 import com.rgm.api.adapter.out.persistence.repository.FotoGaleriaModeloJpaRepository;
 import com.rgm.api.core.domain.model.aggregates.FotoGaleriaModelo;
+import java.lang.reflect.Method;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -19,6 +22,8 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
+import org.springframework.transaction.annotation.Transactional;
 
 class FotoGaleriaModeloRepositoryAdapterTest {
 
@@ -98,10 +103,35 @@ class FotoGaleriaModeloRepositoryAdapterTest {
   }
 
   @Test
-  void limparPrincipal_delegaAoJpa() {
+  void shouldLimparCapaEGravarWhenSalvarComoPrincipal() {
+    // Arrange
     final UUID modeloId = UUID.randomUUID();
-    adapter.limparPrincipal(modeloId);
-    verify(jpa).limparPrincipal(modeloId);
+    final FotoGaleriaModelo domain = criarDomain(modeloId);
+    when(jpa.save(any(FotoGaleriaModeloJpaEntity.class))).thenReturn(criarEntity(modeloId));
+
+    // Act
+    final FotoGaleriaModelo result = adapter.salvarComoPrincipal(domain);
+
+    // Assert
+    assertEquals(modeloId, result.getModeloId());
+    final InOrder ordem = inOrder(jpa);
+    ordem.verify(jpa).limparPrincipal(modeloId);
+    ordem.verify(jpa).save(any(FotoGaleriaModeloJpaEntity.class));
+    verifyNoMoreInteractions(jpa);
+  }
+
+  @Test
+  void shouldSerTransacionalWhenSalvarComoPrincipal() throws NoSuchMethodException {
+    // Arrange
+    final Method metodo =
+        FotoGaleriaModeloRepositoryAdapter.class.getMethod(
+            "salvarComoPrincipal", FotoGaleriaModelo.class);
+
+    // Act
+    final Transactional transacional = metodo.getAnnotation(Transactional.class);
+
+    // Assert
+    assertNotNull(transacional);
   }
 
   @Test

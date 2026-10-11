@@ -1,6 +1,8 @@
 package com.rgm.api.adapter.in.web.dto.request;
 
+import com.rgm.api.core.domain.validation.LimitesTexto;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
 /**
  * {@code tipo} e opcional e ignorado quando ausente — o tipo da solicitacao e imutavel apos a
@@ -8,4 +10,8 @@ import jakarta.validation.constraints.NotBlank;
  * ainda reenviam o tipo atual.
  */
 public record EditarSolicitacaoRequest(
-    @NotBlank String titulo, @NotBlank String descricao, String tipo) {}
+    @NotBlank @Size(max = LimitesTexto.SOLICITACAO_TITULO, message = LimitesTexto.MENSAGEM)
+        String titulo,
+    @NotBlank @Size(max = LimitesTexto.SOLICITACAO_DESCRICAO, message = LimitesTexto.MENSAGEM)
+        String descricao,
+    String tipo) {}

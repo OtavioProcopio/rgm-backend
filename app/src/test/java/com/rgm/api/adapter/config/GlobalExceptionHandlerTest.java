@@ -1,11 +1,13 @@
 package com.rgm.api.adapter.config;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.rgm.api.adapter.in.web.dto.response.ErrorResponse;
 import com.rgm.api.core.domain.exceptions.BusinessRuleException;
+import com.rgm.api.core.domain.exceptions.ConflitoException;
 import com.rgm.api.core.domain.exceptions.NaoAutorizadoException;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.exceptions.TransicaoStatusInvalidaException;
@@ -15,8 +17,10 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpInputMessage;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
@@ -52,6 +56,20 @@ class GlobalExceptionHandlerTest {
     assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
     assertEquals(400, response.getBody().status());
     assertEquals("Erro de validação", response.getBody().message());
+  }
+
+  @Test
+  void shouldReturn409WhenConflitoException() {
+    // Arrange
+    final ConflitoException ex = new ConflitoException("Ja existe o modelo X versao 1");
+
+    // Act
+    final ResponseEntity<ErrorResponse> response = handler.handleConflito(ex);
+
+    // Assert
+    assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+    assertEquals(409, response.getBody().status());
+    assertEquals("Ja existe o modelo X versao 1", response.getBody().message());
   }
 
   @Test
@@ -93,6 +111,58 @@ class GlobalExceptionHandlerTest {
     assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
     assertEquals(409, response.getBody().status());
     assertEquals("Registro duplicado ou violacao de integridade", response.getBody().message());
+  }
+
+  @Test
+  void shouldAnswerBadRequestWhenDatabaseRefusesValueTooLong() {
+    // Arrange
+    final DataIntegrityViolationException ex =
+        new DataIntegrityViolationException(
+            "could not execute statement",
+            new RuntimeException(
+                new java.sql.SQLException("value too long for type varchar(255)", "22001")));
+
+    // Act
+    final ResponseEntity<ErrorResponse> response = handler.handleDataIntegrity(ex);
+
+    // Assert
+    assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+    assertEquals(
+        ErrorResponse.of(400, "Validation Error", "Texto acima do limite do campo").message(),
+        response.getBody().message());
+  }
+
+  @Test
+  void shouldAnswerConflictWhenDatabaseRefusesDuplicateValue() {
+    // Arrange
+    final DataIntegrityViolationException ex =
+        new DataIntegrityViolationException(
+            "could not execute statement",
+            new java.sql.SQLException("duplicate key value violates unique constraint", "23505"));
+
+    // Act
+    final ResponseEntity<ErrorResponse> response = handler.handleDataIntegrity(ex);
+
+    // Assert
+    assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+    assertEquals("Registro duplicado ou violacao de integridade", response.getBody().message());
+  }
+
+  @Test
+  void shouldAnswerConflictWhenRecordWasChangedBySomeoneElse() {
+    // Arrange
+    final var ex =
+        new org.springframework.orm.ObjectOptimisticLockingFailureException(
+            "Solicitacao", java.util.UUID.randomUUID());
+
+    // Act
+    final ResponseEntity<ErrorResponse> response = handler.handleOptimisticLock(ex);
+
+    // Assert
+    assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+    assertEquals(
+        "Este registro foi alterado por outro usuario. Recarregue e tente novamente.",
+        response.getBody().message());
   }
 
   @Test
@@ -171,5 +241,51 @@ class GlobalExceptionHandlerTest {
     assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
     assertEquals(400, response.getBody().status());
     assertEquals("email: Formato inválido", response.getBody().message());
+  }
+
+  @Test
+  void shouldResponder400WhenCorpoDaRequisicaoEMalformado() {
+    // Arrange
+    final HttpMessageNotReadableException ex =
+        new HttpMessageNotReadableException(
+            "JSON parse error: Unexpected character ('j')", mock(HttpInputMessage.class));
+
+    // Act
+    final ResponseEntity<ErrorResponse> response = handler.handleMessageNotReadable(ex);
+
+    // Assert
+    assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+    assertEquals(400, response.getBody().status());
+    assertEquals("Corpo da requisição inválido ou malformado", response.getBody().message());
+  }
+
+  @Test
+  void shouldNaoExporDetalheInternoWhenCorpoDaRequisicaoEMalformado() {
+    // Arrange
+    final HttpMessageNotReadableException ex =
+        new HttpMessageNotReadableException(
+            "JSON parse error: Unexpected character ('j')", mock(HttpInputMessage.class));
+
+    // Act
+    final ResponseEntity<ErrorResponse> response = handler.handleMessageNotReadable(ex);
+
+    // Assert
+    assertFalse(response.getBody().message().contains("JSON parse"));
+  }
+
+  @Test
+  void shouldNaoExporClasseInternaWhenArgumentoIlegalVemDeEnumeracao() {
+    // Arrange
+    final IllegalArgumentException ex =
+        new IllegalArgumentException(
+            "No enum constant com.rgm.api.core.domain.model.enums.StatusSolicitacao.INVALIDO");
+
+    // Act
+    final ResponseEntity<ErrorResponse> response = handler.handleIllegalArgument(ex);
+
+    // Assert
+    assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+    assertFalse(response.getBody().message().contains("No enum constant"));
+    assertFalse(response.getBody().message().contains("com.rgm"));
   }
 }

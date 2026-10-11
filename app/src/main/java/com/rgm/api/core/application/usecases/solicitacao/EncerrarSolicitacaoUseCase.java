@@ -32,6 +32,7 @@ public class EncerrarSolicitacaoUseCase {
   private final EventoModeloRepository eventoModeloRepository;
   private final DomainEventPublisher eventPublisher;
   private final GerenciarModelosUseCase gerenciarModelosUseCase;
+  private final CancelarSolicitacaoUseCase cancelarUseCase;
 
   public EncerrarSolicitacaoUseCase(
       final SolicitacaoRepository solicitacaoRepository,
@@ -39,13 +40,15 @@ public class EncerrarSolicitacaoUseCase {
       final AtividadeSolicitacaoRepository atividadeRepository,
       final EventoModeloRepository eventoModeloRepository,
       final DomainEventPublisher eventPublisher,
-      final GerenciarModelosUseCase gerenciarModelosUseCase) {
+      final GerenciarModelosUseCase gerenciarModelosUseCase,
+      final CancelarSolicitacaoUseCase cancelarUseCase) {
     this.solicitacaoRepository = solicitacaoRepository;
     this.usuarioRepository = usuarioRepository;
     this.atividadeRepository = atividadeRepository;
     this.eventoModeloRepository = eventoModeloRepository;
     this.eventPublisher = eventPublisher;
     this.gerenciarModelosUseCase = gerenciarModelosUseCase;
+    this.cancelarUseCase = cancelarUseCase;
   }
 
   public record Input(
@@ -67,40 +70,36 @@ public class EncerrarSolicitacaoUseCase {
       throw new NaoAutorizadoException("Perfil sem permissao para encerrar solicitacoes");
     }
 
+    // Cancelar deixa a mesma trilha (status e motivo) pelos dois endpoints.
+    if (!input.concluir()) {
+      return cancelarUseCase.execute(
+          new CancelarSolicitacaoUseCase.Input(
+              input.solicitacaoId(), input.comentarioFinal(), input.gestorId()));
+    }
+
     final Solicitacao solicitacao =
         solicitacaoRepository
             .findById(input.solicitacaoId())
             .orElseThrow(() -> new RecursoNaoEncontradoException("Solicitacao nao encontrada"));
 
+    final boolean geradaPorCriacao = solicitacao.getTipo() == TipoSolicitacao.CRIACAO;
     final Solicitacao encerrada;
-    final StatusSolicitacao novoStatus;
-    final boolean geradaPorCriacao;
-
-    if (input.concluir()) {
-      novoStatus = StatusSolicitacao.CONCLUIDA;
-      if (solicitacao.getTipo() == TipoSolicitacao.CRIACAO) {
-        final Modelo modeloCriado =
-            gerenciarModelosUseCase.criar(
-                new GerenciarModelosUseCase.CriarInput(
-                    solicitacao.getModeloCodigo(),
-                    solicitacao.getDescricao(),
-                    solicitacao.getModeloObservacoes(),
-                    solicitacao.getModeloMaquina(),
-                    null,
-                    input.gestorId(),
-                    solicitacao.getId()));
-        encerrada =
-            solicitacao.concluirCriacao(input.comentarioFinal(), modeloCriado.getId(), agora);
-        geradaPorCriacao = true;
-      } else {
-        encerrada = solicitacao.concluir(input.comentarioFinal(), agora);
-        geradaPorCriacao = false;
-      }
+    if (geradaPorCriacao) {
+      final Modelo modeloCriado =
+          gerenciarModelosUseCase.criar(
+              new GerenciarModelosUseCase.CriarInput(
+                  solicitacao.getModeloCodigo(),
+                  solicitacao.getDescricao(),
+                  solicitacao.getModeloObservacoes(),
+                  solicitacao.getModeloMaquina(),
+                  null,
+                  input.gestorId(),
+                  solicitacao.getId()));
+      encerrada = solicitacao.concluirCriacao(input.comentarioFinal(), modeloCriado.getId(), agora);
     } else {
-      encerrada = solicitacao.cancelar(input.comentarioFinal(), agora);
-      novoStatus = StatusSolicitacao.CANCELADA;
-      geradaPorCriacao = false;
+      encerrada = solicitacao.concluir(input.comentarioFinal(), agora);
     }
+    final StatusSolicitacao novoStatus = StatusSolicitacao.CONCLUIDA;
 
     final Solicitacao salva = solicitacaoRepository.save(encerrada);
 

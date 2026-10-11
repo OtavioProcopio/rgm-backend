@@ -2,15 +2,18 @@ package com.rgm.api.adapter.config;
 
 import com.rgm.api.adapter.in.web.dto.response.ErrorResponse;
 import com.rgm.api.core.domain.exceptions.BusinessRuleException;
+import com.rgm.api.core.domain.exceptions.ConflitoException;
 import com.rgm.api.core.domain.exceptions.NaoAutorizadoException;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.exceptions.TransicaoStatusInvalidaException;
 import com.rgm.api.core.domain.exceptions.ValidationException;
+import java.sql.SQLException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -21,6 +24,10 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 public class GlobalExceptionHandler {
 
   private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+  private static final String SQLSTATE_VALOR_LONGO = "22001";
+  private static final String PREFIXO_ENUMERACAO_INVALIDA = "No enum constant";
+  private static final String MENSAGEM_ENUMERACAO_INVALIDA =
+      "Valor inválido para um dos campos informados";
 
   @ExceptionHandler(RecursoNaoEncontradoException.class)
   public ResponseEntity<ErrorResponse> handleNotFound(final RecursoNaoEncontradoException ex) {
@@ -38,6 +45,12 @@ public class GlobalExceptionHandler {
   public ResponseEntity<ErrorResponse> handleBusinessRule(final BusinessRuleException ex) {
     return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
         .body(ErrorResponse.of(422, "Business Rule Error", ex.getMessage()));
+  }
+
+  @ExceptionHandler(ConflitoException.class)
+  public ResponseEntity<ErrorResponse> handleConflito(final ConflitoException ex) {
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+        .body(ErrorResponse.of(409, "Conflict", ex.getMessage()));
   }
 
   @ExceptionHandler(NaoAutorizadoException.class)
@@ -78,8 +91,22 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(DataIntegrityViolationException.class)
   public ResponseEntity<ErrorResponse> handleDataIntegrity(
       final DataIntegrityViolationException ex) {
+    if (valorLongoDemais(ex)) {
+      return ResponseEntity.badRequest()
+          .body(ErrorResponse.of(400, "Validation Error", "Texto acima do limite do campo"));
+    }
     return ResponseEntity.status(HttpStatus.CONFLICT)
         .body(ErrorResponse.of(409, "Conflict", "Registro duplicado ou violacao de integridade"));
+  }
+
+  /** SQLSTATE 22001: o banco recusou um texto maior que a coluna. */
+  private static boolean valorLongoDemais(final DataIntegrityViolationException ex) {
+    for (Throwable causa = ex.getCause(); causa != null; causa = causa.getCause()) {
+      if (causa instanceof SQLException sql && SQLSTATE_VALOR_LONGO.equals(sql.getSQLState())) {
+        return true;
+      }
+    }
+    return false;
   }
 
   @ExceptionHandler(MaxUploadSizeExceededException.class)
@@ -93,7 +120,20 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(IllegalArgumentException.class)
   public ResponseEntity<ErrorResponse> handleIllegalArgument(final IllegalArgumentException ex) {
-    return ResponseEntity.badRequest().body(ErrorResponse.of(400, "Bad Request", ex.getMessage()));
+    final String message = ex.getMessage();
+    final boolean enumeracao = message != null && message.startsWith(PREFIXO_ENUMERACAO_INVALIDA);
+    return ResponseEntity.badRequest()
+        .body(
+            ErrorResponse.of(
+                400, "Bad Request", enumeracao ? MENSAGEM_ENUMERACAO_INVALIDA : message));
+  }
+
+  @ExceptionHandler(HttpMessageNotReadableException.class)
+  public ResponseEntity<ErrorResponse> handleMessageNotReadable(
+      final HttpMessageNotReadableException ex) {
+    log.debug("Corpo da requisicao ilegivel: {}", ex.getMessage());
+    return ResponseEntity.badRequest()
+        .body(ErrorResponse.of(400, "Bad Request", "Corpo da requisição inválido ou malformado"));
   }
 
   @ExceptionHandler(

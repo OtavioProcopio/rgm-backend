@@ -65,9 +65,10 @@ public class TriarSolicitacaoUseCase {
       throw new BusinessRuleException("Deve ter pelo menos 1 responsavel");
     }
 
-    final List<Usuario> responsaveis = usuarioRepository.findAllByIdIn(input.responsavelIds());
+    final List<UUID> responsavelIds = input.responsavelIds().stream().distinct().toList();
+    final List<Usuario> responsaveis = usuarioRepository.findAllByIdIn(responsavelIds);
 
-    if (responsaveis.size() != input.responsavelIds().size()) {
+    if (responsaveis.size() != responsavelIds.size()) {
       throw new RecursoNaoEncontradoException("Um ou mais responsaveis nao encontrados");
     }
 

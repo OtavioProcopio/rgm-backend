@@ -16,7 +16,8 @@ public final class UsuarioMapper {
         u.getPerfil(),
         u.isAtivo(),
         u.getCriadoEm(),
-        u.getAtualizadoEm());
+        u.getAtualizadoEm(),
+        u.getVersaoCredencial());
   }
 
   public static Usuario toDomain(final UsuarioJpaEntity e) {
@@ -28,6 +29,7 @@ public final class UsuarioMapper {
         e.getPerfil(),
         e.isAtivo(),
         e.getCriadoEm(),
-        e.getAtualizadoEm());
+        e.getAtualizadoEm(),
+        e.getVersaoCredencial());
   }
 }

@@ -33,7 +33,35 @@ public final class ObterMetricasSolicitacoesUseCase {
       long solicitacoesPendentes,
       long solicitacoesConcluidas,
       long tempoMedioResolucaoSegundos,
-      Map<UUID, Long> solicitacoesPorModelo) {}
+      Map<UUID, Long> solicitacoesPorModelo,
+      Map<String, Long> emAbertoPorTipo,
+      Map<String, Long> emAbertoPorPrioridade) {
+
+    /** Sem a distribuicao em aberto (as duas ficam vazias). */
+    public Output(
+        final long totalUsuarios,
+        final long totalModelos,
+        final long totalSolicitacoes,
+        final Map<String, Long> solicitacoesPorStatus,
+        final long solicitacoesAbertas,
+        final long solicitacoesPendentes,
+        final long solicitacoesConcluidas,
+        final long tempoMedioResolucaoSegundos,
+        final Map<UUID, Long> solicitacoesPorModelo) {
+      this(
+          totalUsuarios,
+          totalModelos,
+          totalSolicitacoes,
+          solicitacoesPorStatus,
+          solicitacoesAbertas,
+          solicitacoesPendentes,
+          solicitacoesConcluidas,
+          tempoMedioResolucaoSegundos,
+          solicitacoesPorModelo,
+          Map.of(),
+          Map.of());
+    }
+  }
 
   public Output execute() {
     final long totalUsuarios = usuarioRepository.count();
@@ -73,6 +101,8 @@ public final class ObterMetricasSolicitacoesUseCase {
         solicitacoesPendentes,
         solicitacoesConcluidas,
         tempoMedioResolucaoSegundos,
-        solicitacoesPorModelo);
+        solicitacoesPorModelo,
+        solicitacaoRepository.countEmAbertoPorTipo(),
+        solicitacaoRepository.countEmAbertoPorPrioridade());
   }
 }

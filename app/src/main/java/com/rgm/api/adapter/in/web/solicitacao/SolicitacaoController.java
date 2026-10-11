@@ -1,5 +1,6 @@
 package com.rgm.api.adapter.in.web.solicitacao;
 
+import com.rgm.api.adapter.in.web.ParametrosDeConsulta;
 import com.rgm.api.adapter.in.web.dto.request.AbrirSolicitacaoRequest;
 import com.rgm.api.adapter.in.web.dto.request.CancelarSolicitacaoRequest;
 import com.rgm.api.adapter.in.web.dto.request.ComentarioRequest;
@@ -14,7 +15,9 @@ import com.rgm.api.adapter.in.web.dto.response.HistoricoMetricasResponse;
 import com.rgm.api.adapter.in.web.dto.response.MetricaModeloResponse;
 import com.rgm.api.adapter.in.web.dto.response.MetricasSolicitacaoResponse;
 import com.rgm.api.adapter.in.web.dto.response.PageResponse;
+import com.rgm.api.adapter.in.web.dto.response.PainelPorPeriodoResponse;
 import com.rgm.api.adapter.in.web.dto.response.SolicitacaoResponse;
+import com.rgm.api.adapter.out.report.ContextoDoRelatorio;
 import com.rgm.api.adapter.out.report.ModeloPdfService;
 import com.rgm.api.adapter.out.report.SolicitacaoPdfService;
 import com.rgm.api.core.application.usecases.solicitacao.AbrirSolicitacaoUseCase;
@@ -29,6 +32,7 @@ import com.rgm.api.core.application.usecases.solicitacao.ListarSolicitacoesUseCa
 import com.rgm.api.core.application.usecases.solicitacao.ObterHistoricoMetricasUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ObterMetricasPorModeloUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ObterMetricasSolicitacoesUseCase;
+import com.rgm.api.core.application.usecases.solicitacao.ObterPainelPorPeriodoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ObterSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.RegistrarComentarioUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.TriarSolicitacaoUseCase;
@@ -38,9 +42,11 @@ import com.rgm.api.core.domain.model.enums.PrioridadeSolicitacao;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
 import com.rgm.api.core.domain.model.enums.TipoFiltroData;
 import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
+import com.rgm.api.core.domain.ports.repositories.OrdenacaoSolicitacao;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import jakarta.validation.Valid;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -76,6 +82,7 @@ public class SolicitacaoController {
   private final ListarSolicitacoesUseCase listarUseCase;
   private final ObterMetricasSolicitacoesUseCase obterMetricasUseCase;
   private final ObterHistoricoMetricasUseCase obterHistoricoMetricasUseCase;
+  private final ObterPainelPorPeriodoUseCase obterPainelPorPeriodoUseCase;
   private final ObterMetricasPorModeloUseCase obterMetricasPorModeloUseCase;
   private final GerenciarResponsaveisUseCase gerenciarResponsaveisUseCase;
   private final ObterSolicitacaoUseCase obterUseCase;
@@ -97,6 +104,7 @@ public class SolicitacaoController {
       final ListarSolicitacoesUseCase listarUseCase,
       final ObterMetricasSolicitacoesUseCase obterMetricasUseCase,
       final ObterHistoricoMetricasUseCase obterHistoricoMetricasUseCase,
+      final ObterPainelPorPeriodoUseCase obterPainelPorPeriodoUseCase,
       final ObterMetricasPorModeloUseCase obterMetricasPorModeloUseCase,
       final GerenciarResponsaveisUseCase gerenciarResponsaveisUseCase,
       final ObterSolicitacaoUseCase obterUseCase,
@@ -116,6 +124,7 @@ public class SolicitacaoController {
     this.listarUseCase = listarUseCase;
     this.obterMetricasUseCase = obterMetricasUseCase;
     this.obterHistoricoMetricasUseCase = obterHistoricoMetricasUseCase;
+    this.obterPainelPorPeriodoUseCase = obterPainelPorPeriodoUseCase;
     this.obterMetricasPorModeloUseCase = obterMetricasPorModeloUseCase;
     this.gerenciarResponsaveisUseCase = gerenciarResponsaveisUseCase;
     this.obterUseCase = obterUseCase;
@@ -138,10 +147,23 @@ public class SolicitacaoController {
       @RequestParam(defaultValue = "30") final int dias,
       @RequestParam(required = false) final UUID modeloId) {
     log.info("SolicitacaoController.obterHistorico dias={} modeloId={}", dias, modeloId);
+    ParametrosDeConsulta.diasDoHistorico(dias);
     final var output =
         obterHistoricoMetricasUseCase.execute(
             new ObterHistoricoMetricasUseCase.Input(dias, modeloId));
     return ResponseEntity.ok(HistoricoMetricasResponse.from(output));
+  }
+
+  @GetMapping("/metricas/painel")
+  public ResponseEntity<PainelPorPeriodoResponse> obterPainel(
+      @RequestParam(defaultValue = "30") final int dias,
+      @RequestParam(required = false) final UUID modeloId) {
+    log.info("SolicitacaoController.obterPainel dias={} modeloId={}", dias, modeloId);
+    ParametrosDeConsulta.periodoDoPainel(dias);
+    final var output =
+        obterPainelPorPeriodoUseCase.execute(
+            new ObterPainelPorPeriodoUseCase.Input(dias, modeloId));
+    return ResponseEntity.ok(PainelPorPeriodoResponse.from(output));
   }
 
   @GetMapping("/metricas/por-modelo")
@@ -156,6 +178,7 @@ public class SolicitacaoController {
         dir,
         page,
         size);
+    ParametrosDeConsulta.pagina(page, size);
     final var output =
         obterMetricasPorModeloUseCase.execute(
             new ObterMetricasPorModeloUseCase.Input(
@@ -169,14 +192,24 @@ public class SolicitacaoController {
       @RequestParam(defaultValue = "desc") final String dir,
       final Authentication authentication) {
     log.info("SolicitacaoController.exportarMetricasPorModeloPdf sort={} dir={}", sort, dir);
-    final var linhas =
-        obterMetricasPorModeloUseCase
-            .execute(
-                new ObterMetricasPorModeloUseCase.Input(
-                    parseOrdenacao(sort), parseAscendente(dir), 0, Integer.MAX_VALUE))
-            .content();
+    final var pagina =
+        obterMetricasPorModeloUseCase.execute(
+            new ObterMetricasPorModeloUseCase.Input(
+                parseOrdenacao(sort),
+                parseAscendente(dir),
+                0,
+                ParametrosDeConsulta.LIMITE_DE_LINHAS_DO_RELATORIO));
+    final var linhas = pagina.content();
+    final var contexto =
+        new ContextoDoRelatorio(
+            new ContextoDoRelatorio.Filtros()
+                .comEnum("Ordenado por", sort)
+                .com("Sentido", "asc".equalsIgnoreCase(dir) ? "crescente" : "decrescente")
+                .build(),
+            pagina.totalElements(),
+            linhas.size());
     final String geradoPorNome = resolveNome(authentication);
-    final byte[] pdf = modeloPdfService.gerarRankingModelos(linhas, geradoPorNome);
+    final byte[] pdf = modeloPdfService.gerarRankingModelos(linhas, geradoPorNome, contexto);
     final var headers = new org.springframework.http.HttpHeaders();
     headers.setContentType(org.springframework.http.MediaType.APPLICATION_PDF);
     headers.setContentDispositionFormData("attachment", "ranking-modelos-por-tempo.pdf");
@@ -198,8 +231,14 @@ public class SolicitacaoController {
       @RequestParam(required = false) final UUID responsavelId,
       @RequestParam(required = false) final String maquina,
       @RequestParam(required = false) final Boolean atrasada,
+      @RequestParam(required = false) final Boolean emAberto,
+      @RequestParam(required = false) final String sort,
+      @RequestParam(required = false) final String dir,
+      @RequestParam(required = false) final String q,
       final Authentication authentication) {
     log.info("SolicitacaoController.gerarRelatorio iniciado");
+    final OrdenacaoSolicitacao ordenacao = ParametrosDeConsulta.ordenacao(sort, dir);
+    final String busca = ParametrosDeConsulta.busca("q", q);
     final var input =
         buildInput(
             status,
@@ -215,14 +254,19 @@ public class SolicitacaoController {
             responsavelId,
             maquina,
             atrasada,
+            emAberto,
             usuarioAutenticadoId(authentication),
+            busca,
+            ordenacao,
             0,
-            Integer.MAX_VALUE);
-    final var solicitacoes = listarUseCase.execute(input).content();
+            ParametrosDeConsulta.LIMITE_DE_LINHAS_DO_RELATORIO);
+    final var pagina = listarUseCase.execute(input);
+    final var solicitacoes = pagina.content();
 
     final var solicitacaoUserIds =
-        solicitacoes.stream()
-            .map(s -> s.getAbertaPorUsuarioId())
+        java.util.stream.Stream.concat(
+                solicitacoes.stream().map(s -> s.getAbertaPorUsuarioId()),
+                java.util.stream.Stream.of(abertaPorUsuarioId, responsavelId))
             .filter(id -> id != null)
             .distinct()
             .collect(Collectors.toList());
@@ -232,7 +276,38 @@ public class SolicitacaoController {
 
     final String geradoPorNome = resolveNome(authentication);
 
-    final byte[] pdf = pdfService.gerar(solicitacoes, geradoPorNome, nomesPorUsuario);
+    final var modelo =
+        modeloId == null ? null : obterUseCase.resolverModelos(solicitacoes).get(modeloId);
+    final var contexto =
+        new ContextoDoRelatorio(
+            new ContextoDoRelatorio.Filtros()
+                .comEnum("Status", status)
+                .comEnum("Tipo", tipo)
+                .comEnum("Prioridade", prioridade)
+                .com(
+                    "Modelo",
+                    modeloId == null
+                        ? null
+                        : modelo != null ? modelo.codigo() + " v" + modelo.versao() : "selecionado")
+                .com("Máquina", maquina)
+                .com("Aberta por", nomesPorUsuario.get(abertaPorUsuarioId))
+                .com("Responsável", nomesPorUsuario.get(responsavelId))
+                .com("Atrasadas", atrasada == null ? null : atrasada ? "sim" : "não")
+                .com("Em aberto", Boolean.TRUE.equals(emAberto) ? "sim" : null)
+                .com(
+                    "Período",
+                    periodoEmTexto(tipoData, dataInicio, criadaEmInicio, dataFim, criadaEmFim))
+                .com("Busca", busca)
+                .com(
+                    "Ordenação",
+                    sort == null
+                        ? null
+                        : sort + ("desc".equals(dir) ? " (decrescente)" : " (crescente)"))
+                .build(),
+            pagina.totalElements(),
+            solicitacoes.size());
+
+    final byte[] pdf = pdfService.gerar(solicitacoes, geradoPorNome, nomesPorUsuario, contexto);
     final var headers = new org.springframework.http.HttpHeaders();
     headers.setContentType(org.springframework.http.MediaType.APPLICATION_PDF);
     headers.setContentDispositionFormData("attachment", "relatorio-solicitacoes.pdf");
@@ -256,7 +331,14 @@ public class SolicitacaoController {
       @RequestParam(required = false) final UUID responsavelId,
       @RequestParam(required = false) final String maquina,
       @RequestParam(required = false) final Boolean atrasada,
+      @RequestParam(required = false) final Boolean emAberto,
+      @RequestParam(required = false) final String sort,
+      @RequestParam(required = false) final String dir,
+      @RequestParam(required = false) final String q,
       final Authentication authentication) {
+    ParametrosDeConsulta.pagina(page, size);
+    final OrdenacaoSolicitacao ordenacao = ParametrosDeConsulta.ordenacao(sort, dir);
+    final String busca = ParametrosDeConsulta.busca("q", q);
     final var result =
         listarUseCase.execute(
             buildInput(
@@ -273,19 +355,39 @@ public class SolicitacaoController {
                 responsavelId,
                 maquina,
                 atrasada,
+                emAberto,
                 usuarioAutenticadoId(authentication),
+                busca,
+                ordenacao,
                 page,
                 size));
 
     final List<UUID> solIds = result.content().stream().map(s -> s.getId()).toList();
     final Map<UUID, List<UUID>> responsaveisPorSol = obterUseCase.listarResponsaveisBatch(solIds);
 
+    final List<UUID> idsParaNomear = new ArrayList<>();
+    responsaveisPorSol.values().forEach(idsParaNomear::addAll);
+    result.content().forEach(s -> idsParaNomear.add(s.getAbertaPorUsuarioId()));
+    final Map<UUID, String> nomes = obterUseCase.resolverNomes(idsParaNomear);
+    final Map<UUID, ObterSolicitacaoUseCase.ResumoModelo> modelos =
+        obterUseCase.resolverModelos(result.content());
+
     return ResponseEntity.ok(
         PageResponse.from(
             result,
-            s ->
-                SolicitacaoResponse.from(
-                    s, responsaveisPorSol.getOrDefault(s.getId(), List.of()))));
+            s -> {
+              final List<UUID> responsavelIds =
+                  responsaveisPorSol.getOrDefault(s.getId(), List.of());
+              return SolicitacaoResponse.from(
+                  s,
+                  responsavelIds,
+                  null,
+                  responsavelIds.stream()
+                      .map(id -> new ObterSolicitacaoUseCase.ResponsavelNome(id, nomes.get(id)))
+                      .toList(),
+                  nomes.get(s.getAbertaPorUsuarioId()),
+                  modelos.get(s.getModeloId()));
+            }));
   }
 
   private ListarSolicitacoesUseCase.Input buildInput(
@@ -302,28 +404,49 @@ public class SolicitacaoController {
       final UUID responsavelId,
       final String maquina,
       final Boolean atrasada,
+      final Boolean emAberto,
       final UUID usuarioAutenticadoId,
+      final String busca,
+      final OrdenacaoSolicitacao ordenacao,
       final int page,
       final int size) {
     final TipoFiltroData tipo0 =
-        tipoData != null ? TipoFiltroData.valueOf(tipoData) : TipoFiltroData.CRIACAO;
-    final String inicioRaw = dataInicio != null ? dataInicio : criadaEmInicio;
-    final String fimRaw = dataFim != null ? dataFim : criadaEmFim;
+        tipoData != null
+            ? ParametrosDeConsulta.enumeracao("tipoData", tipoData, TipoFiltroData.class)
+            : TipoFiltroData.CRIACAO;
+    final Instant inicio = dataDoFiltro("dataInicio", dataInicio, "criadaEmInicio", criadaEmInicio);
+    final Instant fim = dataDoFiltro("dataFim", dataFim, "criadaEmFim", criadaEmFim);
     return new ListarSolicitacoesUseCase.Input(
-        status != null ? StatusSolicitacao.valueOf(status) : null,
+        ParametrosDeConsulta.enumeracao("status", status, StatusSolicitacao.class),
         modeloId,
-        tipo != null ? TipoSolicitacao.valueOf(tipo) : null,
-        prioridade != null ? PrioridadeSolicitacao.valueOf(prioridade) : null,
+        ParametrosDeConsulta.enumeracao("tipo", tipo, TipoSolicitacao.class),
+        ParametrosDeConsulta.enumeracao("prioridade", prioridade, PrioridadeSolicitacao.class),
         tipo0,
-        inicioRaw != null ? Instant.parse(inicioRaw) : null,
-        fimRaw != null ? Instant.parse(fimRaw) : null,
+        inicio,
+        fim,
         abertaPorUsuarioId,
         responsavelId,
         maquina,
         atrasada,
+        emAberto,
         usuarioAutenticadoId,
+        busca,
+        ordenacao,
         page,
         size);
+  }
+
+  /**
+   * O parametro preferido (dataInicio/dataFim) vence o alternativo (criadaEmInicio/criadaEmFim).
+   */
+  private static Instant dataDoFiltro(
+      final String nomePreferido,
+      final String valorPreferido,
+      final String nomeAlternativo,
+      final String valorAlternativo) {
+    return valorPreferido != null
+        ? ParametrosDeConsulta.data(nomePreferido, valorPreferido)
+        : ParametrosDeConsulta.data(nomeAlternativo, valorAlternativo);
   }
 
   private UUID usuarioAutenticadoId(final Authentication authentication) {
@@ -352,21 +475,32 @@ public class SolicitacaoController {
                 request.descricao(),
                 request.tipo() != null ? TipoSolicitacao.valueOf(request.tipo()) : null,
                 usuarioId));
-    return ResponseEntity.ok(SolicitacaoResponse.from(salva));
+    return ResponseEntity.ok(publicar("editada", SolicitacaoResponse.from(salva)));
   }
 
   @GetMapping("/{id}")
-  public ResponseEntity<SolicitacaoResponse> buscarPorId(@PathVariable final UUID id) {
+  public ResponseEntity<SolicitacaoResponse> buscarPorId(
+      @PathVariable final UUID id, final Authentication authentication) {
     log.info("SolicitacaoController.buscarPorId id={}", id);
-    final var output = obterUseCase.execute(id);
+    final UUID usuarioId = UUID.fromString(authentication.getName());
+    final var output = obterUseCase.execute(new ObterSolicitacaoUseCase.Input(id, usuarioId));
     return ResponseEntity.ok(
-        SolicitacaoResponse.from(output.solicitacao(), output.responsavelIds()));
+        SolicitacaoResponse.from(
+            output.solicitacao(),
+            output.responsavelIds(),
+            output.acoesPermitidas(),
+            output.responsaveis(),
+            output.abertaPorNome(),
+            output.modelo()));
   }
 
   @GetMapping("/{id}/atividades")
-  public ResponseEntity<List<AtividadeResponse>> listarAtividades(@PathVariable final UUID id) {
+  public ResponseEntity<List<AtividadeResponse>> listarAtividades(
+      @PathVariable final UUID id, final Authentication authentication) {
     log.info("SolicitacaoController.listarAtividades id={}", id);
-    final var result = listarAtividadesUseCase.execute(id);
+    final UUID usuarioId = UUID.fromString(authentication.getName());
+    final var result =
+        listarAtividadesUseCase.execute(new ListarAtividadesUseCase.Input(id, usuarioId));
     return ResponseEntity.ok(
         result.stream().map(a -> AtividadeResponse.from(a.atividade(), a.autorNome())).toList());
   }
@@ -388,7 +522,8 @@ public class SolicitacaoController {
                 request.modeloMaquina(),
                 request.modeloObservacoes(),
                 usuarioId));
-    return ResponseEntity.status(HttpStatus.CREATED).body(SolicitacaoResponse.from(output));
+    return ResponseEntity.status(HttpStatus.CREATED)
+        .body(publicar("aberta", SolicitacaoResponse.from(output)));
   }
 
   @PatchMapping("/{id}/triar")
@@ -459,6 +594,8 @@ public class SolicitacaoController {
     final UUID autorId = UUID.fromString(authentication.getName());
     comentarioUseCase.execute(
         new RegistrarComentarioUseCase.Input(id, request.comentario(), autorId));
+    eventPublisher.publish(
+        "solicitacao_atividade", new SolicitacaoAtividadeEvent("comentada", id), id);
     return ResponseEntity.status(HttpStatus.CREATED).build();
   }
 
@@ -485,11 +622,22 @@ public class SolicitacaoController {
     final var output =
         gerenciarResponsaveisUseCase.execute(
             new GerenciarResponsaveisUseCase.Input(id, request.responsavelIds(), gestorId));
-    return ResponseEntity.ok(SolicitacaoResponse.from(output));
+    return ResponseEntity.ok(
+        publicar(
+            "responsaveis_alterados",
+            SolicitacaoResponse.from(output.solicitacao(), request.responsavelIds()),
+            output.responsaveisRemovidos()));
   }
 
   private SolicitacaoResponse publicar(final String tipo, final SolicitacaoResponse response) {
-    eventPublisher.publish("solicitacao", new SolicitacaoEvent(tipo, response));
+    return publicar(tipo, response, List.of());
+  }
+
+  /** {@code comAcessoAnterior}: quem perdeu o acesso nesta mudanca e ainda deve ser avisado. */
+  private SolicitacaoResponse publicar(
+      final String tipo, final SolicitacaoResponse response, final List<UUID> comAcessoAnterior) {
+    eventPublisher.publish(
+        "solicitacao", new SolicitacaoEvent(tipo, response), response.id(), comAcessoAnterior);
     return response;
   }
 
@@ -506,6 +654,21 @@ public class SolicitacaoController {
   }
 
   /** Whitelist explicita - nunca interpolar o parametro de ordenacao direto em SQL. */
+  private static String periodoEmTexto(
+      final String tipoData,
+      final String dataInicio,
+      final String criadaEmInicio,
+      final String dataFim,
+      final String criadaEmFim) {
+    final String de = dataInicio != null ? dataInicio : criadaEmInicio;
+    final String ate = dataFim != null ? dataFim : criadaEmFim;
+    if (de == null && ate == null) {
+      return null;
+    }
+    final String base = "CONCLUSAO".equals(tipoData) ? "encerramento" : "criação";
+    return base + " de " + (de != null ? de : "…") + " até " + (ate != null ? ate : "…");
+  }
+
   private OrdenacaoMetricaModelo parseOrdenacao(final String sort) {
     try {
       return OrdenacaoMetricaModelo.valueOf(sort.toUpperCase());

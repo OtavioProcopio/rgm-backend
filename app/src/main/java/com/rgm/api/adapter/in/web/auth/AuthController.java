@@ -39,7 +39,8 @@ public class AuthController {
       final LoginUseCase.Output output =
           loginUseCase.execute(new LoginUseCase.Input(request.email(), request.senha()));
       return ResponseEntity.ok(
-          new LoginResponse(output.token(), output.refreshToken(), output.nome(), output.perfil()));
+          new LoginResponse(
+              output.id(), output.token(), output.refreshToken(), output.nome(), output.perfil()));
     } catch (final NaoAutorizadoException ex) {
       return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
           .body(ErrorResponse.of(401, "Unauthorized", ex.getMessage()));

@@ -5,6 +5,7 @@ import com.rgm.api.core.domain.model.aggregates.Usuario;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import com.rgm.api.core.domain.ports.services.AccessTokenIssuer;
 import com.rgm.api.core.domain.ports.services.PasswordHasher;
+import java.util.UUID;
 
 /** UC-01: Logar no sistema. */
 public final class LoginUseCase {
@@ -24,7 +25,7 @@ public final class LoginUseCase {
 
   public record Input(String email, String senha) {}
 
-  public record Output(String token, String refreshToken, String nome, String perfil) {}
+  public record Output(UUID id, String token, String refreshToken, String nome, String perfil) {}
 
   public Output execute(final Input input) {
     final Usuario usuario =
@@ -36,16 +37,18 @@ public final class LoginUseCase {
       throw new NaoAutorizadoException("Credenciais invalidas");
     }
 
-    if (!usuario.isAtivo()) {
-      throw new NaoAutorizadoException("Usuario inativo");
-    }
-
     if (!passwordHasher.matches(input.senha(), usuario.getSenhaHash())) {
       throw new NaoAutorizadoException("Credenciais invalidas");
     }
 
+    // So quem acerta a senha fica sabendo que a conta esta inativa.
+    if (!usuario.isAtivo()) {
+      throw new NaoAutorizadoException("Usuario inativo");
+    }
+
     final String token = tokenIssuer.issue(usuario);
     final String refreshToken = tokenIssuer.issueRefreshToken(usuario);
-    return new Output(token, refreshToken, usuario.getNome(), usuario.getPerfil().name());
+    return new Output(
+        usuario.getId(), token, refreshToken, usuario.getNome(), usuario.getPerfil().name());
   }
 }

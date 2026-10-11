@@ -302,6 +302,24 @@ class SolicitacaoTest {
   }
 
   @Test
+  void shouldOnlyChangeUpdatedAtWhenRegisteringResponsaveisChange() {
+    // Arrange
+    final Solicitacao sol =
+        Solicitacao.abrir("T", "D", TipoSolicitacao.REPARO, modeloId, usuarioId, agora);
+    final Instant depois = agora.plusSeconds(60);
+
+    // Act
+    final Solicitacao alterada = sol.registrarAlteracaoDeResponsaveis(depois);
+
+    // Assert
+    assertEquals(depois, alterada.getAtualizadaEm());
+    assertEquals(sol.getId(), alterada.getId());
+    assertEquals(sol.getTitulo(), alterada.getTitulo());
+    assertEquals(sol.getStatus(), alterada.getStatus());
+    assertEquals(sol.getCriadaEm(), alterada.getCriadaEm());
+  }
+
+  @Test
   void gestorPodeAbrirCriacao() {
     assertDoesNotThrow(() -> Solicitacao.validarAutorizacaoAbrirCriacao(PerfilUsuario.GESTOR));
     assertDoesNotThrow(

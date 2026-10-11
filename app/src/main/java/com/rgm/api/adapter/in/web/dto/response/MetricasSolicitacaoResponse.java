@@ -13,7 +13,9 @@ public record MetricasSolicitacaoResponse(
     long solicitacoesPendentes,
     long solicitacoesConcluidas,
     long tempoMedioResolucaoSegundos,
-    Map<UUID, Long> solicitacoesPorModelo) {
+    Map<UUID, Long> solicitacoesPorModelo,
+    Map<String, Long> emAbertoPorTipo,
+    Map<String, Long> emAbertoPorPrioridade) {
 
   public static MetricasSolicitacaoResponse from(
       final ObterMetricasSolicitacoesUseCase.Output output) {
@@ -26,6 +28,8 @@ public record MetricasSolicitacaoResponse(
         output.solicitacoesPendentes(),
         output.solicitacoesConcluidas(),
         output.tempoMedioResolucaoSegundos(),
-        output.solicitacoesPorModelo());
+        output.solicitacoesPorModelo(),
+        output.emAbertoPorTipo(),
+        output.emAbertoPorPrioridade());
   }
 }

@@ -7,11 +7,13 @@ import com.rgm.api.core.domain.model.aggregates.Solicitacao;
 import com.rgm.api.core.domain.model.aggregates.Usuario;
 import com.rgm.api.core.domain.model.entities.AtividadeSolicitacao;
 import com.rgm.api.core.domain.model.entities.SolicitacaoAtribuicao;
+import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
 import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoAtribuicaoRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,7 +40,10 @@ public class GerenciarResponsaveisUseCase {
 
   public record Input(UUID solicitacaoId, List<UUID> responsavelIds, UUID gestorId) {}
 
-  public Solicitacao execute(final Input input) {
+  /** {@code responsaveisRemovidos}: quem deixou de ser responsavel nesta alteracao. */
+  public record Output(Solicitacao solicitacao, List<UUID> responsaveisRemovidos) {}
+
+  public Output execute(final Input input) {
     final Instant agora = Instant.now();
 
     final Usuario gestor =
@@ -60,13 +65,19 @@ public class GerenciarResponsaveisUseCase {
           "Nao e possivel gerenciar responsaveis de uma solicitacao encerrada");
     }
 
+    if (solicitacao.getStatus() == StatusSolicitacao.A_FAZER) {
+      throw new BusinessRuleException(
+          "Solicitacao em A Fazer ainda nao foi triada: defina os responsaveis na triagem");
+    }
+
     if (input.responsavelIds() == null || input.responsavelIds().isEmpty()) {
       throw new BusinessRuleException("Deve ter pelo menos 1 responsavel");
     }
 
-    final List<Usuario> novosResponsaveis = usuarioRepository.findAllByIdIn(input.responsavelIds());
+    final List<UUID> responsavelIds = input.responsavelIds().stream().distinct().toList();
+    final List<Usuario> novosResponsaveis = usuarioRepository.findAllByIdIn(responsavelIds);
 
-    if (novosResponsaveis.size() != input.responsavelIds().size()) {
+    if (novosResponsaveis.size() != responsavelIds.size()) {
       throw new RecursoNaoEncontradoException("Um ou mais responsaveis nao encontrados");
     }
 
@@ -82,8 +93,11 @@ public class GerenciarResponsaveisUseCase {
             .filter(a -> a.getRemovidoEm() == null)
             .toList();
 
+    final List<UUID> responsaveisRemovidos = new ArrayList<>();
+
     for (final var atr : atribuicoesAtuais) {
-      if (!input.responsavelIds().contains(atr.getUsuarioId())) {
+      if (!responsavelIds.contains(atr.getUsuarioId())) {
+        responsaveisRemovidos.add(atr.getUsuarioId());
         final var removido = atr.remover(agora);
         atribuicaoRepository.save(removido);
 
@@ -113,6 +127,9 @@ public class GerenciarResponsaveisUseCase {
       }
     }
 
-    return solicitacao;
+    final Solicitacao salva =
+        solicitacaoRepository.save(solicitacao.registrarAlteracaoDeResponsaveis(agora));
+
+    return new Output(salva, List.copyOf(responsaveisRemovidos));
   }
 }

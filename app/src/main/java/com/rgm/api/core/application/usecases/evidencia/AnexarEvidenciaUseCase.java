@@ -2,7 +2,6 @@ package com.rgm.api.core.application.usecases.evidencia;
 
 import com.rgm.api.core.application.usecases.modelo.AdicionarFotoGaleriaUseCase;
 import com.rgm.api.core.domain.exceptions.BusinessRuleException;
-import com.rgm.api.core.domain.exceptions.NaoAutorizadoException;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.exceptions.ValidationException;
 import com.rgm.api.core.domain.model.aggregates.Evidencia;
@@ -18,7 +17,12 @@ import com.rgm.api.core.domain.ports.repositories.SolicitacaoEvidenciaRepository
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import com.rgm.api.core.domain.ports.services.StorageService;
+import com.rgm.api.core.domain.validation.AcessoEvidenciaSolicitacao;
+import com.rgm.api.core.domain.validation.AssinaturaDeArquivo;
+import java.io.BufferedInputStream;
+import java.io.IOException;
 import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.time.Instant;
 import java.util.Set;
 import java.util.UUID;
@@ -123,7 +127,12 @@ public final class AnexarEvidenciaUseCase {
               + " MB");
     }
 
-    if (input.mimeType() != null && !ALLOWED_MIME_TYPES.contains(input.mimeType().toLowerCase())) {
+    if (input.mimeType() == null || input.mimeType().isBlank()) {
+      throw new ValidationException(
+          "Tipo do arquivo nao informado. Tipos aceitos: " + ALLOWED_MIME_TYPES);
+    }
+
+    if (!ALLOWED_MIME_TYPES.contains(input.mimeType().toLowerCase())) {
       throw new ValidationException(
           "Tipo de arquivo nao permitido: "
               + input.mimeType()
@@ -140,11 +149,13 @@ public final class AnexarEvidenciaUseCase {
       throw new BusinessRuleException("Nao e possivel anexar evidencia a solicitacao encerrada");
     }
 
-    validarAcesso(input.solicitacaoId(), input.enviadaPorUsuarioId());
+    validarAcesso(solicitacao, input.enviadaPorUsuarioId(), input.tipo());
+
+    final InputStream conteudo = conferirAssinatura(input);
 
     final String evidenciaPublicUrl =
         storageService.upload(
-            input.nomeArquivo(), input.mimeType(), input.conteudo(), input.tamanhoBytes());
+            input.nomeArquivo(), input.mimeType(), conteudo, input.tamanhoBytes());
 
     AdicionarFotoGaleriaUseCase.Input galeriaInput = null;
     String galeriaPublicUrl = null;
@@ -210,6 +221,30 @@ public final class AnexarEvidenciaUseCase {
     return salva;
   }
 
+  /**
+   * Confere os primeiros bytes contra o tipo declarado, sem consumir o fluxo. Devolve o fluxo a
+   * usar no armazenamento (o mesmo, quando ele ja permite voltar ao inicio).
+   */
+  private static InputStream conferirAssinatura(final Input input) {
+    final InputStream conteudo =
+        input.conteudo().markSupported()
+            ? input.conteudo()
+            : new BufferedInputStream(input.conteudo());
+    final byte[] cabecalho;
+    try {
+      conteudo.mark(AssinaturaDeArquivo.TAMANHO_DO_CABECALHO);
+      cabecalho = conteudo.readNBytes(AssinaturaDeArquivo.TAMANHO_DO_CABECALHO);
+      conteudo.reset();
+    } catch (final IOException e) {
+      throw new UncheckedIOException("Falha ao ler o arquivo enviado", e);
+    }
+    if (!AssinaturaDeArquivo.confere(input.mimeType(), cabecalho)) {
+      throw new ValidationException(
+          "O conteudo do arquivo nao corresponde ao tipo informado: " + input.mimeType());
+    }
+    return conteudo;
+  }
+
   private static boolean elegivelParaGaleria(final Input input, final Solicitacao solicitacao) {
     return solicitacao.getModeloId() != null
         && TIPOS_ELEGIVEIS_GALERIA.contains(input.tipo())
@@ -228,22 +263,19 @@ public final class AnexarEvidenciaUseCase {
     return rotulo + " — " + titulo;
   }
 
-  private void validarAcesso(final UUID solicitacaoId, final UUID usuarioId) {
+  private void validarAcesso(
+      final Solicitacao solicitacao, final UUID usuarioId, final TipoEvidencia tipo) {
     final Usuario usuario =
         usuarioRepository
             .findById(usuarioId)
             .orElseThrow(() -> new RecursoNaoEncontradoException("Usuario nao encontrado"));
 
-    if (usuario.getPerfil().podeGerenciarModelos()
-        || usuario.getPerfil().podeGerenciarUsuariosEMaquinas()) {
-      return;
-    }
-
-    final boolean atribuido =
-        atribuicaoRepository.existsBySolicitacaoIdAndUsuarioIdAndRemovidoEmIsNull(
-            solicitacaoId, usuarioId);
-    if (!atribuido) {
-      throw new NaoAutorizadoException("Usuario nao tem acesso a esta solicitacao");
-    }
+    AcessoEvidenciaSolicitacao.validarAnexo(
+        usuario,
+        solicitacao,
+        () ->
+            atribuicaoRepository.existsBySolicitacaoIdAndUsuarioIdAndRemovidoEmIsNull(
+                solicitacao.getId(), usuarioId),
+        tipo);
   }
 }

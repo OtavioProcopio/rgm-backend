@@ -214,37 +214,129 @@ class GerenciarResponsaveisUseCaseTest {
   }
 
   @Test
-  void deveGerenciarResponsaveisComSucesso() {
+  void shouldReturnRemovedResponsaveisWhenSomeoneLeavesTheSolicitacao() {
+    // Arrange
     final UUID gestorId = UUID.randomUUID();
     final Usuario gestor = criarUsuario("Gestor", PerfilUsuario.GESTOR, true);
     final Solicitacao sol = criarSolicitacao(StatusSolicitacao.EM_ANDAMENTO);
-
-    final Usuario respMantido = criarUsuario("Mantido", PerfilUsuario.OPERADOR, true);
-    final Usuario respRemovido = criarUsuario("Removido", PerfilUsuario.OPERADOR, true);
-    final Usuario respAdicionado = criarUsuario("Adicionado", PerfilUsuario.OPERADOR, true);
-
-    final SolicitacaoAtribuicao atrMantido =
-        SolicitacaoAtribuicao.criar(sol.getId(), respMantido.getId(), gestorId, Instant.now());
-    final SolicitacaoAtribuicao atrRemovido =
-        SolicitacaoAtribuicao.criar(sol.getId(), respRemovido.getId(), gestorId, Instant.now());
-
+    final Usuario mantido = criarUsuario("Mantido", PerfilUsuario.OPERADOR, true);
+    final Usuario removido = criarUsuario("Removido", PerfilUsuario.OPERADOR, true);
+    final List<UUID> novos = List.of(mantido.getId());
     when(usuarioRepository.findById(gestorId)).thenReturn(Optional.of(gestor));
     when(solicitacaoRepository.findById(sol.getId())).thenReturn(Optional.of(sol));
-    when(usuarioRepository.findAllByIdIn(any())).thenReturn(List.of(respMantido, respAdicionado));
+    when(usuarioRepository.findAllByIdIn(novos)).thenReturn(List.of(mantido));
     when(atribuicaoRepository.findBySolicitacaoId(sol.getId()))
-        .thenReturn(List.of(atrMantido, atrRemovido));
-    when(usuarioRepository.findById(respRemovido.getId())).thenReturn(Optional.of(respRemovido));
+        .thenReturn(
+            List.of(
+                SolicitacaoAtribuicao.criar(sol.getId(), mantido.getId(), gestorId, Instant.now()),
+                SolicitacaoAtribuicao.criar(
+                    sol.getId(), removido.getId(), gestorId, Instant.now())));
+    when(usuarioRepository.findById(removido.getId())).thenReturn(Optional.of(removido));
+    when(solicitacaoRepository.save(any())).thenReturn(sol);
 
-    final var result =
+    // Act
+    final GerenciarResponsaveisUseCase.Output result =
+        useCase.execute(new GerenciarResponsaveisUseCase.Input(sol.getId(), novos, gestorId));
+
+    // Assert
+    assertEquals(new GerenciarResponsaveisUseCase.Output(sol, List.of(removido.getId())), result);
+    verify(usuarioRepository, times(1)).findById(gestorId);
+    verify(solicitacaoRepository, times(1)).findById(sol.getId());
+    verify(usuarioRepository, times(1)).findAllByIdIn(novos);
+    verify(atribuicaoRepository, times(1)).findBySolicitacaoId(sol.getId());
+    verify(atribuicaoRepository, times(1))
+        .save(argThat(a -> !a.isAtiva() && a.getUsuarioId().equals(removido.getId())));
+    verify(usuarioRepository, times(1)).findById(removido.getId());
+    verify(atividadeRepository, times(1)).save(any());
+    verify(solicitacaoRepository, times(1)).save(any());
+    verifyNoMoreInteractions(
+        solicitacaoRepository, usuarioRepository, atribuicaoRepository, atividadeRepository);
+  }
+
+  @Test
+  void shouldReturnNoRemovedResponsaveisWhenOnlyAddingSomeone() {
+    // Arrange
+    final UUID gestorId = UUID.randomUUID();
+    final Usuario gestor = criarUsuario("Gestor", PerfilUsuario.GESTOR, true);
+    final Solicitacao sol = criarSolicitacao(StatusSolicitacao.EM_ANDAMENTO);
+    final Usuario mantido = criarUsuario("Mantido", PerfilUsuario.OPERADOR, true);
+    final Usuario adicionado = criarUsuario("Adicionado", PerfilUsuario.OPERADOR, true);
+    final List<UUID> novos = List.of(mantido.getId(), adicionado.getId());
+    when(usuarioRepository.findById(gestorId)).thenReturn(Optional.of(gestor));
+    when(solicitacaoRepository.findById(sol.getId())).thenReturn(Optional.of(sol));
+    when(usuarioRepository.findAllByIdIn(novos)).thenReturn(List.of(mantido, adicionado));
+    when(atribuicaoRepository.findBySolicitacaoId(sol.getId()))
+        .thenReturn(
+            List.of(
+                SolicitacaoAtribuicao.criar(
+                    sol.getId(), mantido.getId(), gestorId, Instant.now())));
+    when(solicitacaoRepository.save(any())).thenReturn(sol);
+
+    // Act
+    final GerenciarResponsaveisUseCase.Output result =
+        useCase.execute(new GerenciarResponsaveisUseCase.Input(sol.getId(), novos, gestorId));
+
+    // Assert
+    assertEquals(new GerenciarResponsaveisUseCase.Output(sol, List.of()), result);
+    verify(usuarioRepository, times(1)).findById(gestorId);
+    verify(solicitacaoRepository, times(1)).findById(sol.getId());
+    verify(usuarioRepository, times(1)).findAllByIdIn(novos);
+    verify(atribuicaoRepository, times(1)).findBySolicitacaoId(sol.getId());
+    verify(atribuicaoRepository, times(1))
+        .save(argThat(a -> a.isAtiva() && a.getUsuarioId().equals(adicionado.getId())));
+    verify(atividadeRepository, times(1)).save(any());
+    verify(solicitacaoRepository, times(1)).save(any());
+    verifyNoMoreInteractions(
+        solicitacaoRepository, usuarioRepository, atribuicaoRepository, atividadeRepository);
+  }
+
+  @Test
+  void shouldTreatRepeatedIdsAsASingleResponsavelAndTouchSolicitacao() {
+    // Arrange
+    final UUID gestorId = UUID.randomUUID();
+    final Usuario gestor = criarUsuario("Gestor", PerfilUsuario.GESTOR, true);
+    final Solicitacao sol = criarSolicitacao(StatusSolicitacao.EM_ANDAMENTO);
+    final Usuario novo = criarUsuario("Novo", PerfilUsuario.OPERADOR, true);
+    when(usuarioRepository.findById(gestorId)).thenReturn(Optional.of(gestor));
+    when(solicitacaoRepository.findById(sol.getId())).thenReturn(Optional.of(sol));
+    when(usuarioRepository.findAllByIdIn(List.of(novo.getId()))).thenReturn(List.of(novo));
+    when(atribuicaoRepository.findBySolicitacaoId(sol.getId())).thenReturn(List.of());
+    when(solicitacaoRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+    // Act
+    final GerenciarResponsaveisUseCase.Output result =
         useCase.execute(
             new GerenciarResponsaveisUseCase.Input(
-                sol.getId(), List.of(respMantido.getId(), respAdicionado.getId()), gestorId));
+                sol.getId(), List.of(novo.getId(), novo.getId()), gestorId));
 
-    assertNotNull(result);
-    assertEquals(sol.getId(), result.getId());
+    // Assert
+    verify(usuarioRepository, times(1)).findAllByIdIn(List.of(novo.getId()));
+    verify(atribuicaoRepository, times(1))
+        .save(argThat(a -> a.getUsuarioId().equals(novo.getId())));
+    assertTrue(result.solicitacao().getAtualizadaEm().isAfter(sol.getAtualizadaEm()));
+  }
 
-    verify(atribuicaoRepository).save(argThat(SolicitacaoAtribuicao::isAtiva)); // Novo adicionado
-    verify(atribuicaoRepository).save(argThat(a -> !a.isAtiva())); // Removido
-    verify(atividadeRepository, times(2)).save(any());
+  @Test
+  void shouldRejectWhenSolicitacaoIsStillInAFazer() {
+    // Arrange
+    final UUID gestorId = UUID.randomUUID();
+    final Usuario gestor = criarUsuario("Gestor", PerfilUsuario.GESTOR, true);
+    final Solicitacao sol = criarSolicitacao(StatusSolicitacao.A_FAZER);
+    when(usuarioRepository.findById(gestorId)).thenReturn(Optional.of(gestor));
+    when(solicitacaoRepository.findById(sol.getId())).thenReturn(Optional.of(sol));
+
+    // Act
+    final BusinessRuleException erro =
+        assertThrows(
+            BusinessRuleException.class,
+            () ->
+                useCase.execute(
+                    new GerenciarResponsaveisUseCase.Input(
+                        sol.getId(), List.of(UUID.randomUUID()), gestorId)));
+
+    // Assert
+    assertTrue(erro.getMessage().contains("triagem"));
+    verify(solicitacaoRepository, never()).save(any());
+    verify(atribuicaoRepository, never()).save(any());
   }
 }
