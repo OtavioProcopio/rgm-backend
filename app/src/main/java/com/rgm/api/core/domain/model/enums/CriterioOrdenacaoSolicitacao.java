@@ -4,5 +4,7 @@ package com.rgm.api.core.domain.model.enums;
 public enum CriterioOrdenacaoSolicitacao {
   CRIADA_EM,
   PRAZO_LIMITE,
-  PRIORIDADE
+  PRIORIDADE,
+  /** Data de encerramento: conclusao das concluidas e cancelamento das canceladas. */
+  ENCERRADA_EM
 }

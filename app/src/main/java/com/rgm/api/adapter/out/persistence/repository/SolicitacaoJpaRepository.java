@@ -56,6 +56,17 @@ public interface SolicitacaoJpaRepository extends JpaRepository<SolicitacaoJpaEn
           + "SELECT 1 FROM solicitacao_atribuicoes v WHERE v.solicitacao_id = s.id "
           + "AND v.usuario_id = :visivelPara AND v.removido_em IS NULL))";
 
+  /**
+   * Busca textual: o termo (ja com %, _ e \\ escapados) casa, sem caixa e sem acento, com o titulo,
+   * a descricao e o codigo do modelo (o do cadastro ou o pretendido na solicitacao de criacao).
+   */
+  String BUSCA_FILTRO =
+      "(CAST(:busca AS text) IS NULL OR "
+          + "rgm_sem_acento(s.titulo) LIKE '%' || rgm_sem_acento(CAST(:busca AS text)) || '%' OR "
+          + "rgm_sem_acento(COALESCE(s.descricao, '')) LIKE '%' || rgm_sem_acento(CAST(:busca AS text)) || '%' OR "
+          + "rgm_sem_acento(COALESCE(mo.codigo, '')) LIKE '%' || rgm_sem_acento(CAST(:busca AS text)) || '%' OR "
+          + "rgm_sem_acento(COALESCE(s.modelo_codigo, '')) LIKE '%' || rgm_sem_acento(CAST(:busca AS text)) || '%')";
+
   boolean existsByModeloIdAndStatusIn(UUID modeloId, List<StatusSolicitacao> statuses);
 
   boolean existsByModeloId(UUID modeloId);
@@ -89,7 +100,9 @@ public interface SolicitacaoJpaRepository extends JpaRepository<SolicitacaoJpaEn
           + " AND "
           + EM_ABERTO_FILTRO
           + " AND "
-          + VISIVEL_PARA_FILTRO;
+          + VISIVEL_PARA_FILTRO
+          + " AND "
+          + BUSCA_FILTRO;
 
   /** Urgencia da prioridade atual: 1 (URGENTE) a 4 (BAIXA); sem prioridade vira nulo. */
   String PRIORIDADE_URGENCIA_EXPR =
@@ -119,6 +132,14 @@ public interface SolicitacaoJpaRepository extends JpaRepository<SolicitacaoJpaEn
           + "THEN "
           + PRIORIDADE_URGENCIA_EXPR
           + " END DESC NULLS LAST, "
+          + "CASE WHEN CAST(:criterio AS text) = 'ENCERRADA_EM' AND CAST(:ascendente AS boolean) "
+          + "THEN "
+          + ENCERRADA_EM_EXPR
+          + " END ASC NULLS LAST, "
+          + "CASE WHEN CAST(:criterio AS text) = 'ENCERRADA_EM' AND NOT CAST(:ascendente AS boolean) "
+          + "THEN "
+          + ENCERRADA_EM_EXPR
+          + " END DESC NULLS LAST, "
           + "CASE WHEN CAST(:criterio AS text) = 'CRIADA_EM' AND NOT CAST(:ascendente AS boolean) "
           + "THEN s.criada_em END DESC, "
           + "s.criada_em ASC, s.id ASC";
@@ -144,12 +165,27 @@ public interface SolicitacaoJpaRepository extends JpaRepository<SolicitacaoJpaEn
       @org.springframework.data.repository.query.Param("atrasada") Boolean atrasada,
       @org.springframework.data.repository.query.Param("emAberto") boolean emAberto,
       @org.springframework.data.repository.query.Param("visivelPara") UUID visivelParaUsuarioId,
+      @org.springframework.data.repository.query.Param("busca") String busca,
       @org.springframework.data.repository.query.Param("criterio") String criterio,
       @org.springframework.data.repository.query.Param("ascendente") boolean ascendente,
       Pageable pageable);
 
   @Query("SELECT s.modeloId, COUNT(s) FROM SolicitacaoJpaEntity s GROUP BY s.modeloId")
   List<Object[]> countGroupByModeloId();
+
+  /** Quantidade em aberto por tipo (A_FAZER, EM_ANDAMENTO e EM_VALIDACAO). */
+  @Query(
+      "SELECT s.tipo, COUNT(s) FROM SolicitacaoJpaEntity s "
+          + "WHERE s.status NOT IN (com.rgm.api.core.domain.model.enums.StatusSolicitacao.CONCLUIDA, "
+          + "com.rgm.api.core.domain.model.enums.StatusSolicitacao.CANCELADA) GROUP BY s.tipo")
+  List<Object[]> countEmAbertoPorTipo();
+
+  /** Quantidade em aberto por prioridade; a prioridade nula (nao triada) vira um grupo proprio. */
+  @Query(
+      "SELECT s.prioridade, COUNT(s) FROM SolicitacaoJpaEntity s "
+          + "WHERE s.status NOT IN (com.rgm.api.core.domain.model.enums.StatusSolicitacao.CONCLUIDA, "
+          + "com.rgm.api.core.domain.model.enums.StatusSolicitacao.CANCELADA) GROUP BY s.prioridade")
+  List<Object[]> countEmAbertoPorPrioridade();
 
   long countByStatus(StatusSolicitacao status);
 

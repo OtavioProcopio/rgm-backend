@@ -404,6 +404,7 @@ class SolicitacaoControllerSegurancaTest {
     verifyNoMoreInteractions(listarUseCase);
     verify(obterUseCase, times(1)).listarResponsaveisBatch(List.of());
     verify(obterUseCase, times(1)).resolverNomes(List.of());
+    verify(obterUseCase, times(1)).resolverModelos(any());
     verifyNoMoreInteractions(obterUseCase);
     verify(autenticarAcessoUseCase, times(1)).execute(TOKEN_OPERADOR);
     verifyNoMoreInteractions(autenticarAcessoUseCase);

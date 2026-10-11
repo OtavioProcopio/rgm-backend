@@ -2,6 +2,7 @@ package com.rgm.api.adapter.config;
 
 import com.rgm.api.adapter.in.web.dto.response.ErrorResponse;
 import com.rgm.api.core.domain.exceptions.BusinessRuleException;
+import com.rgm.api.core.domain.exceptions.ConflitoException;
 import com.rgm.api.core.domain.exceptions.NaoAutorizadoException;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.exceptions.TransicaoStatusInvalidaException;
@@ -44,6 +45,12 @@ public class GlobalExceptionHandler {
   public ResponseEntity<ErrorResponse> handleBusinessRule(final BusinessRuleException ex) {
     return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
         .body(ErrorResponse.of(422, "Business Rule Error", ex.getMessage()));
+  }
+
+  @ExceptionHandler(ConflitoException.class)
+  public ResponseEntity<ErrorResponse> handleConflito(final ConflitoException ex) {
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+        .body(ErrorResponse.of(409, "Conflict", ex.getMessage()));
   }
 
   @ExceptionHandler(NaoAutorizadoException.class)

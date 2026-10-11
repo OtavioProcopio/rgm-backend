@@ -769,6 +769,7 @@ class SolicitacaoControllerTest {
             jsonPath("$.content[0].acoesPermitidas").value(org.hamcrest.Matchers.nullValue()));
     verify(obterUseCase, times(1)).listarResponsaveisBatch(List.of(sol.getId()));
     verify(obterUseCase, times(1)).resolverNomes(List.of(sol.getAbertaPorUsuarioId()));
+    verify(obterUseCase, times(1)).resolverModelos(any());
     verifyNoMoreInteractions(obterUseCase, eventPublisher);
   }
 
@@ -854,6 +855,7 @@ class SolicitacaoControllerTest {
                 carlaId,
                 primeira.getAbertaPorUsuarioId(),
                 segunda.getAbertaPorUsuarioId()));
+    verify(obterUseCase, times(1)).resolverModelos(any());
     verifyNoMoreInteractions(obterUseCase, eventPublisher);
   }
 
@@ -1266,6 +1268,7 @@ class SolicitacaoControllerTest {
     verifyNoMoreInteractions(listarUseCase);
     verify(obterUseCase, times(1)).listarResponsaveisBatch(List.of());
     verify(obterUseCase, times(1)).resolverNomes(List.of());
+    verify(obterUseCase, times(1)).resolverModelos(any());
     verifyNoMoreInteractions(obterUseCase);
   }
 
@@ -1287,6 +1290,7 @@ class SolicitacaoControllerTest {
     verifyNoMoreInteractions(listarUseCase);
     verify(obterUseCase, times(1)).listarResponsaveisBatch(List.of());
     verify(obterUseCase, times(1)).resolverNomes(List.of());
+    verify(obterUseCase, times(1)).resolverModelos(any());
     verifyNoMoreInteractions(obterUseCase);
   }
 
@@ -1309,6 +1313,65 @@ class SolicitacaoControllerTest {
         new OrdenacaoSolicitacao(CriterioOrdenacaoSolicitacao.PRAZO_LIMITE, false),
         captor.getValue().ordenacao());
     verifyNoMoreInteractions(listarUseCase);
+  }
+
+  @Test
+  void shouldLevarABuscaAoCasoDeUsoWhenListagemRecebeQ() throws Exception {
+    // Arrange
+    when(listarUseCase.execute(any())).thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
+    when(obterUseCase.listarResponsaveisBatch(any())).thenReturn(java.util.Map.of());
+    final ArgumentCaptor<ListarSolicitacoesUseCase.Input> captor =
+        ArgumentCaptor.forClass(ListarSolicitacoesUseCase.Input.class);
+
+    // Act
+    final var resposta = mockMvc.perform(get("/api/solicitacoes").param("q", "  correia "));
+
+    // Assert
+    resposta.andExpect(status().isOk());
+    verify(listarUseCase, times(1)).execute(captor.capture());
+    assertEquals("correia", captor.getValue().busca());
+  }
+
+  @Test
+  void shouldRespond400WhenQHasOneCharacter() throws Exception {
+    // Arrange
+    final String q = "a";
+
+    // Act
+    final var resposta = mockMvc.perform(get("/api/solicitacoes").param("q", q));
+
+    // Assert
+    resposta
+        .andExpect(status().isBadRequest())
+        .andExpect(
+            jsonPath("$.message")
+                .value("Parâmetro 'q' deve ter de 2 a 100 caracteres (recebido: 1)"));
+    verifyNoMoreInteractions(listarUseCase);
+  }
+
+  @Test
+  void shouldFillModeloCodeMachineAndVersionWhenSolicitacoesAreListed() throws Exception {
+    // Arrange
+    final UUID modeloId = UUID.randomUUID();
+    final Solicitacao sol =
+        Solicitacao.abrir(
+            "T", "D", TipoSolicitacao.REPARO, modeloId, UUID.randomUUID(), Instant.now());
+    when(listarUseCase.execute(any())).thenReturn(new PageResult<>(List.of(sol), 0, 20, 1, 1));
+    when(obterUseCase.listarResponsaveisBatch(any())).thenReturn(java.util.Map.of());
+    when(obterUseCase.resolverModelos(any()))
+        .thenReturn(
+            java.util.Map.of(
+                modeloId, new ObterSolicitacaoUseCase.ResumoModelo("COR-1", "FBOX", 4)));
+
+    // Act
+    final var resposta = mockMvc.perform(get("/api/solicitacoes"));
+
+    // Assert
+    resposta
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.content[0].modeloCodigo").value("COR-1"))
+        .andExpect(jsonPath("$.content[0].modeloMaquina").value("FBOX"))
+        .andExpect(jsonPath("$.content[0].modeloVersao").value(4));
   }
 
   @Test
@@ -1335,7 +1398,7 @@ class SolicitacaoControllerTest {
     final String sortInvalido = "titulo";
     final String esperado =
         "Parâmetro 'sort' inválido (recebido: titulo)."
-            + " Valores aceitos: criadaEm, prazoLimite, prioridade";
+            + " Valores aceitos: criadaEm, prazoLimite, prioridade, concluidaEm";
 
     // Act
     final var resposta = mockMvc.perform(get("/api/solicitacoes").param("sort", sortInvalido));

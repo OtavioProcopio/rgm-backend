@@ -11,6 +11,7 @@ import com.rgm.api.core.domain.model.aggregates.Maquina;
 import com.rgm.api.core.domain.model.aggregates.Usuario;
 import com.rgm.api.core.domain.model.enums.PerfilUsuario;
 import com.rgm.api.core.domain.ports.repositories.MaquinaRepository;
+import com.rgm.api.core.domain.ports.repositories.ModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import java.time.Instant;
 import java.util.Optional;
@@ -22,14 +23,16 @@ class GerenciarMaquinasUseCaseTest {
 
   private MaquinaRepository maquinaRepository;
   private UsuarioRepository usuarioRepository;
+  private ModeloRepository modeloRepository;
   private GerenciarMaquinasUseCase useCase;
 
   @BeforeEach
   void setUp() {
     maquinaRepository = mock(MaquinaRepository.class);
     usuarioRepository = mock(UsuarioRepository.class);
+    modeloRepository = mock(ModeloRepository.class);
     when(maquinaRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-    useCase = new GerenciarMaquinasUseCase(maquinaRepository, usuarioRepository);
+    useCase = new GerenciarMaquinasUseCase(maquinaRepository, usuarioRepository, modeloRepository);
   }
 
   private Usuario usuario(final PerfilUsuario perfil) {
@@ -170,5 +173,38 @@ class GerenciarMaquinasUseCaseTest {
     assertThrows(
         RecursoNaoEncontradoException.class,
         () -> useCase.criar(new GerenciarMaquinasUseCase.CriarInput("VICK", UUID.randomUUID())));
+  }
+
+  @Test
+  void shouldMoveModelosToTheNewNameWhenRenaming() {
+    // Arrange
+    final Usuario admin = usuario(PerfilUsuario.ADMINISTRADOR);
+    final Maquina existente = maquina("ANTIGO", true);
+    when(usuarioRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+    when(maquinaRepository.findById(existente.getId())).thenReturn(Optional.of(existente));
+    when(maquinaRepository.existsByNome("NOVO")).thenReturn(false);
+
+    // Act
+    useCase.renomear(
+        new GerenciarMaquinasUseCase.RenomearInput(existente.getId(), "NOVO", admin.getId()));
+
+    // Assert
+    verify(modeloRepository, times(1)).trocarMaquina("ANTIGO", "NOVO");
+  }
+
+  @Test
+  void shouldNotTouchModelosWhenRenamingToTheSameName() {
+    // Arrange
+    final Usuario admin = usuario(PerfilUsuario.ADMINISTRADOR);
+    final Maquina existente = maquina("IGUAL", true);
+    when(usuarioRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+    when(maquinaRepository.findById(existente.getId())).thenReturn(Optional.of(existente));
+
+    // Act
+    useCase.renomear(
+        new GerenciarMaquinasUseCase.RenomearInput(existente.getId(), "IGUAL", admin.getId()));
+
+    // Assert
+    verify(modeloRepository, never()).trocarMaquina(any(), any());
   }
 }

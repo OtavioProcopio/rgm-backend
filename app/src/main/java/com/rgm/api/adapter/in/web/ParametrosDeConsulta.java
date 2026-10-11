@@ -19,6 +19,8 @@ public final class ParametrosDeConsulta {
 
   public static final int TAMANHO_MAXIMO_DA_PAGINA = 100;
   public static final int DIAS_MAXIMOS_DO_HISTORICO = 365;
+  public static final int BUSCA_MINIMA = 2;
+  public static final int BUSCA_MAXIMA = 100;
   public static final List<Integer> PERIODOS_DO_PAINEL = List.of(7, 30, 90);
   private static final int TAMANHO_MAXIMO_DO_VALOR_ECOADO = 50;
 
@@ -30,6 +32,7 @@ public final class ParametrosDeConsulta {
     CRITERIOS_DE_ORDENACAO.put("criadaEm", CriterioOrdenacaoSolicitacao.CRIADA_EM);
     CRITERIOS_DE_ORDENACAO.put("prazoLimite", CriterioOrdenacaoSolicitacao.PRAZO_LIMITE);
     CRITERIOS_DE_ORDENACAO.put("prioridade", CriterioOrdenacaoSolicitacao.PRIORIDADE);
+    CRITERIOS_DE_ORDENACAO.put("concluidaEm", CriterioOrdenacaoSolicitacao.ENCERRADA_EM);
     SENTIDOS_DE_ORDENACAO.put("asc", true);
     SENTIDOS_DE_ORDENACAO.put("desc", false);
   }
@@ -50,6 +53,28 @@ public final class ParametrosDeConsulta {
               + size
               + ")");
     }
+  }
+
+  /**
+   * Termo de busca textual: aparado, de {@value #BUSCA_MINIMA} a {@value #BUSCA_MAXIMA} caracteres;
+   * {@code null} (ou em branco) quando o parametro nao foi informado.
+   */
+  public static String busca(final String valor) {
+    if (valor == null || valor.isBlank()) {
+      return null;
+    }
+    final String termo = valor.trim();
+    if (termo.length() < BUSCA_MINIMA || termo.length() > BUSCA_MAXIMA) {
+      throw new ValidationException(
+          "Parâmetro 'q' deve ter de "
+              + BUSCA_MINIMA
+              + " a "
+              + BUSCA_MAXIMA
+              + " caracteres (recebido: "
+              + termo.length()
+              + ")");
+    }
+    return termo;
   }
 
   /** {@code dias} do historico de metricas: de 1 ao maximo de 365. */
@@ -101,8 +126,8 @@ public final class ParametrosDeConsulta {
   }
 
   /**
-   * Ordenacao da listagem: {@code sort} em criadaEm, prazoLimite ou prioridade; {@code dir} em asc
-   * ou desc. Sem {@code sort} vale a criacao; sem {@code dir} vale o sentido crescente.
+   * Ordenacao da listagem: {@code sort} em criadaEm, prazoLimite, prioridade ou concluidaEm; {@code
+   * dir} em asc ou desc. Sem {@code sort} vale a criacao; sem {@code dir} vale o sentido crescente.
    */
   public static OrdenacaoSolicitacao ordenacao(final String sort, final String dir) {
     final CriterioOrdenacaoSolicitacao criterio =

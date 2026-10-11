@@ -6,6 +6,7 @@ import com.rgm.api.core.domain.model.aggregates.Usuario;
 import com.rgm.api.core.domain.model.enums.PerfilUsuario;
 import com.rgm.api.core.domain.ports.repositories.PageResult;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -74,6 +75,26 @@ public class UsuarioRepositoryAdapter implements UsuarioRepository {
       final PerfilUsuario perfil, final Boolean ativo, final int page, final int size) {
     final var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "criadoEm"));
     final var result = jpa.findByFilters(perfil, ativo, pageable);
+    return new PageResult<>(
+        result.getContent().stream().map(UsuarioMapper::toDomain).toList(),
+        result.getNumber(),
+        result.getSize(),
+        result.getTotalElements(),
+        result.getTotalPages());
+  }
+
+  @Override
+  public PageResult<Usuario> buscarAtribuiveis(final String busca, final int page, final int size) {
+    final List<String> perfis =
+        Arrays.stream(PerfilUsuario.values())
+            .filter(PerfilUsuario::isAtribuivel)
+            .map(Enum::name)
+            .toList();
+    final var result =
+        jpa.buscarAtribuiveis(
+            perfis,
+            busca == null ? null : TextoDeBusca.escaparCuringas(busca),
+            PageRequest.of(page, size));
     return new PageResult<>(
         result.getContent().stream().map(UsuarioMapper::toDomain).toList(),
         result.getNumber(),

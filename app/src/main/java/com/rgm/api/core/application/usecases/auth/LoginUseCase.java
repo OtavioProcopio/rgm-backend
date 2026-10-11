@@ -37,12 +37,13 @@ public final class LoginUseCase {
       throw new NaoAutorizadoException("Credenciais invalidas");
     }
 
-    if (!usuario.isAtivo()) {
-      throw new NaoAutorizadoException("Usuario inativo");
-    }
-
     if (!passwordHasher.matches(input.senha(), usuario.getSenhaHash())) {
       throw new NaoAutorizadoException("Credenciais invalidas");
+    }
+
+    // So quem acerta a senha fica sabendo que a conta esta inativa.
+    if (!usuario.isAtivo()) {
+      throw new NaoAutorizadoException("Usuario inativo");
     }
 
     final String token = tokenIssuer.issue(usuario);

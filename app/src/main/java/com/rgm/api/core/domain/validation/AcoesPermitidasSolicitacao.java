@@ -58,13 +58,13 @@ public final class AcoesPermitidasSolicitacao {
     if (aberta && (perfil.podeEncerrar() || autorPodeCancelar(status, abriu, temResponsavel))) {
       acoes.add(AcaoSolicitacao.CANCELAR);
     }
-    if (aberta && (gerencia || abriu)) {
+    if (aberta && (gerencia || (abriu && status == StatusSolicitacao.A_FAZER))) {
       acoes.add(AcaoSolicitacao.EDITAR);
     }
     if (gerencia || (aberta && (abriu || estaAtribuido))) {
       acoes.add(AcaoSolicitacao.COMENTAR);
     }
-    if (perfil.podeTriar() && aberta) {
+    if (perfil.podeTriar() && aberta && status != StatusSolicitacao.A_FAZER) {
       acoes.add(AcaoSolicitacao.ALTERAR_RESPONSAVEIS);
     }
     if (aberta

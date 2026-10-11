@@ -1,4 +1,4 @@
 {
-  "active": "specs/011-painel-de-metricas-por-periodo-e",
-  "title": "Painel de métricas por período e ordenação da listagem (rgm-backend, issues #117, #108, #118 e #107), base develop. Spec 011. Ordenação sort/dir na listagem; painel por período com período anterior, conclusão pela data de conclusão, tempo em segundos, fuso America/Sao_Paulo; solicitação de criação fora dos tempos do modelo; aditivo e compatível com a v1.5.0 do frontend."
+  "active": "specs/012-correcao-dos-bugs-abertos-do-backend",
+  "title": "Correção dos bugs abertos do backend e melhorias que o frontend vai consumir (spec 012: #132, #111, #106, #103, #102, #101, #100, #105, #128, #129, #133, #131, #127), base develop, aditivo, release v1.6.0"
 }

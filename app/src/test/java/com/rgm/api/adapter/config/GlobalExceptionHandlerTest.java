@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 
 import com.rgm.api.adapter.in.web.dto.response.ErrorResponse;
 import com.rgm.api.core.domain.exceptions.BusinessRuleException;
+import com.rgm.api.core.domain.exceptions.ConflitoException;
 import com.rgm.api.core.domain.exceptions.NaoAutorizadoException;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.exceptions.TransicaoStatusInvalidaException;
@@ -55,6 +56,20 @@ class GlobalExceptionHandlerTest {
     assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
     assertEquals(400, response.getBody().status());
     assertEquals("Erro de validação", response.getBody().message());
+  }
+
+  @Test
+  void shouldReturn409WhenConflitoException() {
+    // Arrange
+    final ConflitoException ex = new ConflitoException("Ja existe o modelo X versao 1");
+
+    // Act
+    final ResponseEntity<ErrorResponse> response = handler.handleConflito(ex);
+
+    // Assert
+    assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+    assertEquals(409, response.getBody().status());
+    assertEquals("Ja existe o modelo X versao 1", response.getBody().message());
   }
 
   @Test

@@ -42,6 +42,7 @@ public final class ListarSolicitacoesUseCase {
       Boolean atrasada,
       Boolean emAberto,
       UUID usuarioAutenticadoId,
+      String busca,
       OrdenacaoSolicitacao ordenacao,
       int page,
       int size) {}
@@ -72,6 +73,7 @@ public final class ListarSolicitacoesUseCase {
         || input.atrasada() != null
         || emAberto
         || input.responsavelId() != null
+        || input.busca() != null
         || visivelParaUsuarioId != null
         || !OrdenacaoSolicitacao.PADRAO.equals(ordenacao)) {
       return solicitacaoRepository.findByFilters(
@@ -89,6 +91,7 @@ public final class ListarSolicitacoesUseCase {
           input.atrasada(),
           emAberto,
           visivelParaUsuarioId,
+          input.busca(),
           ordenacao,
           input.page(),
           input.size());

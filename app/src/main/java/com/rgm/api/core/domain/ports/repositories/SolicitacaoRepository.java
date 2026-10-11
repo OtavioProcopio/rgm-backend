@@ -52,11 +52,18 @@ public interface SolicitacaoRepository {
       Boolean atrasada,
       boolean emAberto,
       UUID visivelParaUsuarioId,
+      String busca,
       OrdenacaoSolicitacao ordenacao,
       int page,
       int size);
 
   Map<UUID, Long> countGroupByModeloId();
+
+  /** Quantidade em aberto por tipo; chave e o nome do tipo. */
+  Map<String, Long> countEmAbertoPorTipo();
+
+  /** Quantidade em aberto por prioridade; a chave e o nome da prioridade ou SEM_PRIORIDADE. */
+  Map<String, Long> countEmAbertoPorPrioridade();
 
   long count();
 

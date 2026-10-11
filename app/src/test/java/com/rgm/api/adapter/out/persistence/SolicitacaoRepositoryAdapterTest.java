@@ -210,6 +210,7 @@ class SolicitacaoRepositoryAdapterTest {
             null,
             false,
             null,
+            null,
             "CRIADA_EM",
             true,
             pageable))
@@ -232,6 +233,7 @@ class SolicitacaoRepositoryAdapterTest {
             null,
             false,
             null,
+            null,
             OrdenacaoSolicitacao.PADRAO,
             0,
             10);
@@ -253,6 +255,7 @@ class SolicitacaoRepositoryAdapterTest {
             null,
             null,
             false,
+            null,
             null,
             "CRIADA_EM",
             true,
@@ -281,6 +284,7 @@ class SolicitacaoRepositoryAdapterTest {
             null,
             false,
             operadorId,
+            null,
             "CRIADA_EM",
             true,
             pageable))
@@ -303,6 +307,7 @@ class SolicitacaoRepositoryAdapterTest {
             null,
             false,
             operadorId,
+            null,
             OrdenacaoSolicitacao.PADRAO,
             0,
             10);
@@ -325,6 +330,7 @@ class SolicitacaoRepositoryAdapterTest {
             null,
             false,
             operadorId,
+            null,
             "CRIADA_EM",
             true,
             pageable);
@@ -613,6 +619,7 @@ class SolicitacaoRepositoryAdapterTest {
             null,
             true,
             null,
+            null,
             "CRIADA_EM",
             true,
             pageable))
@@ -635,6 +642,7 @@ class SolicitacaoRepositoryAdapterTest {
             null,
             true,
             null,
+            null,
             OrdenacaoSolicitacao.PADRAO,
             0,
             10);
@@ -656,6 +664,7 @@ class SolicitacaoRepositoryAdapterTest {
             null,
             null,
             true,
+            null,
             null,
             "CRIADA_EM",
             true,
@@ -685,6 +694,7 @@ class SolicitacaoRepositoryAdapterTest {
             null,
             false,
             null,
+            null,
             "PRAZO_LIMITE",
             false,
             pageable))
@@ -694,7 +704,7 @@ class SolicitacaoRepositoryAdapterTest {
     final PageResult<Solicitacao> result =
         adapter.findByFilters(
             null, null, null, null, null, null, null, null, null, null, null, null, false, null,
-            ordenacao, 2, 10);
+            null, ordenacao, 2, 10);
 
     // Assert
     assertEquals(new PageResult<>(List.of(), 2, 10, 0, 0), result);
@@ -713,6 +723,7 @@ class SolicitacaoRepositoryAdapterTest {
             null,
             null,
             false,
+            null,
             null,
             "PRAZO_LIMITE",
             false,
@@ -742,6 +753,7 @@ class SolicitacaoRepositoryAdapterTest {
             org.mockito.ArgumentMatchers.anyBoolean(),
             any(),
             any(),
+            any(),
             org.mockito.ArgumentMatchers.anyBoolean(),
             captor.capture()))
         .thenReturn(page);
@@ -761,6 +773,7 @@ class SolicitacaoRepositoryAdapterTest {
         null,
         null,
         false,
+        null,
         null,
         OrdenacaoSolicitacao.PADRAO,
         0,
@@ -831,5 +844,75 @@ class SolicitacaoRepositoryAdapterTest {
 
     // Assert
     assertEquals(esperado, resumo);
+  }
+
+  @Test
+  void shouldMapEnumNamesAndNullPriorityWhenCountingOpenByTypeAndPriority() {
+    // Arrange
+    when(jpa.countEmAbertoPorTipo())
+        .thenReturn(List.<Object[]>of(new Object[] {TipoSolicitacao.REPARO, 3L}));
+    when(jpa.countEmAbertoPorPrioridade())
+        .thenReturn(
+            List.<Object[]>of(
+                new Object[] {PrioridadeSolicitacao.ALTA, 2L}, new Object[] {null, 1L}));
+
+    // Act
+    final var porTipo = adapter.countEmAbertoPorTipo();
+    final var porPrioridade = adapter.countEmAbertoPorPrioridade();
+
+    // Assert
+    assertEquals(java.util.Map.of("REPARO", 3L), porTipo);
+    assertEquals(java.util.Map.of("ALTA", 2L, "SEM_PRIORIDADE", 1L), porPrioridade);
+  }
+
+  @Test
+  void shouldEscapeWildcardsWhenPassingBuscaToJpa() {
+    // Arrange
+    final var captor = org.mockito.ArgumentCaptor.forClass(String.class);
+    final Page<SolicitacaoJpaEntity> page = new PageImpl<>(List.of(), PageRequest.of(0, 10), 0);
+    when(jpa.findByFilters(
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            org.mockito.ArgumentMatchers.anyBoolean(),
+            any(),
+            captor.capture(),
+            any(),
+            org.mockito.ArgumentMatchers.anyBoolean(),
+            any()))
+        .thenReturn(page);
+
+    // Act
+    adapter.findByFilters(
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        false,
+        null,
+        "50%_a\\b",
+        OrdenacaoSolicitacao.PADRAO,
+        0,
+        10);
+
+    // Assert
+    assertEquals("50\\%\\_a\\\\b", captor.getValue());
   }
 }

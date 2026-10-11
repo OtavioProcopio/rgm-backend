@@ -3,6 +3,7 @@ package com.rgm.api.adapter.config;
 import com.rgm.api.core.application.usecases.admin.CadastrarPrestadorExternoUseCase;
 import com.rgm.api.core.application.usecases.admin.ExcluirRegistroUseCase;
 import com.rgm.api.core.application.usecases.admin.GerenciarMaquinasUseCase;
+import com.rgm.api.core.application.usecases.admin.GerenciarTiposDeModeloUseCase;
 import com.rgm.api.core.application.usecases.admin.GerenciarUsuariosUseCase;
 import com.rgm.api.core.application.usecases.admin.ListarUsuariosUseCase;
 import com.rgm.api.core.application.usecases.auth.AlterarSenhaPropriaUseCase;
@@ -31,6 +32,7 @@ import com.rgm.api.core.application.usecases.solicitacao.EncerrarSolicitacaoUseC
 import com.rgm.api.core.application.usecases.solicitacao.EnviarParaValidacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.GerenciarResponsaveisUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ListarAtividadesUseCase;
+import com.rgm.api.core.application.usecases.solicitacao.ListarResponsaveisDisponiveisUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ListarSolicitacoesUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ObterHistoricoMetricasUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ObterMetricasPorModeloUseCase;
@@ -40,6 +42,7 @@ import com.rgm.api.core.application.usecases.solicitacao.ObterSolicitacaoUseCase
 import com.rgm.api.core.application.usecases.solicitacao.RegistrarComentarioUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ResolverDestinatariosEventoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.TriarSolicitacaoUseCase;
+import com.rgm.api.core.application.usecases.tipomodelo.ListarTiposDeModeloUseCase;
 import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.EventoModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.EvidenciaRepository;
@@ -49,6 +52,7 @@ import com.rgm.api.core.domain.ports.repositories.ModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoAtribuicaoRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoEvidenciaRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
+import com.rgm.api.core.domain.ports.repositories.TipoDeModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import com.rgm.api.core.domain.ports.services.AccessTokenIssuer;
 import com.rgm.api.core.domain.ports.services.DomainEventPublisher;
@@ -146,14 +150,16 @@ public class UseCaseConfig {
       final AtividadeSolicitacaoRepository atividadeRepository,
       final EventoModeloRepository eventoModeloRepository,
       final DomainEventPublisher eventPublisher,
-      final GerenciarModelosUseCase gerenciarModelosUseCase) {
+      final GerenciarModelosUseCase gerenciarModelosUseCase,
+      final CancelarSolicitacaoUseCase cancelarSolicitacaoUseCase) {
     return new EncerrarSolicitacaoUseCase(
         solicitacaoRepository,
         usuarioRepository,
         atividadeRepository,
         eventoModeloRepository,
         eventPublisher,
-        gerenciarModelosUseCase);
+        gerenciarModelosUseCase,
+        cancelarSolicitacaoUseCase);
   }
 
   @Bean
@@ -184,8 +190,16 @@ public class UseCaseConfig {
   @Bean
   public EditarSolicitacaoUseCase editarSolicitacaoUseCase(
       final SolicitacaoRepository solicitacaoRepository,
+      final UsuarioRepository usuarioRepository,
+      final AtividadeSolicitacaoRepository atividadeRepository) {
+    return new EditarSolicitacaoUseCase(
+        solicitacaoRepository, usuarioRepository, atividadeRepository);
+  }
+
+  @Bean
+  public ListarResponsaveisDisponiveisUseCase listarResponsaveisDisponiveisUseCase(
       final UsuarioRepository usuarioRepository) {
-    return new EditarSolicitacaoUseCase(solicitacaoRepository, usuarioRepository);
+    return new ListarResponsaveisDisponiveisUseCase(usuarioRepository);
   }
 
   @Bean
@@ -301,15 +315,37 @@ public class UseCaseConfig {
       final ModeloRepository modeloRepository,
       final UsuarioRepository usuarioRepository,
       final MaquinaRepository maquinaRepository,
+      final TipoDeModeloRepository tipoDeModeloRepository,
       final EventoModeloRepository eventoModeloRepository) {
     return new GerenciarModelosUseCase(
-        modeloRepository, usuarioRepository, maquinaRepository, eventoModeloRepository);
+        modeloRepository,
+        usuarioRepository,
+        maquinaRepository,
+        tipoDeModeloRepository,
+        eventoModeloRepository);
   }
 
   @Bean
   public GerenciarMaquinasUseCase gerenciarMaquinasUseCase(
-      final MaquinaRepository maquinaRepository, final UsuarioRepository usuarioRepository) {
-    return new GerenciarMaquinasUseCase(maquinaRepository, usuarioRepository);
+      final MaquinaRepository maquinaRepository,
+      final UsuarioRepository usuarioRepository,
+      final ModeloRepository modeloRepository) {
+    return new GerenciarMaquinasUseCase(maquinaRepository, usuarioRepository, modeloRepository);
+  }
+
+  @Bean
+  public GerenciarTiposDeModeloUseCase gerenciarTiposDeModeloUseCase(
+      final TipoDeModeloRepository tipoDeModeloRepository,
+      final UsuarioRepository usuarioRepository,
+      final ModeloRepository modeloRepository) {
+    return new GerenciarTiposDeModeloUseCase(
+        tipoDeModeloRepository, usuarioRepository, modeloRepository);
+  }
+
+  @Bean
+  public ListarTiposDeModeloUseCase listarTiposDeModeloUseCase(
+      final TipoDeModeloRepository tipoDeModeloRepository) {
+    return new ListarTiposDeModeloUseCase(tipoDeModeloRepository);
   }
 
   @Bean
@@ -418,9 +454,10 @@ public class UseCaseConfig {
   public ObterSolicitacaoUseCase obterSolicitacaoUseCase(
       final SolicitacaoRepository solicitacaoRepository,
       final SolicitacaoAtribuicaoRepository atribuicaoRepository,
-      final UsuarioRepository usuarioRepository) {
+      final UsuarioRepository usuarioRepository,
+      final ModeloRepository modeloRepository) {
     return new ObterSolicitacaoUseCase(
-        solicitacaoRepository, atribuicaoRepository, usuarioRepository);
+        solicitacaoRepository, atribuicaoRepository, usuarioRepository, modeloRepository);
   }
 
   @Bean

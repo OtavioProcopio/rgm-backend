@@ -281,7 +281,7 @@ class ParametrosDeConsultaTest {
     // Assert
     assertEquals(
         "Parâmetro 'sort' inválido (recebido: titulo)."
-            + " Valores aceitos: criadaEm, prazoLimite, prioridade",
+            + " Valores aceitos: criadaEm, prazoLimite, prioridade, concluidaEm",
         erro.getMessage());
   }
 
@@ -369,5 +369,63 @@ class ParametrosDeConsultaTest {
     // Assert
     assertFalse(erro.getMessage().contains("x".repeat(51)));
     assertTrue(erro.getMessage().contains("x".repeat(50) + "…"));
+  }
+
+  @Test
+  void shouldMapConcluidaEmToEncerradaEmWhenSortIsConcluidaEm() {
+    // Arrange
+    final String sort = "concluidaEm";
+
+    // Act
+    final OrdenacaoSolicitacao ordenacao = ParametrosDeConsulta.ordenacao(sort, "desc");
+
+    // Assert
+    assertEquals(CriterioOrdenacaoSolicitacao.ENCERRADA_EM, ordenacao.criterio());
+    assertFalse(ordenacao.ascendente());
+  }
+
+  @Test
+  void shouldReturnNullWhenBuscaIsMissingOrBlank() {
+    // Arrange
+    final String vazio = "   ";
+
+    // Act
+    final String ausente = ParametrosDeConsulta.busca(null);
+    final String branco = ParametrosDeConsulta.busca(vazio);
+
+    // Assert
+    assertNull(ausente);
+    assertNull(branco);
+  }
+
+  @Test
+  void shouldTrimBuscaWhenWithinLimits() {
+    // Arrange
+    final String valor = "  correia  ";
+
+    // Act
+    final String termo = ParametrosDeConsulta.busca(valor);
+
+    // Assert
+    assertEquals("correia", termo);
+  }
+
+  @Test
+  void shouldRejectBuscaWhenOneCharacterOrOverHundred() {
+    // Arrange
+    final String curta = "a";
+    final String longa = "a".repeat(101);
+
+    // Act
+    final ValidationException curtaErro =
+        assertThrows(ValidationException.class, () -> ParametrosDeConsulta.busca(curta));
+    final ValidationException longaErro =
+        assertThrows(ValidationException.class, () -> ParametrosDeConsulta.busca(longa));
+
+    // Assert
+    assertEquals(
+        "Parâmetro 'q' deve ter de 2 a 100 caracteres (recebido: 1)", curtaErro.getMessage());
+    assertEquals(
+        "Parâmetro 'q' deve ter de 2 a 100 caracteres (recebido: 101)", longaErro.getMessage());
   }
 }

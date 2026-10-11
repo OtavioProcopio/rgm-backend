@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -116,13 +117,47 @@ class ModeloRepositoryAdapterTest {
   }
 
   @Test
-  void countByMaquinaAndCodigo_deveDelegarAoJpa() {
-    when(jpa.countByMaquinaAndCodigo("MANUAL", "MOD-001")).thenReturn(5);
+  void shouldDelegateLargestVersionToJpaWhenAskingForMaiorVersao() {
+    // Arrange
+    when(jpa.maiorVersao("MANUAL", "MOD-001")).thenReturn(5);
 
-    final int result = adapter.countByMaquinaAndCodigo("MANUAL", "MOD-001");
+    // Act
+    final int result = adapter.maiorVersao("MANUAL", "MOD-001");
 
+    // Assert
     assertEquals(5, result);
-    verify(jpa).countByMaquinaAndCodigo("MANUAL", "MOD-001");
+    verify(jpa, times(1)).maiorVersao("MANUAL", "MOD-001");
+  }
+
+  @Test
+  void shouldDelegateIdentificationCheckToJpaWhenLookingForAnotherModelo() {
+    // Arrange
+    final UUID id = UUID.randomUUID();
+    when(jpa.existsByMaquinaAndCodigoAndVersaoAndIdNot("MANUAL", "MOD-001", 2, id))
+        .thenReturn(true);
+
+    // Act
+    final boolean result = adapter.existeOutroComIdentificacao("MANUAL", "MOD-001", 2, id);
+
+    // Assert
+    assertTrue(result);
+    verify(jpa, times(1)).existsByMaquinaAndCodigoAndVersaoAndIdNot("MANUAL", "MOD-001", 2, id);
+  }
+
+  @Test
+  void shouldMapEntitiesWhenFindingAllByIdIn() {
+    // Arrange
+    final ModeloJpaEntity entity = criarJpaEntity();
+    final List<UUID> ids = List.of(entity.getId());
+    when(jpa.findAllById(ids)).thenReturn(List.of(entity));
+
+    // Act
+    final List<Modelo> result = adapter.findAllByIdIn(ids);
+
+    // Assert
+    assertEquals(1, result.size());
+    assertEquals(entity.getId(), result.get(0).getId());
+    verify(jpa, times(1)).findAllById(ids);
   }
 
   @Test

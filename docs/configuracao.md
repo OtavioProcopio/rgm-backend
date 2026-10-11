@@ -22,9 +22,19 @@ Copie `.env.example` para `.env` antes de iniciar.
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:3000,http://localhost:5173` | Origens CORS |
 | `RATE_LIMIT_MAX_REQUESTS` | `10` | Máx. requests/janela no login |
 | `RATE_LIMIT_WINDOW_SECONDS` | `60` | Janela do rate limiter (seg) |
+| `ADMIN_EMAIL` | `admin@rgm.com` | E-mail do primeiro administrador |
+| `ADMIN_SENHA` | — | Senha do primeiro administrador. **Obrigatória em produção** (8+ caracteres; `admin123` é recusada) |
 | `SPRING_PROFILES_ACTIVE` | — | Usar `dev` para desenvolvimento |
 
 O perfil `dev` habilita: admin seed (`admin@rgm.com` / `admin123`), SQL logging e JWT secret default.
+
+### Primeiro administrador em produção
+
+Em `prod` não existe conta com senha fixa. Ao subir, a aplicação cria o administrador só se
+`ADMIN_SENHA` estiver definida (e, se quiser outro e-mail, `ADMIN_EMAIL`). Sem a senha, nenhum
+usuário é criado e o log traz o aviso `ADMIN_SENHA nao definida`. Se a conta já existir, nada
+muda: para trocar a senha depois, use a troca de senha da própria conta (`/api/auth/...`) ou a
+redefinição por outro administrador.
 
 ## Makefile
 

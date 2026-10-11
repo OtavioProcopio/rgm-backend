@@ -1,6 +1,7 @@
 package com.rgm.api.adapter.in.web.dto.response;
 
 import com.rgm.api.core.application.usecases.solicitacao.ObterSolicitacaoUseCase.ResponsavelNome;
+import com.rgm.api.core.application.usecases.solicitacao.ObterSolicitacaoUseCase.ResumoModelo;
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
 import com.rgm.api.core.domain.model.enums.AcaoSolicitacao;
 import java.time.Instant;
@@ -32,7 +33,8 @@ public record SolicitacaoResponse(
     Long tempoResolucaoSegundos,
     List<String> acoesPermitidas,
     List<ResponsavelResponse> responsaveis,
-    String abertaPorNome) {
+    String abertaPorNome,
+    Integer modeloVersao) {
 
   public static SolicitacaoResponse from(final Solicitacao s) {
     return from(s, List.of());
@@ -57,6 +59,20 @@ public record SolicitacaoResponse(
       final Set<AcaoSolicitacao> acoesPermitidas,
       final List<ResponsavelNome> responsaveis,
       final String abertaPorNome) {
+    return from(s, responsavelIds, acoesPermitidas, responsaveis, abertaPorNome, null);
+  }
+
+  /**
+   * Com o modelo do cadastro: codigo e maquina vem dele quando a solicitacao tem modelo; sem ele,
+   * valem os dados da propria solicitacao (criacao ainda sem modelo).
+   */
+  public static SolicitacaoResponse from(
+      final Solicitacao s,
+      final List<UUID> responsavelIds,
+      final Set<AcaoSolicitacao> acoesPermitidas,
+      final List<ResponsavelNome> responsaveis,
+      final String abertaPorNome,
+      final ResumoModelo modelo) {
     final Instant agora = Instant.now();
     return new SolicitacaoResponse(
         s.getId(),
@@ -66,8 +82,8 @@ public record SolicitacaoResponse(
         s.getStatus().name(),
         s.getPrioridade() != null ? s.getPrioridade().name() : null,
         s.getModeloId(),
-        s.getModeloCodigo(),
-        s.getModeloMaquina(),
+        modelo != null ? modelo.codigo() : s.getModeloCodigo(),
+        modelo != null ? modelo.maquina() : s.getModeloMaquina(),
         s.getModeloObservacoes(),
         s.getAbertaPorUsuarioId(),
         s.getComentarioFinal(),
@@ -82,6 +98,7 @@ public record SolicitacaoResponse(
         s.getTempoResolucaoSegundos(),
         acoesPermitidas == null ? null : acoesPermitidas.stream().map(Enum::name).toList(),
         responsaveis == null ? null : responsaveis.stream().map(ResponsavelResponse::from).toList(),
-        abertaPorNome);
+        abertaPorNome,
+        modelo != null ? modelo.versao() : null);
   }
 }

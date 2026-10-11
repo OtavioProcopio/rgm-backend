@@ -9,9 +9,12 @@ import com.rgm.api.core.domain.exceptions.NaoAutorizadoException;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
 import com.rgm.api.core.domain.model.aggregates.Usuario;
+import com.rgm.api.core.domain.model.entities.AtividadeSolicitacao;
 import com.rgm.api.core.domain.model.enums.PerfilUsuario;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
+import com.rgm.api.core.domain.model.enums.TipoAtividadeSolicitacao;
 import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
+import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import java.time.Instant;
@@ -19,11 +22,13 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.Executable;
 
 class EditarSolicitacaoUseCaseTest {
 
   private SolicitacaoRepository solicitacaoRepository;
   private UsuarioRepository usuarioRepository;
+  private AtividadeSolicitacaoRepository atividadeRepository;
   private EditarSolicitacaoUseCase useCase;
 
   private static final Instant NOW = Instant.now();
@@ -32,7 +37,9 @@ class EditarSolicitacaoUseCaseTest {
   void setUp() {
     solicitacaoRepository = mock(SolicitacaoRepository.class);
     usuarioRepository = mock(UsuarioRepository.class);
-    useCase = new EditarSolicitacaoUseCase(solicitacaoRepository, usuarioRepository);
+    atividadeRepository = mock(AtividadeSolicitacaoRepository.class);
+    useCase =
+        new EditarSolicitacaoUseCase(solicitacaoRepository, usuarioRepository, atividadeRepository);
   }
 
   private Usuario criarGestor() {
@@ -165,5 +172,84 @@ class EditarSolicitacaoUseCaseTest {
             useCase.execute(
                 new EditarSolicitacaoUseCase.Input(
                     solId, "T", "D", TipoSolicitacao.REPARO, gestor.getId())));
+  }
+
+  private Solicitacao criarSolicitacaoEm(final UUID abertaPorId, final StatusSolicitacao status) {
+    return new Solicitacao(
+        UUID.randomUUID(),
+        "Titulo",
+        "Descricao",
+        TipoSolicitacao.REPARO,
+        status,
+        status == StatusSolicitacao.A_FAZER
+            ? null
+            : com.rgm.api.core.domain.model.enums.PrioridadeSolicitacao.ALTA,
+        UUID.randomUUID(),
+        null,
+        null,
+        null,
+        abertaPorId,
+        null,
+        NOW,
+        NOW,
+        null,
+        null);
+  }
+
+  @Test
+  void shouldRecordPreviousValuesInHistoryWhenEditing() {
+    // Arrange
+    final Usuario operador = criarOperador();
+    final Solicitacao sol = criarSolicitacaoAFazer(operador.getId());
+    when(usuarioRepository.findById(operador.getId())).thenReturn(Optional.of(operador));
+    when(solicitacaoRepository.findById(sol.getId())).thenReturn(Optional.of(sol));
+    when(solicitacaoRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+    // Act
+    useCase.execute(input(sol.getId(), operador.getId(), null));
+
+    // Assert
+    final var captor = org.mockito.ArgumentCaptor.forClass(AtividadeSolicitacao.class);
+    verify(atividadeRepository, times(1)).save(captor.capture());
+    final AtividadeSolicitacao atividade = captor.getValue();
+    assertEquals(TipoAtividadeSolicitacao.COMENTARIO, atividade.getTipo());
+    assertEquals(operador.getId(), atividade.getAutorUsuarioId());
+    assertEquals(
+        "Solicitação editada. Título anterior: Titulo. Descrição anterior: Descricao",
+        atividade.getComentario());
+  }
+
+  @Test
+  void shouldRejectOperatorEditWhenSolicitacaoWasAlreadyTriaged() {
+    // Arrange
+    final Usuario operador = criarOperador();
+    final Solicitacao sol = criarSolicitacaoEm(operador.getId(), StatusSolicitacao.EM_ANDAMENTO);
+    when(usuarioRepository.findById(operador.getId())).thenReturn(Optional.of(operador));
+    when(solicitacaoRepository.findById(sol.getId())).thenReturn(Optional.of(sol));
+
+    // Act
+    final Executable acao = () -> useCase.execute(input(sol.getId(), operador.getId(), null));
+
+    // Assert
+    assertThrows(NaoAutorizadoException.class, acao);
+    verify(solicitacaoRepository, never()).save(any());
+    verify(atividadeRepository, never()).save(any());
+  }
+
+  @Test
+  void shouldAllowManagerToEditWhenSolicitacaoIsInValidation() {
+    // Arrange
+    final Usuario gestor = criarGestor();
+    final Solicitacao sol = criarSolicitacaoEm(UUID.randomUUID(), StatusSolicitacao.EM_VALIDACAO);
+    when(usuarioRepository.findById(gestor.getId())).thenReturn(Optional.of(gestor));
+    when(solicitacaoRepository.findById(sol.getId())).thenReturn(Optional.of(sol));
+    when(solicitacaoRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+    // Act
+    final Solicitacao editada = useCase.execute(input(sol.getId(), gestor.getId(), null));
+
+    // Assert
+    assertEquals("Novo titulo", editada.getTitulo());
+    verify(atividadeRepository, times(1)).save(any());
   }
 }

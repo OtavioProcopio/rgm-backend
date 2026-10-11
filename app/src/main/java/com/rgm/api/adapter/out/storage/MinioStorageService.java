@@ -8,6 +8,7 @@ import java.io.InputStream;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,11 +33,14 @@ public class MinioStorageService implements StorageService {
     this.publicUrl = publicUrl;
   }
 
+  /**
+   * O nome do objeto e gerado aqui (UUID + extensao do tipo); o nome enviado pelo cliente nao entra
+   * no endereco. O nome original fica so nos dados da evidencia.
+   */
   @Override
   public String upload(
       final String fileName, final String contentType, final InputStream content, final long size) {
-    final String uuid = UUID.randomUUID().toString();
-    final String objectName = uuid + "/" + fileName;
+    final String objectName = UUID.randomUUID() + extensaoDoTipo(contentType);
     try {
       minioClient.putObject(
           PutObjectArgs.builder().bucket(bucketName).object(objectName).stream(content, size, -1)
@@ -45,7 +49,22 @@ public class MinioStorageService implements StorageService {
     } catch (final Exception e) {
       throw new RuntimeException("Erro ao fazer upload para MinIO: " + e.getMessage(), e);
     }
-    return publicUrl + "/" + bucketName + "/" + uuid + "/" + encodeSegment(fileName);
+    return publicUrl + "/" + bucketName + "/" + objectName;
+  }
+
+  private static String extensaoDoTipo(final String contentType) {
+    if (contentType == null) {
+      return "";
+    }
+    return switch (contentType.toLowerCase(Locale.ROOT)) {
+      case "image/jpeg" -> ".jpg";
+      case "image/png" -> ".png";
+      case "image/gif" -> ".gif";
+      case "image/webp" -> ".webp";
+      case "application/pdf" -> ".pdf";
+      case "video/mp4" -> ".mp4";
+      default -> "";
+    };
   }
 
   private String encodeSegment(final String segment) {

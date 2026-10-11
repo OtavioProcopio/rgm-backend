@@ -287,6 +287,31 @@ public final class Solicitacao {
         version);
   }
 
+  /**
+   * Marca a solicitacao como alterada quando seus responsaveis mudam: atualiza a data e, ao salvar,
+   * o controle de versao, para que duas trocas simultaneas nao se sobreponham.
+   */
+  public Solicitacao registrarAlteracaoDeResponsaveis(final Instant agora) {
+    return new Solicitacao(
+        id,
+        titulo,
+        descricao,
+        tipo,
+        status,
+        prioridade,
+        modeloId,
+        modeloCodigo,
+        modeloMaquina,
+        modeloObservacoes,
+        abertaPorUsuarioId,
+        comentarioFinal,
+        criadaEm,
+        requireNonNull(agora, "agora"),
+        concluidaEm,
+        canceladaEm,
+        version);
+  }
+
   /** UC-07: Concluir solicitacao (EM_VALIDACAO -> CONCLUIDA). Nao se aplica ao tipo CRIACAO. */
   public Solicitacao concluir(final String novoComentarioFinal, final Instant agora) {
     if (tipo == TipoSolicitacao.CRIACAO) {

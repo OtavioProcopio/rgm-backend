@@ -115,6 +115,7 @@ public class SolicitacaoRepositoryAdapter implements SolicitacaoRepository {
       final Boolean atrasada,
       final boolean emAberto,
       final UUID visivelParaUsuarioId,
+      final String busca,
       final OrdenacaoSolicitacao ordenacao,
       final int page,
       final int size) {
@@ -136,6 +137,7 @@ public class SolicitacaoRepositoryAdapter implements SolicitacaoRepository {
             atrasada,
             emAberto,
             visivelParaUsuarioId,
+            busca == null ? null : TextoDeBusca.escaparCuringas(busca),
             ordenacao.criterio().name(),
             ordenacao.ascendente(),
             pageable);
@@ -145,6 +147,24 @@ public class SolicitacaoRepositoryAdapter implements SolicitacaoRepository {
         result.getSize(),
         result.getTotalElements(),
         result.getTotalPages());
+  }
+
+  @Override
+  public Map<String, Long> countEmAbertoPorTipo() {
+    final Map<String, Long> result = new HashMap<>();
+    for (final Object[] row : jpa.countEmAbertoPorTipo()) {
+      result.put(((Enum<?>) row[0]).name(), (Long) row[1]);
+    }
+    return result;
+  }
+
+  @Override
+  public Map<String, Long> countEmAbertoPorPrioridade() {
+    final Map<String, Long> result = new HashMap<>();
+    for (final Object[] row : jpa.countEmAbertoPorPrioridade()) {
+      result.put(row[0] == null ? "SEM_PRIORIDADE" : ((Enum<?>) row[0]).name(), (Long) row[1]);
+    }
+    return result;
   }
 
   @Override

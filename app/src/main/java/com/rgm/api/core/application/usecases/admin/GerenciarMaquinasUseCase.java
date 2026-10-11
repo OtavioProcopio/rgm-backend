@@ -6,6 +6,7 @@ import com.rgm.api.core.domain.exceptions.ValidationException;
 import com.rgm.api.core.domain.model.aggregates.Maquina;
 import com.rgm.api.core.domain.model.aggregates.Usuario;
 import com.rgm.api.core.domain.ports.repositories.MaquinaRepository;
+import com.rgm.api.core.domain.ports.repositories.ModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import java.time.Instant;
 import java.util.UUID;
@@ -17,11 +18,15 @@ public class GerenciarMaquinasUseCase {
 
   private final MaquinaRepository maquinaRepository;
   private final UsuarioRepository usuarioRepository;
+  private final ModeloRepository modeloRepository;
 
   public GerenciarMaquinasUseCase(
-      final MaquinaRepository maquinaRepository, final UsuarioRepository usuarioRepository) {
+      final MaquinaRepository maquinaRepository,
+      final UsuarioRepository usuarioRepository,
+      final ModeloRepository modeloRepository) {
     this.maquinaRepository = maquinaRepository;
     this.usuarioRepository = usuarioRepository;
+    this.modeloRepository = modeloRepository;
   }
 
   public record CriarInput(String nome, UUID adminId) {}
@@ -48,7 +53,11 @@ public class GerenciarMaquinasUseCase {
     if (!nome.equalsIgnoreCase(maquina.getNome()) && maquinaRepository.existsByNome(nome)) {
       throw new ValidationException("Ja existe uma maquina com esse nome");
     }
-    return maquinaRepository.save(maquina.renomear(nome, Instant.now()));
+    final Maquina renomeada = maquinaRepository.save(maquina.renomear(nome, Instant.now()));
+    if (!maquina.getNome().equals(nome)) {
+      modeloRepository.trocarMaquina(maquina.getNome(), nome);
+    }
+    return renomeada;
   }
 
   public Maquina desativar(final DesativarInput input) {

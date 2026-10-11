@@ -4,8 +4,11 @@ import com.rgm.api.core.domain.exceptions.NaoAutorizadoException;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
 import com.rgm.api.core.domain.model.aggregates.Usuario;
+import com.rgm.api.core.domain.model.entities.AtividadeSolicitacao;
 import com.rgm.api.core.domain.model.enums.PerfilUsuario;
+import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
 import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
+import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import java.time.Instant;
@@ -18,12 +21,15 @@ public class EditarSolicitacaoUseCase {
 
   private final SolicitacaoRepository solicitacaoRepository;
   private final UsuarioRepository usuarioRepository;
+  private final AtividadeSolicitacaoRepository atividadeRepository;
 
   public EditarSolicitacaoUseCase(
       final SolicitacaoRepository solicitacaoRepository,
-      final UsuarioRepository usuarioRepository) {
+      final UsuarioRepository usuarioRepository,
+      final AtividadeSolicitacaoRepository atividadeRepository) {
     this.solicitacaoRepository = solicitacaoRepository;
     this.usuarioRepository = usuarioRepository;
+    this.atividadeRepository = atividadeRepository;
   }
 
   public record Input(
@@ -42,9 +48,22 @@ public class EditarSolicitacaoUseCase {
 
     validarPermissao(usuario, solicitacao);
 
+    final Instant agora = Instant.now();
     final Solicitacao editada =
-        solicitacao.editar(input.titulo(), input.descricao(), input.tipo(), Instant.now());
-    return solicitacaoRepository.save(editada);
+        solicitacao.editar(input.titulo(), input.descricao(), input.tipo(), agora);
+    final Solicitacao salva = solicitacaoRepository.save(editada);
+
+    atividadeRepository.save(
+        AtividadeSolicitacao.comentario(
+            salva.getId(),
+            "Solicitação editada. Título anterior: "
+                + solicitacao.getTitulo()
+                + ". Descrição anterior: "
+                + solicitacao.getDescricao(),
+            input.usuarioId(),
+            agora));
+
+    return salva;
   }
 
   private void validarPermissao(final Usuario usuario, final Solicitacao solicitacao) {
@@ -58,6 +77,10 @@ public class EditarSolicitacaoUseCase {
 
     if (!solicitacao.getAbertaPorUsuarioId().equals(usuario.getId())) {
       throw new NaoAutorizadoException("Operador so pode editar solicitacoes que ele abriu");
+    }
+    if (solicitacao.getStatus() != StatusSolicitacao.A_FAZER) {
+      throw new NaoAutorizadoException(
+          "Operador so pode editar a solicitacao antes da triagem (em A Fazer)");
     }
   }
 }

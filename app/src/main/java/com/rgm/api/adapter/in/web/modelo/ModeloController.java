@@ -14,9 +14,7 @@ import com.rgm.api.core.application.usecases.modelo.ListarModelosUseCase;
 import com.rgm.api.core.application.usecases.modelo.ObterResumoModelosUseCase;
 import com.rgm.api.core.application.usecases.modelo.ObterResumoSolicitacoesModeloUseCase;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
-import com.rgm.api.core.domain.exceptions.ValidationException;
 import com.rgm.api.core.domain.model.aggregates.Modelo;
-import com.rgm.api.core.domain.model.enums.TipoModelo;
 import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.EventoModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.FotoGaleriaModeloRepository;
@@ -270,15 +268,8 @@ public class ModeloController {
     return new ResponseEntity<>(pdf, headers, HttpStatus.OK);
   }
 
-  private TipoModelo parseTipo(final String tipo) {
-    if (tipo == null || tipo.isBlank()) {
-      return null;
-    }
-    try {
-      return TipoModelo.valueOf(tipo);
-    } catch (final IllegalArgumentException e) {
-      throw new ValidationException("Tipo de modelo invalido: " + tipo);
-    }
+  private String parseTipo(final String tipo) {
+    return tipo == null || tipo.isBlank() ? null : tipo.trim();
   }
 
   private String resolveNome(final Authentication authentication) {
