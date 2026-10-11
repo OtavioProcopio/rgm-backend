@@ -35,8 +35,10 @@ import com.rgm.api.core.application.usecases.solicitacao.ObterSolicitacaoUseCase
 import com.rgm.api.core.application.usecases.solicitacao.RegistrarComentarioUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.TriarSolicitacaoUseCase;
 import com.rgm.api.core.domain.model.aggregates.Usuario;
+import com.rgm.api.core.domain.model.enums.CriterioOrdenacaoSolicitacao;
 import com.rgm.api.core.domain.model.enums.OrdenacaoMetricaModelo;
 import com.rgm.api.core.domain.model.enums.PerfilUsuario;
+import com.rgm.api.core.domain.ports.repositories.OrdenacaoSolicitacao;
 import com.rgm.api.core.domain.ports.repositories.PageResult;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import java.time.Instant;
@@ -81,6 +83,11 @@ class SolicitacaoControllerSegurancaTest {
   @MockitoBean private ObterMetricasSolicitacoesUseCase obterMetricasUseCase;
   @MockitoBean private ObterHistoricoMetricasUseCase obterHistoricoMetricasUseCase;
   @MockitoBean private ObterMetricasPorModeloUseCase obterMetricasPorModeloUseCase;
+
+  @MockitoBean
+  private com.rgm.api.core.application.usecases.solicitacao.ObterPainelPorPeriodoUseCase
+      obterPainelPorPeriodoUseCase;
+
   @MockitoBean private GerenciarResponsaveisUseCase gerenciarResponsaveisUseCase;
   @MockitoBean private ObterSolicitacaoUseCase obterUseCase;
   @MockitoBean private ListarAtividadesUseCase listarAtividadesUseCase;
@@ -400,5 +407,31 @@ class SolicitacaoControllerSegurancaTest {
     verifyNoMoreInteractions(obterUseCase);
     verify(autenticarAcessoUseCase, times(1)).execute(TOKEN_OPERADOR);
     verifyNoMoreInteractions(autenticarAcessoUseCase);
+  }
+
+  @Test
+  void shouldResponder200ComAOrdenacaoWhenOperadorOrdenaASuaListagem() throws Exception {
+    // Arrange
+    final Usuario operador = autenticarComo(TOKEN_OPERADOR, PerfilUsuario.OPERADOR);
+    when(listarUseCase.execute(any())).thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
+    when(obterUseCase.listarResponsaveisBatch(any())).thenReturn(Map.of());
+    final ArgumentCaptor<ListarSolicitacoesUseCase.Input> captor =
+        ArgumentCaptor.forClass(ListarSolicitacoesUseCase.Input.class);
+
+    // Act
+    final var resposta =
+        mockMvc.perform(
+            consulta("/api/solicitacoes", TOKEN_OPERADOR)
+                .param("sort", "prioridade")
+                .param("dir", "asc"));
+
+    // Assert
+    resposta.andExpect(status().isOk());
+    verify(listarUseCase, times(1)).execute(captor.capture());
+    assertEquals(operador.getId(), captor.getValue().usuarioAutenticadoId());
+    assertEquals(
+        new OrdenacaoSolicitacao(CriterioOrdenacaoSolicitacao.PRIORIDADE, true),
+        captor.getValue().ordenacao());
+    verifyNoMoreInteractions(listarUseCase);
   }
 }

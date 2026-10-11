@@ -7,6 +7,7 @@ import com.rgm.api.core.domain.model.enums.PrioridadeSolicitacao;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
 import com.rgm.api.core.domain.model.enums.TipoFiltroData;
 import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
+import com.rgm.api.core.domain.ports.repositories.OrdenacaoSolicitacao;
 import com.rgm.api.core.domain.ports.repositories.PageResult;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
@@ -41,6 +42,7 @@ public final class ListarSolicitacoesUseCase {
       Boolean atrasada,
       Boolean emAberto,
       UUID usuarioAutenticadoId,
+      OrdenacaoSolicitacao ordenacao,
       int page,
       int size) {}
 
@@ -51,6 +53,8 @@ public final class ListarSolicitacoesUseCase {
         input.tipoData() != null ? input.tipoData() : TipoFiltroData.CRIACAO;
     final boolean porConclusao = tipoData == TipoFiltroData.CONCLUSAO;
     final boolean emAberto = Boolean.TRUE.equals(input.emAberto());
+    final OrdenacaoSolicitacao ordenacao =
+        input.ordenacao() != null ? input.ordenacao() : OrdenacaoSolicitacao.PADRAO;
 
     final Instant criadaEmInicio = porConclusao ? null : input.dataInicio();
     final Instant criadaEmFim = porConclusao ? null : input.dataFim();
@@ -68,7 +72,8 @@ public final class ListarSolicitacoesUseCase {
         || input.atrasada() != null
         || emAberto
         || input.responsavelId() != null
-        || visivelParaUsuarioId != null) {
+        || visivelParaUsuarioId != null
+        || !OrdenacaoSolicitacao.PADRAO.equals(ordenacao)) {
       return solicitacaoRepository.findByFilters(
           input.status(),
           input.modeloId(),
@@ -84,6 +89,7 @@ public final class ListarSolicitacoesUseCase {
           input.atrasada(),
           emAberto,
           visivelParaUsuarioId,
+          ordenacao,
           input.page(),
           input.size());
     }

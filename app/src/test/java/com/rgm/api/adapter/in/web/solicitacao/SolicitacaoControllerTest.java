@@ -49,9 +49,11 @@ import com.rgm.api.core.domain.exceptions.NaoAutorizadoException;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
 import com.rgm.api.core.domain.model.entities.AtividadeSolicitacao;
+import com.rgm.api.core.domain.model.enums.CriterioOrdenacaoSolicitacao;
 import com.rgm.api.core.domain.model.enums.PrioridadeSolicitacao;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
 import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
+import com.rgm.api.core.domain.ports.repositories.OrdenacaoSolicitacao;
 import com.rgm.api.core.domain.ports.repositories.PageResult;
 import com.rgm.api.core.domain.validation.LimitesTexto;
 import java.time.Instant;
@@ -108,6 +110,10 @@ class SolicitacaoControllerTest {
   @MockitoBean
   private com.rgm.api.core.application.usecases.solicitacao.ObterHistoricoMetricasUseCase
       obterHistoricoMetricasUseCase;
+
+  @MockitoBean
+  private com.rgm.api.core.application.usecases.solicitacao.ObterPainelPorPeriodoUseCase
+      obterPainelPorPeriodoUseCase;
 
   @MockitoBean
   private com.rgm.api.core.application.usecases.solicitacao.ObterMetricasPorModeloUseCase
@@ -1284,6 +1290,77 @@ class SolicitacaoControllerTest {
     verifyNoMoreInteractions(obterUseCase);
   }
 
+  @Test
+  void shouldLevarCriterioESentidoAoCasoDeUsoWhenListagemRecebeSortEDir() throws Exception {
+    // Arrange
+    when(listarUseCase.execute(any())).thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
+    when(obterUseCase.listarResponsaveisBatch(any())).thenReturn(java.util.Map.of());
+    final ArgumentCaptor<ListarSolicitacoesUseCase.Input> captor =
+        ArgumentCaptor.forClass(ListarSolicitacoesUseCase.Input.class);
+
+    // Act
+    final var resposta =
+        mockMvc.perform(get("/api/solicitacoes").param("sort", "prazoLimite").param("dir", "desc"));
+
+    // Assert
+    resposta.andExpect(status().isOk());
+    verify(listarUseCase, times(1)).execute(captor.capture());
+    assertEquals(
+        new OrdenacaoSolicitacao(CriterioOrdenacaoSolicitacao.PRAZO_LIMITE, false),
+        captor.getValue().ordenacao());
+    verifyNoMoreInteractions(listarUseCase);
+  }
+
+  @Test
+  void shouldLevarAOrdenacaoPadraoAoCasoDeUsoWhenListagemNaoRecebeSort() throws Exception {
+    // Arrange
+    when(listarUseCase.execute(any())).thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
+    when(obterUseCase.listarResponsaveisBatch(any())).thenReturn(java.util.Map.of());
+    final ArgumentCaptor<ListarSolicitacoesUseCase.Input> captor =
+        ArgumentCaptor.forClass(ListarSolicitacoesUseCase.Input.class);
+
+    // Act
+    final var resposta = mockMvc.perform(get("/api/solicitacoes"));
+
+    // Assert
+    resposta.andExpect(status().isOk());
+    verify(listarUseCase, times(1)).execute(captor.capture());
+    assertEquals(OrdenacaoSolicitacao.PADRAO, captor.getValue().ordenacao());
+    verifyNoMoreInteractions(listarUseCase);
+  }
+
+  @Test
+  void shouldRespond400NamingSortAndAcceptedValuesWhenSortIsInvalid() throws Exception {
+    // Arrange
+    final String sortInvalido = "titulo";
+    final String esperado =
+        "Parâmetro 'sort' inválido (recebido: titulo)."
+            + " Valores aceitos: criadaEm, prazoLimite, prioridade";
+
+    // Act
+    final var resposta = mockMvc.perform(get("/api/solicitacoes").param("sort", sortInvalido));
+
+    // Assert
+    resposta.andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value(esperado));
+    verifyNoInteractions(listarUseCase);
+  }
+
+  @Test
+  void shouldRespond400NamingDirAndAcceptedValuesWhenDirIsInvalid() throws Exception {
+    // Arrange
+    final String dirInvalido = "up";
+    final String esperado = "Parâmetro 'dir' inválido (recebido: up). Valores aceitos: asc, desc";
+
+    // Act
+    final var resposta =
+        mockMvc.perform(
+            get("/api/solicitacoes").param("sort", "criadaEm").param("dir", dirInvalido));
+
+    // Assert
+    resposta.andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value(esperado));
+    verifyNoInteractions(listarUseCase);
+  }
+
   @ParameterizedTest
   @CsvSource({"criadaEmInicio,ontem", "criadaEmFim,ontem", "dataInicio,32/13/2026", "dataFim,xx"})
   void shouldRespond400NamingTheParameterWhenDateIsNotIso8601(
@@ -1327,6 +1404,45 @@ class SolicitacaoControllerTest {
     // Assert
     resposta.andExpect(status().isBadRequest());
     verifyNoInteractions(obterMetricasPorModeloUseCase);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"0", "-1", "366"})
+  void shouldRespond400WithoutCallingUseCaseWhenHistoryDaysIsOutOfRange(final String dias)
+      throws Exception {
+    // Arrange
+    final String esperado = "Parâmetro 'dias' deve estar entre 1 e 365 (recebido: " + dias + ")";
+
+    // Act
+    final var resposta =
+        mockMvc.perform(
+            get("/api/solicitacoes/metricas/historico").param("dias", dias).with(user("admin")));
+
+    // Assert
+    resposta.andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value(esperado));
+    verifyNoInteractions(obterHistoricoMetricasUseCase);
+  }
+
+  @Test
+  void shouldPassHistoryDaysToUseCaseWhenDaysIsAtMaximum() throws Exception {
+    // Arrange
+    when(obterHistoricoMetricasUseCase.execute(any()))
+        .thenReturn(
+            new com.rgm.api.core.application.usecases.solicitacao.ObterHistoricoMetricasUseCase
+                .Output(List.of(), 0, "Últimos 365 dias"));
+
+    // Act
+    final var resposta =
+        mockMvc.perform(
+            get("/api/solicitacoes/metricas/historico").param("dias", "365").with(user("admin")));
+
+    // Assert
+    resposta.andExpect(status().isOk());
+    verify(obterHistoricoMetricasUseCase, times(1))
+        .execute(
+            new com.rgm.api.core.application.usecases.solicitacao.ObterHistoricoMetricasUseCase
+                .Input(365, null));
+    verifyNoMoreInteractions(obterHistoricoMetricasUseCase);
   }
 
   @Test

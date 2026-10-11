@@ -5,6 +5,7 @@ import static org.hamcrest.Matchers.emptyString;
 import static org.hamcrest.Matchers.not;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.head;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -37,6 +38,7 @@ import org.springframework.web.bind.annotation.RestController;
 class SecurityConfigTest {
 
   private static final String JSON = "application/json";
+  private static final String ROTA_DO_PAINEL = "/api/solicitacoes/metricas/painel";
 
   @Autowired private MockMvc mockMvc;
   @MockitoBean private AutenticarAcessoUseCase autenticarAcessoUseCase;
@@ -56,6 +58,11 @@ class SecurityConfigTest {
 
     @GetMapping("/api/solicitacoes/metricas")
     String metricas() {
+      return "{}";
+    }
+
+    @GetMapping("/api/solicitacoes/metricas/painel")
+    String painel() {
       return "{}";
     }
 
@@ -140,6 +147,77 @@ class SecurityConfigTest {
     autenticarComo("token-admin", PerfilUsuario.ADMINISTRADOR);
     final var requisicao =
         get("/api/admin/usuarios").header(HttpHeaders.AUTHORIZATION, "Bearer token-admin");
+
+    // Act
+    final var resposta = mockMvc.perform(requisicao);
+
+    // Assert
+    resposta.andExpect(status().isOk());
+  }
+
+  @Test
+  void shouldResponder403ComCorpoJsonWhenOperadorConsultaOPainel() throws Exception {
+    // Arrange
+    autenticarComo("token-operador", PerfilUsuario.OPERADOR);
+    final var requisicao =
+        get(ROTA_DO_PAINEL).header(HttpHeaders.AUTHORIZATION, "Bearer token-operador");
+
+    // Act
+    final var resposta = mockMvc.perform(requisicao);
+
+    // Assert
+    resposta
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.status").value(403))
+        .andExpect(content().contentTypeCompatibleWith(JSON));
+  }
+
+  @Test
+  void shouldResponder403WhenOperadorConsultaOPainelPorHead() throws Exception {
+    // Arrange
+    autenticarComo("token-operador", PerfilUsuario.OPERADOR);
+    final var requisicao =
+        head(ROTA_DO_PAINEL).header(HttpHeaders.AUTHORIZATION, "Bearer token-operador");
+
+    // Act
+    final var resposta = mockMvc.perform(requisicao);
+
+    // Assert
+    resposta.andExpect(status().isForbidden());
+  }
+
+  @Test
+  void shouldResponder401WhenPainelEConsultadoPorHeadSemCredencial() throws Exception {
+    // Arrange
+    final var requisicao = head(ROTA_DO_PAINEL);
+
+    // Act
+    final var resposta = mockMvc.perform(requisicao);
+
+    // Assert
+    resposta.andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  void shouldResponder200WhenGestorConsultaOPainel() throws Exception {
+    // Arrange
+    autenticarComo("token-gestor", PerfilUsuario.GESTOR);
+    final var requisicao =
+        get(ROTA_DO_PAINEL).header(HttpHeaders.AUTHORIZATION, "Bearer token-gestor");
+
+    // Act
+    final var resposta = mockMvc.perform(requisicao);
+
+    // Assert
+    resposta.andExpect(status().isOk());
+  }
+
+  @Test
+  void shouldResponder200WhenAdministradorConsultaOPainelPorHead() throws Exception {
+    // Arrange
+    autenticarComo("token-admin", PerfilUsuario.ADMINISTRADOR);
+    final var requisicao =
+        head(ROTA_DO_PAINEL).header(HttpHeaders.AUTHORIZATION, "Bearer token-admin");
 
     // Act
     final var resposta = mockMvc.perform(requisicao);

@@ -7,11 +7,17 @@ import com.rgm.api.core.domain.model.enums.OrdenacaoMetricaModelo;
 import com.rgm.api.core.domain.model.enums.PrioridadeSolicitacao;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
 import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
+import com.rgm.api.core.domain.ports.repositories.GranularidadeSerie;
+import com.rgm.api.core.domain.ports.repositories.LinhaDeSerie;
 import com.rgm.api.core.domain.ports.repositories.MetricaModeloRow;
+import com.rgm.api.core.domain.ports.repositories.OrdenacaoSolicitacao;
 import com.rgm.api.core.domain.ports.repositories.PageResult;
+import com.rgm.api.core.domain.ports.repositories.PainelAgregado;
 import com.rgm.api.core.domain.ports.repositories.ResumoSolicitacoesModelo;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -68,7 +74,9 @@ public class SolicitacaoRepositoryAdapter implements SolicitacaoRepository {
 
   @Override
   public PageResult<Solicitacao> findAll(final int page, final int size) {
-    final var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "criadaEm"));
+    final var ordem =
+        Sort.by(Sort.Direction.ASC, "criadaEm").and(Sort.by(Sort.Direction.ASC, "id"));
+    final var pageable = PageRequest.of(page, size, ordem);
     final var result = jpa.findAll(pageable);
     return new PageResult<>(
         result.getContent().stream().map(SolicitacaoMapper::toDomain).toList(),
@@ -107,9 +115,11 @@ public class SolicitacaoRepositoryAdapter implements SolicitacaoRepository {
       final Boolean atrasada,
       final boolean emAberto,
       final UUID visivelParaUsuarioId,
+      final OrdenacaoSolicitacao ordenacao,
       final int page,
       final int size) {
-    final var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "criada_em"));
+    // A ordenacao vai dentro da consulta (criterio e sentido vem de enum, nunca do cliente).
+    final var pageable = PageRequest.of(page, size);
     final var result =
         jpa.findByFilters(
             status != null ? status.name() : null,
@@ -126,6 +136,8 @@ public class SolicitacaoRepositoryAdapter implements SolicitacaoRepository {
             atrasada,
             emAberto,
             visivelParaUsuarioId,
+            ordenacao.criterio().name(),
+            ordenacao.ascendente(),
             pageable);
     return new PageResult<>(
         result.getContent().stream().map(SolicitacaoMapper::toDomain).toList(),
@@ -166,18 +178,75 @@ public class SolicitacaoRepositoryAdapter implements SolicitacaoRepository {
   }
 
   @Override
-  public List<Solicitacao> findByCriadaEmBetween(final Instant inicio, final Instant fim) {
-    return jpa.findByCriadaEmBetween(inicio, fim).stream()
-        .map(SolicitacaoMapper::toDomain)
+  public List<LinhaDeSerie> agregarSerie(
+      final Instant inicio,
+      final Instant fim,
+      final UUID modeloId,
+      final GranularidadeSerie granularidade,
+      final ZoneId fuso) {
+    final String unidade = unidadeDe(granularidade);
+    return jpa.agregarSerie(inicio, fim, modeloId, unidade, fuso.getId()).stream()
+        .map(
+            row ->
+                new LinhaDeSerie(
+                    LocalDate.parse(row[0].toString()),
+                    ((Number) row[1]).longValue(),
+                    ((Number) row[2]).longValue(),
+                    ((Number) row[3]).longValue(),
+                    ((Number) row[4]).longValue(),
+                    row[5] != null ? ((Number) row[5]).doubleValue() : null))
         .toList();
   }
 
   @Override
-  public List<Solicitacao> findByStatusAndCriadaEmBetween(
-      final StatusSolicitacao status, final Instant inicio, final Instant fim) {
-    return jpa.findByStatusAndCriadaEmBetween(status, inicio, fim).stream()
-        .map(SolicitacaoMapper::toDomain)
-        .toList();
+  public PainelAgregado agregarPainel(
+      final Instant inicio,
+      final Instant fim,
+      final UUID modeloId,
+      final GranularidadeSerie granularidade,
+      final ZoneId fuso,
+      final Instant agora) {
+    final String unidade = unidadeDe(granularidade);
+    final Object[] totais = jpa.painelTotais(inicio, fim, modeloId).get(0);
+    final List<PainelAgregado.Ponto> serie =
+        jpa
+            .painelSerie(
+                inicio.atZone(fuso).toLocalDate(),
+                fim.atZone(fuso).toLocalDate(),
+                modeloId,
+                unidade,
+                fuso.getId(),
+                agora)
+            .stream()
+            .map(SolicitacaoRepositoryAdapter::paraPonto)
+            .toList();
+    return new PainelAgregado(
+        new PainelAgregado.Totais(
+            ((Number) totais[0]).longValue(),
+            ((Number) totais[1]).longValue(),
+            ((Number) totais[2]).longValue(),
+            totais[3] != null ? ((Number) totais[3]).doubleValue() : null),
+        serie);
+  }
+
+  private static String unidadeDe(final GranularidadeSerie granularidade) {
+    return granularidade == GranularidadeSerie.SEMANA ? "week" : "day";
+  }
+
+  private static PainelAgregado.Ponto paraPonto(final Object[] row) {
+    return new PainelAgregado.Ponto(
+        LocalDate.parse(row[0].toString()),
+        ((Number) row[1]).longValue(),
+        ((Number) row[2]).longValue(),
+        ((Number) row[3]).longValue(),
+        ((Number) row[4]).longValue(),
+        ((Number) row[5]).longValue());
+  }
+
+  @Override
+  public PainelAgregado.Agora situacaoAgora(final UUID modeloId, final Instant agora) {
+    final Object[] row = jpa.painelAgora(modeloId, agora).get(0);
+    return new PainelAgregado.Agora(((Number) row[0]).longValue(), ((Number) row[1]).longValue());
   }
 
   @Override
@@ -222,6 +291,7 @@ public class SolicitacaoRepositoryAdapter implements SolicitacaoRepository {
         ((Number) row[2]).longValue(),
         ((Number) row[3]).longValue(),
         row[6] != null ? ((Number) row[6]).doubleValue() : null,
+        ((Number) row[7]).longValue(),
         (Instant) row[4],
         (Instant) row[5]);
   }

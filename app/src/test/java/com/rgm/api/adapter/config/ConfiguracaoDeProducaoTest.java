@@ -48,6 +48,22 @@ class ConfiguracaoDeProducaoTest {
   }
 
   @Test
+  void shouldDeclararOFusoDaFabricaWhenPropriedadesBase() throws IOException {
+    // Arrange
+    Properties base = carregar("application.properties");
+
+    // Act
+    String valor = base.getProperty("rgm.fabrica.fuso");
+
+    // Assert
+    assertEquals(
+        "America/Sao_Paulo",
+        valor,
+        "Esperado 'rgm.fabrica.fuso=America/Sao_Paulo' no application.properties, recebido: "
+            + valor);
+  }
+
+  @Test
   void shouldEnableSwaggerUiWhenProfileIsDevelopment() throws IOException {
     // Arrange
     Properties desenvolvimento = carregar("application-dev.properties");

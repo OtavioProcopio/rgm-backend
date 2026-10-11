@@ -35,6 +35,7 @@ import com.rgm.api.core.application.usecases.solicitacao.ListarSolicitacoesUseCa
 import com.rgm.api.core.application.usecases.solicitacao.ObterHistoricoMetricasUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ObterMetricasPorModeloUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ObterMetricasSolicitacoesUseCase;
+import com.rgm.api.core.application.usecases.solicitacao.ObterPainelPorPeriodoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ObterSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.RegistrarComentarioUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ResolverDestinatariosEventoUseCase;
@@ -53,6 +54,8 @@ import com.rgm.api.core.domain.ports.services.AccessTokenIssuer;
 import com.rgm.api.core.domain.ports.services.DomainEventPublisher;
 import com.rgm.api.core.domain.ports.services.PasswordHasher;
 import com.rgm.api.core.domain.ports.services.StorageService;
+import java.time.Clock;
+import java.time.ZoneId;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -393,8 +396,16 @@ public class UseCaseConfig {
 
   @Bean
   public ObterHistoricoMetricasUseCase obterHistoricoMetricasUseCase(
-      final SolicitacaoRepository solicitacaoRepository) {
-    return new ObterHistoricoMetricasUseCase(solicitacaoRepository);
+      final SolicitacaoRepository solicitacaoRepository, final ZoneId fusoDaFabrica) {
+    return new ObterHistoricoMetricasUseCase(
+        solicitacaoRepository, fusoDaFabrica, Clock.systemUTC());
+  }
+
+  @Bean
+  public ObterPainelPorPeriodoUseCase obterPainelPorPeriodoUseCase(
+      final SolicitacaoRepository solicitacaoRepository, final ZoneId fusoDaFabrica) {
+    return new ObterPainelPorPeriodoUseCase(
+        solicitacaoRepository, fusoDaFabrica, Clock.systemUTC());
   }
 
   @Bean
