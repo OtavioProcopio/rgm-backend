@@ -115,6 +115,8 @@ Referência de todos os casos de uso implementados no sistema.
 - **Endpoints**: `GET /api/solicitacoes/metricas/por-modelo`, `GET /api/solicitacoes/metricas/por-modelo/pdf`
 - **Regras**: Agregação via SQL nativo (CTEs + `LAG()`), nunca carrega solicitações em memória; retorna, por modelo com ao menos 1 solicitação CONCLUIDA, o tempo médio de resolução e o intervalo médio entre solicitações consecutivas (nulo se houver menos de 2); ordenação (`sort=TEMPO_RESOLUCAO|INTERVALO`, `dir=asc|desc`) validada contra whitelist antes de virar SQL; exportação em PDF separada do relatório de lista de modelos
 - **Erros**: 400 (`sort`/`dir` inválidos; `size` fora de 1..100), 403 (operador)
+- **Solicitação de criação (spec 011)**: o pedido do tipo `CRIACAO` conta no total de solicitações do modelo, mas **não entra** no tempo médio de resolução nem no intervalo entre solicitações (nem no ranking, nem no resumo): esses números medem manutenção do modelo. Modelo com só a criação concluída não aparece no ranking
+- **Histórico (`/metricas/historico`)**: os dias e as semanas são calculados no fuso da fábrica (`rgm.fabrica.fuso`, padrão `America/Sao_Paulo`; semana de segunda a domingo), `dias` aceita de 1 a 365 (400 fora disso) e a série vem de consulta agregada, com o filtro de modelo na consulta. O formato da resposta não mudou; continua agrupando por data de **criação**. Para concluídas pela data de conclusão use o painel (UC-23)
 - **Nota**: A ficha PDF individual do modelo (`GET /api/modelos/{id}/relatorio`) exibe as mesmas duas métricas, com a mesma regra do ranking, vindas do resumo das solicitações do modelo (UC-20). Até a v1.5.0 a ficha exigia 2+ solicitações CONCLUIDA e media o intervalo só entre as concluídas; a feature `specs/007-filtros-e-resumos-para-a-paginacao` unificou o critério.
 
 ## UC-17 — SLA de solicitações (SOL-007)
@@ -144,7 +146,7 @@ Referência de todos os casos de uso implementados no sistema.
 - **Atores**: qualquer usuário autenticado
 - **Classes**: `ObterResumoModelosUseCase`, `ObterResumoSolicitacoesModeloUseCase`
 - **Endpoints**: `GET /api/modelos/resumo`, `GET /api/modelos/{id}/solicitacoes/resumo`
-- **Regras**: agregados no banco, nunca carregam a lista de modelos ou de solicitações. O resumo de modelos devolve `total`, `ativos`, `inativos`, `comPendenciaAberta` e `porMaquina` (da maior para a menor quantidade; empate em ordem alfabética); pendência e máquina contam modelos ativos e inativos. O resumo de um modelo devolve `total`, `emAberto`, `concluidas`, `canceladas`, `tempoMedioResolucaoSegundos` (média das concluídas; nulo sem concluída) e `intervaloMedioSegundos` (aberturas de todas as solicitações do modelo; nulo com menos de 2), a mesma regra do UC-16
+- **Regras**: agregados no banco, nunca carregam a lista de modelos ou de solicitações. O resumo de modelos devolve `total`, `ativos`, `inativos`, `comPendenciaAberta` e `porMaquina` (da maior para a menor quantidade; empate em ordem alfabética); pendência e máquina contam modelos ativos e inativos. O resumo de um modelo devolve `total`, `emAberto`, `concluidas`, `canceladas`, `tempoMedioResolucaoSegundos` (média das concluídas; nulo sem concluída) e `intervaloMedioSegundos` (aberturas das solicitações de manutenção do modelo, sem a de criação; nulo com menos de 2), a mesma regra do UC-16; `total` continua contando todas, inclusive a de criação
 - **Erros**: 404 (modelo inexistente no resumo de um modelo)
 
 ## UC-21 — Visibilidade do operador
@@ -158,6 +160,15 @@ Referência de todos os casos de uso implementados no sistema.
 - **Classes**: `PoliticaSenha` (domínio), `AutenticarAcessoUseCase`, `AlterarSenhaPropriaUseCase`, `GerenciarUsuariosUseCase`, `RefreshTokenUseCase`
 - **Regras**: senha com no mínimo 8 caracteres ao criar usuário, trocar a própria senha e redefinir a de outro; perfil que faz login não é criado sem senha. Cada usuário tem uma versão de credencial (`usuarios.versao_credencial`, migração `V10`) que os tokens de acesso e de renovação carregam; trocar ou redefinir a senha soma 1, e token com versão diferente da atual é recusado na chamada comum, na abertura do tempo real e na renovação. Token emitido antes da `V10` vale como versão 0. As conexões de tempo real abertas do usuário são encerradas na troca. `PATCH /api/usuarios/me/senha` devolve `token` e `refreshToken` novos, para a sessão que trocou continuar. Mudar o perfil não invalida tokens: a autoridade de cada chamada vem do perfil atual do usuário, não do perfil gravado no token
 - **Erros**: 400 (senha curta ou ausente), 401 (token de versão antiga)
+
+## UC-23 — Painel de métricas por período
+- **Atores**: Gestor, Administrador. Operador recebe 403 e anônimo 401
+- **Classe**: `ObterPainelPorPeriodoUseCase`
+- **Endpoint**: `GET /api/solicitacoes/metricas/painel?dias=7|30|90&modeloId=` (`dias` padrão 30; `modeloId` opcional)
+- **Resposta**: `periodo` e `anterior`, cada um com `inicio`, `fim` (janela `[inicio, fim)`, `dias` dias locais inteiros), `criadas` (pela data de criação), `concluidas` (pela data de **conclusão**), `canceladas` (pela data de cancelamento), `tempoMedioResolucaoSegundos` (média das concluídas na janela, em segundos com uma casa; nulo sem concluída; 30 minutos = 1800,0) e `serie`. Cada ponto da série (um por dia; por semana de segunda a domingo quando `dias` > 30) traz `rotulo`, `criadas`, `concluidas`, `canceladas`, `abertasAoFimDoDia` e `atrasadasAoFimDoDia`. Só `periodo` traz também `abertasAgora` e `atrasadasAgora`. O `anterior` é a janela de mesmo tamanho imediatamente antes
+- **Regras**: agregado no banco, nunca carrega solicitação em memória; dias no fuso da fábrica (`rgm.fabrica.fuso`). "Aberta ao fim do dia" = criada até o fim do dia e ainda não concluída nem cancelada nesse instante. "Atrasada ao fim do dia" = aberta nesse instante e com o prazo (criação + horas da prioridade) já vencido; **usa a prioridade de hoje** (aproximação aceita: se a prioridade mudou depois, o atraso de dias passados reflete a atual). Solicitação sem prioridade nunca é atrasada. Concluir e cancelar contam no dia em que aconteceram, não no dia da criação
+- **Compatibilidade**: rota nova e aditiva; `/metricas` e `/metricas/historico` não mudam de formato (`slaMediaHoras` e `slaGlobalMediaHoras` seguem como tempo de resolução em horas inteiras, mantidos para o frontend v1.5.0)
+- **Erros**: 400 (`dias` diferente de 7, 30 e 90), 401, 403
 
 ## Limites de texto
 
@@ -178,7 +189,7 @@ Declarados em `LimitesTexto` (domínio) e aplicados nos requests; texto acima do
 
 | Endpoint | Filtros | Paginação |
 |----------|---------|-----------|
-| `GET /api/solicitacoes` | `status`, `modeloId`, `tipo`, `prioridade`, `criadaEmInicio`/`criadaEmFim`, `abertaPorUsuarioId`, `responsavelId`, `maquina`, `atrasada`, `emAberto` | `page`, `size` |
+| `GET /api/solicitacoes` | `status`, `modeloId`, `tipo`, `prioridade`, `criadaEmInicio`/`criadaEmFim`, `abertaPorUsuarioId`, `responsavelId`, `maquina`, `atrasada`, `emAberto`; ordenação `sort` (`criadaEm`, `prazoLimite`, `prioridade`) e `dir` (`asc`, `desc`) | `page`, `size` |
 | `GET /api/solicitacoes/relatorio` | mesmos filtros de `GET /api/solicitacoes` | — (Exportação em PDF) |
 | `GET /api/admin/usuarios` | `perfil`, `ativo` | `page`, `size` |
 | `GET /api/modelos` | `ativo`, `codigo` | `page`, `size` |
@@ -272,3 +283,5 @@ O `AdminUserInitializer` cria automaticamente o usuário admin (`admin@rgm.com` 
 | `evidencia_adicionada` | uma evidência é anexada |
 
 - **Acesso**: usuário inativo ou inexistente não abre a conexão (401)
+
+**Ordenação (`sort`, `dir`):** sem `sort` a ordem é a criação crescente (a mais antiga primeiro); `dir` sem `sort` ordena por criação. `prazoLimite` ordena pelo prazo da prioridade (crescente = a mais vencida primeiro); `prioridade` ordena por urgência (crescente = URGENTE primeiro). Solicitação sem prioridade (não triada) vai sempre para o fim, em qualquer sentido; o desempate é por criação e id, então as páginas não repetem nem perdem item. Valor fora da lista responde 400 com os valores aceitos.
