@@ -87,19 +87,6 @@ public class SolicitacaoRepositoryAdapter implements SolicitacaoRepository {
   }
 
   @Override
-  public PageResult<Solicitacao> findByStatus(
-      final StatusSolicitacao status, final int page, final int size) {
-    final var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "criadaEm"));
-    final var result = jpa.findByStatus(status, pageable);
-    return new PageResult<>(
-        result.getContent().stream().map(SolicitacaoMapper::toDomain).toList(),
-        result.getNumber(),
-        result.getSize(),
-        result.getTotalElements(),
-        result.getTotalPages());
-  }
-
-  @Override
   public PageResult<Solicitacao> findByFilters(
       final StatusSolicitacao status,
       final UUID modeloId,
@@ -190,11 +177,6 @@ public class SolicitacaoRepositoryAdapter implements SolicitacaoRepository {
   @Override
   public long countByStatus(final StatusSolicitacao status) {
     return jpa.countByStatus(status);
-  }
-
-  @Override
-  public List<Solicitacao> findByStatus(final StatusSolicitacao status) {
-    return jpa.findByStatus(status).stream().map(SolicitacaoMapper::toDomain).toList();
   }
 
   @Override

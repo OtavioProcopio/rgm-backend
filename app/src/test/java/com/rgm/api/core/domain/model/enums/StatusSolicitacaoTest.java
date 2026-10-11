@@ -1,8 +1,7 @@
-package com.rgm.api.core.domain.model;
+package com.rgm.api.core.domain.model.enums;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
 import org.junit.jupiter.api.Test;
 
 class StatusSolicitacaoTest {

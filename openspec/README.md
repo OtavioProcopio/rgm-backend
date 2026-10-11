@@ -7,10 +7,9 @@ nasce em `specs/NNN-slug/` (spec, plan, checklists e tasks), conforme o Princíp
 
 - `specs/` — as 10 capacidades do sistema na v1.5.0. Leia como ponto de partida; o que
   mudou depois está na tabela abaixo.
-- `changes/archive/` — as 3 mudanças feitas em OpenSpec, todas entregues e sincronizadas.
-  Não há mudança aberta.
-- Os comandos `/opsx:*` e as skills `openspec-*` foram removidos de `.claude/`. O histórico
-  segue recuperável pelo git.
+- As 3 mudanças feitas em OpenSpec (`changes/archive/`) e o `config.yaml` da ferramenta foram
+  removidos: todas estavam entregues e sincronizadas em `specs/`, e o histórico segue
+  recuperável pelo git. Os comandos `/opsx:*` e as skills `openspec-*` também saíram de `.claude/`.
 
 ## O que mudou depois da v1.5.0
 
