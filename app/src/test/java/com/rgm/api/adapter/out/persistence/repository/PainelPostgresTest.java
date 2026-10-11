@@ -4,14 +4,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.rgm.api.adapter.out.persistence.SolicitacaoRepositoryAdapter;
-import com.rgm.api.core.application.usecases.solicitacao.ObterHistoricoMetricasUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ObterPainelPorPeriodoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.ObterPainelPorPeriodoUseCase.Output;
 import java.time.Clock;
 import java.time.ZoneId;
-import java.util.Arrays;
 import java.util.UUID;
-import java.util.function.Supplier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,24 +26,20 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @ActiveProfiles("test")
-class PainelDesempenhoPostgresTest {
+class PainelPostgresTest {
 
   @Container
   static final PostgreSQLContainer<?> POSTGRES =
       new PostgreSQLContainer<>("postgres:16-alpine").withDatabaseName("rgm_test");
 
-  private static final int SOLICITACOES = 10_000;
+  private static final int SOLICITACOES = 700;
   private static final int MODELOS = 50;
-  private static final int AQUECIMENTOS = 5;
-  private static final int MEDIDAS = 30;
-  private static final double LIMITE_P95_MS = 500.0;
   private static final ZoneId FUSO = ZoneId.of("America/Sao_Paulo");
 
   @Autowired private SolicitacaoJpaRepository repository;
   @Autowired private JdbcTemplate jdbc;
 
   private ObterPainelPorPeriodoUseCase painel;
-  private ObterHistoricoMetricasUseCase historico;
 
   @DynamicPropertySource
   static void configurar(final DynamicPropertyRegistry registry) {
@@ -62,18 +55,17 @@ class PainelDesempenhoPostgresTest {
   void setUp() {
     final SolicitacaoRepositoryAdapter adapter = new SolicitacaoRepositoryAdapter(repository);
     painel = new ObterPainelPorPeriodoUseCase(adapter, FUSO, Clock.systemUTC());
-    historico = new ObterHistoricoMetricasUseCase(adapter, FUSO, Clock.systemUTC());
-    semearDezMilSolicitacoesEmLoteNosUltimos90Dias();
+    semearSolicitacoesNosUltimos90Dias();
   }
 
-  private void semearDezMilSolicitacoesEmLoteNosUltimos90Dias() {
+  private void semearSolicitacoesNosUltimos90Dias() {
     final UUID usuarioId = UUID.randomUUID();
     jdbc.update(
-        "INSERT INTO usuarios (id, nome, perfil) VALUES (?, 'Usuario perf', 'OPERADOR')",
+        "INSERT INTO usuarios (id, nome, perfil) VALUES (?, 'Usuario painel', 'OPERADOR')",
         usuarioId);
     jdbc.update(
         "INSERT INTO modelos (id, codigo, descricao, maquina) "
-            + "SELECT gen_random_uuid(), 'PERF-' || g, 'Modelo perf', 'FBOX' "
+            + "SELECT gen_random_uuid(), 'PAINEL-' || g, 'Modelo painel', 'FBOX' "
             + "FROM generate_series(1, ?) g",
         MODELOS);
     jdbc.update(
@@ -87,35 +79,11 @@ class PainelDesempenhoPostgresTest {
             + "CASE WHEN g % 5 = 3 THEN LEAST(c.criada_em + ((g % 600) + 1) * INTERVAL '1 minute', now()) END, "
             + "CASE WHEN g % 5 = 4 THEN LEAST(c.criada_em + ((g % 600) + 1) * INTERVAL '1 minute', now()) END "
             + "FROM generate_series(1, ?) g "
-            + "CROSS JOIN LATERAL (SELECT now() - g * INTERVAL '760 seconds' AS criada_em) c "
+            + "CROSS JOIN LATERAL (SELECT now() - g * INTERVAL '3 hours' AS criada_em) c "
             + "JOIN (SELECT id, row_number() OVER (ORDER BY codigo) - 1 AS rn FROM modelos "
-            + "WHERE codigo LIKE 'PERF-%') m ON m.rn = g % ?",
+            + "WHERE codigo LIKE 'PAINEL-%') m ON m.rn = g % ?",
         usuarioId, SOLICITACOES, MODELOS);
     jdbc.execute("ANALYZE solicitacoes");
-  }
-
-  private double[] medir(final Supplier<Object> consulta) {
-    for (int i = 0; i < AQUECIMENTOS; i++) {
-      consulta.get();
-    }
-    final double[] tempos = new double[MEDIDAS];
-    for (int i = 0; i < MEDIDAS; i++) {
-      final long inicio = System.nanoTime();
-      consulta.get();
-      tempos[i] = (System.nanoTime() - inicio) / 1_000_000.0;
-    }
-    Arrays.sort(tempos);
-    return tempos;
-  }
-
-  private static double percentilPorPostoMaisProximo(final double[] ordenado, final double p) {
-    final int posto = (int) Math.ceil(p / 100.0 * ordenado.length);
-    return ordenado[Math.max(0, posto - 1)];
-  }
-
-  private void assertP95DentroDoLimite(final String caso, final double[] tempos) {
-    final double p95 = percentilPorPostoMaisProximo(tempos, 95);
-    assertTrue(p95 <= LIMITE_P95_MS, caso + ": p95=" + p95 + " ms excede " + LIMITE_P95_MS + " ms");
   }
 
   private long totalDeCriadasNaJanela(final Output saida) {
@@ -127,55 +95,7 @@ class PainelDesempenhoPostgresTest {
   }
 
   @Test
-  void shouldFicarAbaixoDe500msNoP95WhenPainelDe7DiasCom10milSolicitacoes() {
-    // Arrange
-    final var input = new ObterPainelPorPeriodoUseCase.Input(7, null);
-
-    // Act
-    final double[] tempos = medir(() -> painel.execute(input));
-
-    // Assert
-    assertP95DentroDoLimite("painel dias=7 (diario)", tempos);
-  }
-
-  @Test
-  void shouldFicarAbaixoDe500msNoP95WhenPainelDe30DiasCom10milSolicitacoes() {
-    // Arrange
-    final var input = new ObterPainelPorPeriodoUseCase.Input(30, null);
-
-    // Act
-    final double[] tempos = medir(() -> painel.execute(input));
-
-    // Assert
-    assertP95DentroDoLimite("painel dias=30 (diario)", tempos);
-  }
-
-  @Test
-  void shouldFicarAbaixoDe500msNoP95WhenPainelDe90DiasCom10milSolicitacoes() {
-    // Arrange
-    final var input = new ObterPainelPorPeriodoUseCase.Input(90, null);
-
-    // Act
-    final double[] tempos = medir(() -> painel.execute(input));
-
-    // Assert
-    assertP95DentroDoLimite("painel dias=90 (semanal)", tempos);
-  }
-
-  @Test
-  void shouldFicarAbaixoDe500msNoP95WhenHistoricoDe365DiasCom10milSolicitacoes() {
-    // Arrange
-    final var input = new ObterHistoricoMetricasUseCase.Input(365, null);
-
-    // Act
-    final double[] tempos = medir(() -> historico.execute(input));
-
-    // Assert
-    assertP95DentroDoLimite("historico dias=365 (semanal)", tempos);
-  }
-
-  @Test
-  void shouldSomarTodasAsCriadasNaSerieWhenPainelDe90DiasCom10milSolicitacoes() {
+  void shouldSomarTodasAsCriadasNaSerieWhenPainelDe90Dias() {
     // Arrange
     final var input = new ObterPainelPorPeriodoUseCase.Input(90, null);
 

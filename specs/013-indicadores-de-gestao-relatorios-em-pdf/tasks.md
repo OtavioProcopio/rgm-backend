@@ -24,16 +24,16 @@ exclui por desenho).
 
 ## Fase 2 — Indicadores de gestão (RF-01 a RF-14)
 
-- [ ] T010 Criar `TEST/adapter/out/persistence/repository/IndicadoresDeGestaoJpaRepositoryPostgresTest.java`: prazo (1 minuto antes e 1 depois, por prioridade, sem prioridade contada à parte); mediana 5,5 h e p90 9,1 h com 10 concluídas; sem concluída devolve vazio; faixas de idade somam o total em aberto; abertas sem responsável; etapas (2 h, 5 h e 1 h; devolvida soma 3 h + 2 h; transição para cancelada não conta como espera até iniciar); devolução 1 em 2 envios; por máquina (abertas, atrasadas, tempo médio, criação fora); reincidente com 3 reparos sim e com 2 não; carga com dois responsáveis e total de distintas
-- [ ] T011 Criar `MAIN/adapter/out/persistence/repository/IndicadoresDeGestaoJpaRepository.java` e as portas e registros em `MAIN/core/domain/ports/repositories/` (T010 verde)
-- [ ] T012 Criar `TEST/adapter/out/persistence/IndicadoresDeGestaoRepositoryAdapterTest.java`: mapeia as linhas nativas para os registros da porta, inclusive `null` onde não há dado
-- [ ] T013 Criar `MAIN/adapter/out/persistence/IndicadoresDeGestaoRepositoryAdapter.java` (T012 verde)
-- [ ] T014 Criar `TEST/core/application/usecases/solicitacao/ObterIndicadoresDeGestaoUseCaseTest.java`: janela de 7, 30 e 90 dias no fuso; porcentagens calculadas a partir das contagens; taxa de devolução nula sem envio; nenhuma busca por lista é chamada (RNF-02)
-- [ ] T015 Criar `MAIN/core/application/usecases/solicitacao/ObterIndicadoresDeGestaoUseCase.java` (T014 verde)
-- [ ] T016 Criar `TEST/adapter/in/web/dto/response/IndicadoresDeGestaoResponseTest.java` e `MAIN/adapter/in/web/dto/response/IndicadoresDeGestaoResponse.java`
-- [ ] T017 Alterar `TEST/adapter/in/web/ParametrosDeConsultaTest.java` e `MAIN/adapter/in/web/ParametrosDeConsulta.java`: `periodoDeGestao` aceita 7, 30, 90; 15 lança `ValidationException` citando os valores
-- [ ] T018 Criar `TEST/adapter/in/web/solicitacao/IndicadoresDeGestaoControllerTest.java` e `MAIN/adapter/in/web/solicitacao/IndicadoresDeGestaoController.java`: 200 com o formato; 400 para 15 dias; 403 para operador; 401 sem token (usar o modelo de `PainelPorPeriodoControllerTest`)
-- [ ] T019 Alterar `MAIN/adapter/config/UseCaseConfig.java` (bean do caso de uso) e `TEST/adapter/in/web/solicitacao/MetricasContratoV15Test.java` (campos antigos intactos)
+- [x] T010 Criar `TEST/adapter/out/persistence/repository/IndicadoresDeGestaoJpaRepositoryPostgresTest.java`: prazo (1 minuto antes e 1 depois, por prioridade, sem prioridade contada à parte); mediana 5,5 h e p90 9,1 h com 10 concluídas; sem concluída devolve vazio; faixas de idade somam o total em aberto; abertas sem responsável; etapas (2 h, 5 h e 1 h; devolvida soma 3 h + 2 h; transição para cancelada não conta como espera até iniciar); devolução 1 em 2 envios; por máquina (abertas, atrasadas, tempo médio, criação fora); reincidente com 3 reparos sim e com 2 não; carga com dois responsáveis e total de distintas
+- [x] T011 Criar `MAIN/adapter/out/persistence/repository/IndicadoresDeGestaoJpaRepository.java` e as portas e registros em `MAIN/core/domain/ports/repositories/` (T010 verde)
+- [x] T012 Criar `TEST/adapter/out/persistence/IndicadoresDeGestaoRepositoryAdapterTest.java`: mapeia as linhas nativas para os registros da porta, inclusive `null` onde não há dado
+- [x] T013 Criar `MAIN/adapter/out/persistence/IndicadoresDeGestaoRepositoryAdapter.java` (T012 verde)
+- [x] T014 Criar `TEST/core/application/usecases/solicitacao/ObterIndicadoresDeGestaoUseCaseTest.java`: janela de 7, 30 e 90 dias no fuso; porcentagens calculadas a partir das contagens; taxa de devolução nula sem envio; nenhuma busca por lista é chamada (RNF-02)
+- [x] T015 Criar `MAIN/core/application/usecases/solicitacao/ObterIndicadoresDeGestaoUseCase.java` (T014 verde)
+- [x] T016 Criar `TEST/adapter/in/web/dto/response/IndicadoresDeGestaoResponseTest.java` e `MAIN/adapter/in/web/dto/response/IndicadoresDeGestaoResponse.java`
+- [x] T017 Alterar `TEST/adapter/in/web/ParametrosDeConsultaTest.java` e `MAIN/adapter/in/web/ParametrosDeConsulta.java`: `periodoDeGestao` aceita 7, 30, 90; 15 lança `ValidationException` citando os valores
+- [x] T018 Criar `TEST/adapter/in/web/solicitacao/IndicadoresDeGestaoControllerTest.java` e `MAIN/adapter/in/web/solicitacao/IndicadoresDeGestaoController.java`: 200 com o formato; 400 para 15 dias; 403 para operador; 401 sem token (usar o modelo de `PainelPorPeriodoControllerTest`)
+- [x] T019 Alterar `MAIN/adapter/config/UseCaseConfig.java` (bean do caso de uso) e `TEST/adapter/in/web/solicitacao/MetricasContratoV15Test.java` (campos antigos intactos)
 
 ## Fase 3 — PDFs fiéis à tela (RF-15 a RF-22)
 
