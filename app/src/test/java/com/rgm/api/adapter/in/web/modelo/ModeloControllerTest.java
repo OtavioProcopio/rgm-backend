@@ -40,7 +40,6 @@ import com.rgm.api.core.domain.model.aggregates.Usuario;
 import com.rgm.api.core.domain.model.enums.PerfilUsuario;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
 import com.rgm.api.core.domain.model.enums.TipoEventoModelo;
-import com.rgm.api.core.domain.model.enums.TipoModelo;
 import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
 import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.EventoModeloRepository;
@@ -701,6 +700,10 @@ class ModeloControllerTest {
   void shouldAnswerBadRequestWhenCreatingModeloWithUnknownTipo() throws Exception {
     // Arrange
     final var request = new CriarModeloRequest("MOD-001", "Desc", "Obs", "FBOX", "INEXISTENTE");
+    when(gerenciarUseCase.criar(any()))
+        .thenThrow(
+            new com.rgm.api.core.domain.exceptions.ValidationException(
+                "Tipo de modelo invalido ou inativo: INEXISTENTE"));
 
     // Act
     final var resposta =
@@ -713,14 +716,17 @@ class ModeloControllerTest {
     // Assert
     resposta
         .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.message").value("Tipo de modelo invalido: INEXISTENTE"));
-    verifyNoInteractions(gerenciarUseCase);
+        .andExpect(jsonPath("$.message").value("Tipo de modelo invalido ou inativo: INEXISTENTE"));
   }
 
   @Test
   void shouldAnswerBadRequestWhenEditingModeloWithUnknownTipo() throws Exception {
     // Arrange
     final var request = new EditarModeloRequest("MOD-001", "Desc", "Obs", "FBOX", "INEXISTENTE");
+    when(gerenciarUseCase.editar(any()))
+        .thenThrow(
+            new com.rgm.api.core.domain.exceptions.ValidationException(
+                "Tipo de modelo invalido ou inativo: INEXISTENTE"));
 
     // Act
     final var resposta =
@@ -733,12 +739,11 @@ class ModeloControllerTest {
     // Assert
     resposta
         .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.message").value("Tipo de modelo invalido: INEXISTENTE"));
-    verifyNoInteractions(gerenciarUseCase);
+        .andExpect(jsonPath("$.message").value("Tipo de modelo invalido ou inativo: INEXISTENTE"));
   }
 
   @Test
-  void shouldRepassTipoEnumToUseCaseWhenCreatingModeloWithValidTipo() throws Exception {
+  void shouldRepassTipoToUseCaseWhenCreatingModeloWithValidTipo() throws Exception {
     // Arrange
     when(gerenciarUseCase.criar(any())).thenReturn(criarModelo());
     final ArgumentCaptor<GerenciarModelosUseCase.CriarInput> captor =
@@ -757,7 +762,7 @@ class ModeloControllerTest {
     resposta.andExpect(status().isCreated());
     verify(gerenciarUseCase, times(1)).criar(captor.capture());
     verifyNoMoreInteractions(gerenciarUseCase);
-    assertEquals(TipoModelo.RESINA, captor.getValue().tipo());
+    assertEquals("RESINA", captor.getValue().tipo());
   }
 
   @Test

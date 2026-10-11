@@ -33,7 +33,7 @@ class MinioStorageServiceTest {
     final String url = service.upload("foto.jpg", "image/jpeg", content, 5L);
 
     assertTrue(url.startsWith("http://localhost:9000/test-bucket/"));
-    assertTrue(url.endsWith("foto.jpg"));
+    assertTrue(url.endsWith(".jpg"));
   }
 
   @Test
@@ -50,13 +50,30 @@ class MinioStorageServiceTest {
   }
 
   @Test
-  void upload_nomeObjetoContemNomeArquivoOriginal() throws Exception {
+  void shouldNotPutOriginalFileNameInObjectNameWhenUploading() throws Exception {
+    // Arrange
     when(minioClient.putObject(any(PutObjectArgs.class))).thenReturn(null);
     final InputStream content = new ByteArrayInputStream("a".getBytes(StandardCharsets.UTF_8));
 
-    final String url = service.upload("documento.pdf", "application/pdf", content, 1L);
+    // Act
+    final String url = service.upload("../../laudo final.pdf", "application/pdf", content, 1L);
 
-    assertTrue(url.contains("documento.pdf"));
+    // Assert
+    assertFalse(url.contains("laudo"));
+    assertTrue(url.matches("http://localhost:9000/test-bucket/[0-9a-f-]{36}\\.pdf"));
+  }
+
+  @Test
+  void shouldUseNoExtensionWhenTypeIsUnknown() throws Exception {
+    // Arrange
+    when(minioClient.putObject(any(PutObjectArgs.class))).thenReturn(null);
+    final InputStream content = new ByteArrayInputStream("a".getBytes(StandardCharsets.UTF_8));
+
+    // Act
+    final String url = service.upload("x.bin", "application/octet-stream", content, 1L);
+
+    // Assert
+    assertTrue(url.matches("http://localhost:9000/test-bucket/[0-9a-f-]{36}"));
   }
 
   @Test

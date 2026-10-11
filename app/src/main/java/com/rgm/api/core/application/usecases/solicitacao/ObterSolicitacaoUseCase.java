@@ -1,9 +1,11 @@
 package com.rgm.api.core.application.usecases.solicitacao;
 
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
+import com.rgm.api.core.domain.model.aggregates.Modelo;
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
 import com.rgm.api.core.domain.model.aggregates.Usuario;
 import com.rgm.api.core.domain.model.enums.AcaoSolicitacao;
+import com.rgm.api.core.domain.ports.repositories.ModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoAtribuicaoRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
@@ -23,14 +25,17 @@ public final class ObterSolicitacaoUseCase {
   private final SolicitacaoRepository solicitacaoRepository;
   private final SolicitacaoAtribuicaoRepository atribuicaoRepository;
   private final UsuarioRepository usuarioRepository;
+  private final ModeloRepository modeloRepository;
 
   public ObterSolicitacaoUseCase(
       final SolicitacaoRepository solicitacaoRepository,
       final SolicitacaoAtribuicaoRepository atribuicaoRepository,
-      final UsuarioRepository usuarioRepository) {
+      final UsuarioRepository usuarioRepository,
+      final ModeloRepository modeloRepository) {
     this.solicitacaoRepository = solicitacaoRepository;
     this.atribuicaoRepository = atribuicaoRepository;
     this.usuarioRepository = usuarioRepository;
+    this.modeloRepository = modeloRepository;
   }
 
   public record Input(UUID solicitacaoId, UUID usuarioId) {}
@@ -38,12 +43,27 @@ public final class ObterSolicitacaoUseCase {
   /** Responsavel com o nome resolvido; o nome e nulo quando o usuario nao e encontrado. */
   public record ResponsavelNome(UUID id, String nome) {}
 
+  /** Identificacao do modelo da solicitacao: codigo, maquina e versao do cadastro. */
+  public record ResumoModelo(String codigo, String maquina, int versao) {}
+
   public record Output(
       Solicitacao solicitacao,
       List<UUID> responsavelIds,
       List<ResponsavelNome> responsaveis,
       String abertaPorNome,
-      Set<AcaoSolicitacao> acoesPermitidas) {}
+      Set<AcaoSolicitacao> acoesPermitidas,
+      ResumoModelo modelo) {
+
+    /** Sem o resumo do modelo. */
+    public Output(
+        final Solicitacao solicitacao,
+        final List<UUID> responsavelIds,
+        final List<ResponsavelNome> responsaveis,
+        final String abertaPorNome,
+        final Set<AcaoSolicitacao> acoesPermitidas) {
+      this(solicitacao, responsavelIds, responsaveis, abertaPorNome, acoesPermitidas, null);
+    }
+  }
 
   public Output execute(final Input input) {
     final UUID id = input.solicitacaoId();
@@ -84,7 +104,29 @@ public final class ObterSolicitacaoUseCase {
         responsavelIds,
         responsaveis,
         nomes.get(solicitacao.getAbertaPorUsuarioId()),
-        acoesPermitidas);
+        acoesPermitidas,
+        resolverModelos(List.of(solicitacao)).get(solicitacao.getModeloId()));
+  }
+
+  /**
+   * Resolve codigo, maquina e versao dos modelos das solicitacoes numa so consulta; solicitacao sem
+   * modelo (ou com modelo removido) nao entra no mapa.
+   */
+  public Map<UUID, ResumoModelo> resolverModelos(final Collection<Solicitacao> solicitacoes) {
+    final List<UUID> ids =
+        solicitacoes.stream()
+            .map(Solicitacao::getModeloId)
+            .filter(Objects::nonNull)
+            .distinct()
+            .toList();
+    if (ids.isEmpty()) {
+      return Map.of();
+    }
+    return modeloRepository.findAllByIdIn(ids).stream()
+        .collect(
+            Collectors.toMap(
+                Modelo::getId,
+                m -> new ResumoModelo(m.getCodigo(), m.getMaquina(), m.getVersao())));
   }
 
   /** Resolve o nome de varios usuarios numa so consulta; inativos entram, desconhecidos nao. */

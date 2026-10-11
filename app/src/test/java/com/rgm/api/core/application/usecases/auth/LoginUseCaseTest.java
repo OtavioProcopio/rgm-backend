@@ -90,7 +90,8 @@ class LoginUseCaseTest {
   }
 
   @Test
-  void deveFalharComUsuarioInativo() {
+  void shouldRejectWithGenericMessageWhenInactiveAccountHasWrongPassword() {
+    // Arrange
     final Instant agora = Instant.now();
     final Usuario usuario =
         new Usuario(
@@ -102,12 +103,46 @@ class LoginUseCaseTest {
             false,
             agora,
             agora);
-
     when(usuarioRepository.findByEmail("joao@test.com")).thenReturn(Optional.of(usuario));
+    when(passwordHasher.matches("errada", "hashed")).thenReturn(false);
 
-    assertThrows(
-        NaoAutorizadoException.class,
-        () -> useCase.execute(new LoginUseCase.Input("joao@test.com", "senha")));
+    // Act
+    final NaoAutorizadoException erro =
+        assertThrows(
+            NaoAutorizadoException.class,
+            () -> useCase.execute(new LoginUseCase.Input("joao@test.com", "errada")));
+
+    // Assert
+    assertEquals("Credenciais invalidas", erro.getMessage());
+    verify(tokenIssuer, never()).issue(any());
+  }
+
+  @Test
+  void shouldRejectWithInactiveMessageWhenInactiveAccountHasRightPassword() {
+    // Arrange
+    final Instant agora = Instant.now();
+    final Usuario usuario =
+        new Usuario(
+            UUID.randomUUID(),
+            "Joao",
+            "joao@test.com",
+            "hashed",
+            PerfilUsuario.OPERADOR,
+            false,
+            agora,
+            agora);
+    when(usuarioRepository.findByEmail("joao@test.com")).thenReturn(Optional.of(usuario));
+    when(passwordHasher.matches("certa", "hashed")).thenReturn(true);
+
+    // Act
+    final NaoAutorizadoException erro =
+        assertThrows(
+            NaoAutorizadoException.class,
+            () -> useCase.execute(new LoginUseCase.Input("joao@test.com", "certa")));
+
+    // Assert
+    assertEquals("Usuario inativo", erro.getMessage());
+    verify(tokenIssuer, never()).issue(any());
   }
 
   @Test

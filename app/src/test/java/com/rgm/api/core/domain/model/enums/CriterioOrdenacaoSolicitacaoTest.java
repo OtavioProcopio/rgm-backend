@@ -8,13 +8,14 @@ import org.junit.jupiter.api.Test;
 class CriterioOrdenacaoSolicitacaoTest {
 
   @Test
-  void shouldExporExatamenteTresCriteriosNaOrdemDeclaradaWhenListaOsValores() {
+  void shouldExporExatamenteQuatroCriteriosNaOrdemDeclaradaWhenListaOsValores() {
     // Arrange
     final List<CriterioOrdenacaoSolicitacao> esperados =
         List.of(
             CriterioOrdenacaoSolicitacao.CRIADA_EM,
             CriterioOrdenacaoSolicitacao.PRAZO_LIMITE,
-            CriterioOrdenacaoSolicitacao.PRIORIDADE);
+            CriterioOrdenacaoSolicitacao.PRIORIDADE,
+            CriterioOrdenacaoSolicitacao.ENCERRADA_EM);
 
     // Act
     final List<CriterioOrdenacaoSolicitacao> valores =

@@ -19,6 +19,7 @@ public final class LimitesTexto {
   public static final int MODELO_PRETENDIDO_OBSERVACOES = 2000;
 
   public static final int MAQUINA_NOME = 255;
+  public static final int TIPO_DE_MODELO_NOME = 255;
   public static final int USUARIO_NOME = 255;
   public static final int USUARIO_EMAIL = 255;
 

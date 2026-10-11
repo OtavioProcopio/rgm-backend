@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -179,5 +180,32 @@ class UsuarioRepositoryAdapterTest {
     final PageResult<Usuario> result = adapter.findByFilters(PerfilUsuario.OPERADOR, true, 0, 10);
 
     assertEquals(1, result.content().size());
+  }
+
+  @Test
+  void shouldAskOnlyAssignableProfilesAndEscapeSearchWhenBuscandoAtribuiveis() {
+    // Arrange
+    final UsuarioJpaEntity e = new UsuarioJpaEntity();
+    e.setId(UUID.randomUUID());
+    e.setNome("Zelia");
+    e.setEmail("zelia@rgm.com");
+    e.setSenhaHash("hash");
+    e.setPerfil(com.rgm.api.core.domain.model.enums.PerfilUsuario.OPERADOR);
+    e.setAtivo(true);
+    e.setCriadoEm(java.time.Instant.now());
+    e.setAtualizadoEm(java.time.Instant.now());
+    final var pageable = PageRequest.of(1, 5);
+    when(jpa.buscarAtribuiveis(java.util.List.of("OPERADOR", "GESTOR"), "100\\%", pageable))
+        .thenReturn(
+            new org.springframework.data.domain.PageImpl<>(java.util.List.of(e), pageable, 6));
+
+    // Act
+    final var resultado = adapter.buscarAtribuiveis("100%", 1, 5);
+
+    // Assert
+    assertEquals(1, resultado.content().size());
+    assertEquals(6, resultado.totalElements());
+    verify(jpa, times(1))
+        .buscarAtribuiveis(java.util.List.of("OPERADOR", "GESTOR"), "100\\%", pageable);
   }
 }

@@ -240,6 +240,7 @@ public class SolicitacaoController {
             atrasada,
             emAberto,
             usuarioAutenticadoId(authentication),
+            null,
             OrdenacaoSolicitacao.PADRAO,
             0,
             Integer.MAX_VALUE);
@@ -284,9 +285,11 @@ public class SolicitacaoController {
       @RequestParam(required = false) final Boolean emAberto,
       @RequestParam(required = false) final String sort,
       @RequestParam(required = false) final String dir,
+      @RequestParam(required = false) final String q,
       final Authentication authentication) {
     ParametrosDeConsulta.pagina(page, size);
     final OrdenacaoSolicitacao ordenacao = ParametrosDeConsulta.ordenacao(sort, dir);
+    final String busca = ParametrosDeConsulta.busca(q);
     final var result =
         listarUseCase.execute(
             buildInput(
@@ -305,6 +308,7 @@ public class SolicitacaoController {
                 atrasada,
                 emAberto,
                 usuarioAutenticadoId(authentication),
+                busca,
                 ordenacao,
                 page,
                 size));
@@ -316,6 +320,8 @@ public class SolicitacaoController {
     responsaveisPorSol.values().forEach(idsParaNomear::addAll);
     result.content().forEach(s -> idsParaNomear.add(s.getAbertaPorUsuarioId()));
     final Map<UUID, String> nomes = obterUseCase.resolverNomes(idsParaNomear);
+    final Map<UUID, ObterSolicitacaoUseCase.ResumoModelo> modelos =
+        obterUseCase.resolverModelos(result.content());
 
     return ResponseEntity.ok(
         PageResponse.from(
@@ -330,7 +336,8 @@ public class SolicitacaoController {
                   responsavelIds.stream()
                       .map(id -> new ObterSolicitacaoUseCase.ResponsavelNome(id, nomes.get(id)))
                       .toList(),
-                  nomes.get(s.getAbertaPorUsuarioId()));
+                  nomes.get(s.getAbertaPorUsuarioId()),
+                  modelos.get(s.getModeloId()));
             }));
   }
 
@@ -350,6 +357,7 @@ public class SolicitacaoController {
       final Boolean atrasada,
       final Boolean emAberto,
       final UUID usuarioAutenticadoId,
+      final String busca,
       final OrdenacaoSolicitacao ordenacao,
       final int page,
       final int size) {
@@ -373,6 +381,7 @@ public class SolicitacaoController {
         atrasada,
         emAberto,
         usuarioAutenticadoId,
+        busca,
         ordenacao,
         page,
         size);
@@ -432,7 +441,8 @@ public class SolicitacaoController {
             output.responsavelIds(),
             output.acoesPermitidas(),
             output.responsaveis(),
-            output.abertaPorNome()));
+            output.abertaPorNome(),
+            output.modelo()));
   }
 
   @GetMapping("/{id}/atividades")

@@ -69,9 +69,7 @@ class AcoesPermitidasSolicitacaoTest {
         AcoesPermitidasSolicitacao.calcular(gestor, sol, false, false);
 
     // Assert
-    assertEquals(
-        EnumSet.of(TRIAR, CANCELAR, EDITAR, COMENTAR, ALTERAR_RESPONSAVEIS, ANEXAR_EVIDENCIA),
-        acoes);
+    assertEquals(EnumSet.of(TRIAR, CANCELAR, EDITAR, COMENTAR, ANEXAR_EVIDENCIA), acoes);
   }
 
   @Test
@@ -153,7 +151,7 @@ class AcoesPermitidasSolicitacaoTest {
   }
 
   @Test
-  void shouldNotAllowCancellingWhenAuthorSeesSolicitacaoEmAndamento() {
+  void shouldNotAllowCancellingOrEditingWhenAuthorSeesSolicitacaoEmAndamento() {
     // Arrange
     final Usuario autor = usuario(PerfilUsuario.OPERADOR, true);
     final Solicitacao sol = solicitacao(autor.getId(), StatusSolicitacao.EM_ANDAMENTO);
@@ -163,7 +161,7 @@ class AcoesPermitidasSolicitacaoTest {
         AcoesPermitidasSolicitacao.calcular(autor, sol, false, false);
 
     // Assert
-    assertEquals(EnumSet.of(EDITAR, COMENTAR, ANEXAR_EVIDENCIA), acoes);
+    assertEquals(EnumSet.of(COMENTAR, ANEXAR_EVIDENCIA), acoes);
   }
 
   @Test

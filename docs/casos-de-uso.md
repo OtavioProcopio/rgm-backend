@@ -189,7 +189,7 @@ Declarados em `LimitesTexto` (domínio) e aplicados nos requests; texto acima do
 
 | Endpoint | Filtros | Paginação |
 |----------|---------|-----------|
-| `GET /api/solicitacoes` | `status`, `modeloId`, `tipo`, `prioridade`, `criadaEmInicio`/`criadaEmFim`, `abertaPorUsuarioId`, `responsavelId`, `maquina`, `atrasada`, `emAberto`; ordenação `sort` (`criadaEm`, `prazoLimite`, `prioridade`) e `dir` (`asc`, `desc`) | `page`, `size` |
+| `GET /api/solicitacoes` | `status`, `modeloId`, `tipo`, `prioridade`, `criadaEmInicio`/`criadaEmFim`, `abertaPorUsuarioId`, `responsavelId`, `maquina`, `atrasada`, `emAberto`, `q` (busca textual); ordenação `sort` (`criadaEm`, `prazoLimite`, `prioridade`, `concluidaEm`) e `dir` (`asc`, `desc`) | `page`, `size` |
 | `GET /api/solicitacoes/relatorio` | mesmos filtros de `GET /api/solicitacoes` | — (Exportação em PDF) |
 | `GET /api/admin/usuarios` | `perfil`, `ativo` | `page`, `size` |
 | `GET /api/modelos` | `ativo`, `codigo` | `page`, `size` |
@@ -224,7 +224,7 @@ Spec `specs/010-seguranca-e-robustez-da-api-permissoes`:
 
 ## Admin Seed
 
-O `AdminUserInitializer` cria automaticamente o usuário admin (`admin@rgm.com` / `admin123`) ao iniciar a aplicação em **qualquer ambiente**, se não existir. Usa BCrypt via `PasswordHasher` para garantir hash correto.
+O `AdminUserInitializer` cria o primeiro administrador ao iniciar a aplicação, se o e-mail não existir. Em `dev` e `test` vale `admin@rgm.com` / `admin123`; em `prod` o e-mail e a senha vêm de `ADMIN_EMAIL` e `ADMIN_SENHA` (sem senha válida, nada é criado). Usa BCrypt via `PasswordHasher`.
 
 ## Refresh Token
 
@@ -284,4 +284,23 @@ O `AdminUserInitializer` cria automaticamente o usuário admin (`admin@rgm.com` 
 
 - **Acesso**: usuário inativo ou inexistente não abre a conexão (401)
 
-**Ordenação (`sort`, `dir`):** sem `sort` a ordem é a criação crescente (a mais antiga primeiro); `dir` sem `sort` ordena por criação. `prazoLimite` ordena pelo prazo da prioridade (crescente = a mais vencida primeiro); `prioridade` ordena por urgência (crescente = URGENTE primeiro). Solicitação sem prioridade (não triada) vai sempre para o fim, em qualquer sentido; o desempate é por criação e id, então as páginas não repetem nem perdem item. Valor fora da lista responde 400 com os valores aceitos.
+**Ordenação (`sort`, `dir`):** sem `sort` a ordem é a criação crescente (a mais antiga primeiro); `dir` sem `sort` ordena por criação. `prazoLimite` ordena pelo prazo da prioridade (crescente = a mais vencida primeiro); `prioridade` ordena por urgência (crescente = URGENTE primeiro). Solicitação sem prioridade (não triada) vai sempre para o fim, em qualquer sentido; o desempate é por criação e id, então as páginas não repetem nem perdem item. `concluidaEm` ordena pela data de encerramento (conclusão das concluídas, cancelamento das canceladas); as não encerradas vão para o fim. Valor fora da lista responde 400 com os valores aceitos.
+
+**Busca (`q`):** de 2 a 100 caracteres (fora disso, 400); casa, sem diferenciar caixa nem acento, com título, descrição e código do modelo, e se soma aos demais filtros e à visibilidade do operador.
+
+**Modelo na resposta:** a listagem e o detalhe trazem `modeloCodigo`, `modeloMaquina` e `modeloVersao` do cadastro do modelo (uma consulta por página); solicitação de criação ainda sem modelo mantém o código e a máquina informados na abertura.
+
+**Responsáveis disponíveis:** `GET /api/solicitacoes/responsaveis-disponiveis?busca=&page=&size=` (gestor e administrador; operador recebe 403) lista usuários ativos de perfil atribuível (operador e gestor) por nome, sem diferenciar caixa nem acento.
+
+**Distribuição em aberto:** `GET /api/solicitacoes/metricas` traz também `emAbertoPorTipo` e `emAbertoPorPrioridade` (`SEM_PRIORIDADE` para a não triada), só das solicitações em aberto.
+
+**Regras da spec 012:** edição só do gestor e do administrador depois da triagem (o operador edita em A Fazer) e cada edição entra no histórico como comentário com o título e a descrição anteriores; troca de responsáveis só depois da triagem; cancelar por `cancelar` ou por `encerrar` com `concluir=false` grava o mesmo histórico; o nome do objeto da evidência é gerado pelo servidor e o conteúdo precisa corresponder ao tipo declarado (`image/jpeg`, `image/png`, `image/gif`, `image/webp`, `application/pdf`, `video/mp4`).
+
+## Catálogo de tipos de modelo (spec 012)
+
+Espelha o catálogo de máquinas. `GET /api/tipos-modelo` lista (qualquer usuário autenticado);
+`POST /api/admin/tipos-modelo`, `PUT /api/admin/tipos-modelo/{id}` (renomear),
+`PATCH /api/admin/tipos-modelo/{id}/ativar` e `/desativar` são do administrador. Ao criar ou editar
+um modelo, `tipo` (opcional) precisa estar no catálogo e ativo; editar sem trocar o tipo continua
+valendo mesmo que ele tenha sido desativado. Renomear um tipo (ou uma máquina) troca o nome nos
+modelos que o usam.

@@ -10,7 +10,27 @@ import org.springframework.data.jpa.repository.Query;
 
 public interface ModeloJpaRepository extends JpaRepository<ModeloJpaEntity, UUID> {
 
-  int countByMaquinaAndCodigo(String maquina, String codigo);
+  @Query(
+      "SELECT COALESCE(MAX(m.versao), 0) FROM ModeloJpaEntity m "
+          + "WHERE m.maquina = :maquina AND m.codigo = :codigo")
+  int maiorVersao(
+      @org.springframework.data.repository.query.Param("maquina") String maquina,
+      @org.springframework.data.repository.query.Param("codigo") String codigo);
+
+  @org.springframework.data.jpa.repository.Modifying
+  @Query("UPDATE ModeloJpaEntity m SET m.maquina = :para WHERE m.maquina = :de")
+  int trocarMaquina(
+      @org.springframework.data.repository.query.Param("de") String de,
+      @org.springframework.data.repository.query.Param("para") String para);
+
+  @org.springframework.data.jpa.repository.Modifying
+  @Query("UPDATE ModeloJpaEntity m SET m.tipo = :para WHERE m.tipo = :de")
+  int trocarTipo(
+      @org.springframework.data.repository.query.Param("de") String de,
+      @org.springframework.data.repository.query.Param("para") String para);
+
+  boolean existsByMaquinaAndCodigoAndVersaoAndIdNot(
+      String maquina, String codigo, int versao, UUID id);
 
   @Query(
       "SELECT m FROM ModeloJpaEntity m WHERE "

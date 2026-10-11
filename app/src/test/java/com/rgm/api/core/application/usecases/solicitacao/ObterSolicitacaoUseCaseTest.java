@@ -15,6 +15,7 @@ import com.rgm.api.core.domain.model.entities.SolicitacaoAtribuicao;
 import com.rgm.api.core.domain.model.enums.AcaoSolicitacao;
 import com.rgm.api.core.domain.model.enums.PerfilUsuario;
 import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
+import com.rgm.api.core.domain.ports.repositories.ModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoAtribuicaoRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
@@ -35,6 +36,7 @@ class ObterSolicitacaoUseCaseTest {
   @Mock private SolicitacaoRepository solicitacaoRepository;
   @Mock private SolicitacaoAtribuicaoRepository atribuicaoRepository;
   @Mock private UsuarioRepository usuarioRepository;
+  @Mock private ModeloRepository modeloRepository;
   @InjectMocks private ObterSolicitacaoUseCase useCase;
 
   @Test
@@ -454,5 +456,54 @@ class ObterSolicitacaoUseCaseTest {
     assertThat(vazio).isEmpty();
     assertThat(nulos).isEmpty();
     verifyNoMoreInteractions(usuarioRepository);
+  }
+
+  @Test
+  void shouldResolveModeloIdentificationForAllSolicitacoesWithOneQuery() {
+    // Arrange
+    final UUID modeloA = UUID.randomUUID();
+    final UUID modeloB = UUID.randomUUID();
+    final UUID autor = UUID.randomUUID();
+    final Solicitacao s1 =
+        Solicitacao.abrir("T1", "D", TipoSolicitacao.REPARO, modeloA, autor, Instant.now());
+    final Solicitacao s2 =
+        Solicitacao.abrir("T2", "D", TipoSolicitacao.REPARO, modeloA, autor, Instant.now());
+    final Solicitacao s3 =
+        Solicitacao.abrir("T3", "D", TipoSolicitacao.REPARO, modeloB, autor, Instant.now());
+    final var criado = Instant.now();
+    when(modeloRepository.findAllByIdIn(List.of(modeloA, modeloB)))
+        .thenReturn(
+            List.of(
+                new com.rgm.api.core.domain.model.aggregates.Modelo(
+                    modeloA, "COR-1", 2, "d", null, null, null, true, "FBOX", null, false, criado,
+                    criado),
+                new com.rgm.api.core.domain.model.aggregates.Modelo(
+                    modeloB, "COR-2", 1, "d", null, null, null, true, "VICK", null, false, criado,
+                    criado)));
+
+    // Act
+    final var mapa = useCase.resolverModelos(List.of(s1, s2, s3));
+
+    // Assert
+    assertThat(mapa.get(modeloA))
+        .isEqualTo(new ObterSolicitacaoUseCase.ResumoModelo("COR-1", "FBOX", 2));
+    assertThat(mapa.get(modeloB))
+        .isEqualTo(new ObterSolicitacaoUseCase.ResumoModelo("COR-2", "VICK", 1));
+    verify(modeloRepository, times(1)).findAllByIdIn(List.of(modeloA, modeloB));
+  }
+
+  @Test
+  void shouldNotQueryModelosWhenNoSolicitacaoHasModelo() {
+    // Arrange
+    final Solicitacao semModelo =
+        Solicitacao.abrirCriacao("T", "D", "COD-1", "FBOX", null, UUID.randomUUID(), Instant.now());
+
+    // Act
+    final var mapa = useCase.resolverModelos(List.of(semModelo));
+
+    // Assert
+    assertThat(mapa).isEmpty();
+    verify(modeloRepository, org.mockito.Mockito.never())
+        .findAllByIdIn(org.mockito.ArgumentMatchers.any());
   }
 }

@@ -18,7 +18,11 @@ import com.rgm.api.core.domain.ports.repositories.SolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import com.rgm.api.core.domain.ports.services.StorageService;
 import com.rgm.api.core.domain.validation.AcessoEvidenciaSolicitacao;
+import com.rgm.api.core.domain.validation.AssinaturaDeArquivo;
+import java.io.BufferedInputStream;
+import java.io.IOException;
 import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.time.Instant;
 import java.util.Set;
 import java.util.UUID;
@@ -123,7 +127,12 @@ public final class AnexarEvidenciaUseCase {
               + " MB");
     }
 
-    if (input.mimeType() != null && !ALLOWED_MIME_TYPES.contains(input.mimeType().toLowerCase())) {
+    if (input.mimeType() == null || input.mimeType().isBlank()) {
+      throw new ValidationException(
+          "Tipo do arquivo nao informado. Tipos aceitos: " + ALLOWED_MIME_TYPES);
+    }
+
+    if (!ALLOWED_MIME_TYPES.contains(input.mimeType().toLowerCase())) {
       throw new ValidationException(
           "Tipo de arquivo nao permitido: "
               + input.mimeType()
@@ -142,9 +151,11 @@ public final class AnexarEvidenciaUseCase {
 
     validarAcesso(solicitacao, input.enviadaPorUsuarioId(), input.tipo());
 
+    final InputStream conteudo = conferirAssinatura(input);
+
     final String evidenciaPublicUrl =
         storageService.upload(
-            input.nomeArquivo(), input.mimeType(), input.conteudo(), input.tamanhoBytes());
+            input.nomeArquivo(), input.mimeType(), conteudo, input.tamanhoBytes());
 
     AdicionarFotoGaleriaUseCase.Input galeriaInput = null;
     String galeriaPublicUrl = null;
@@ -208,6 +219,30 @@ public final class AnexarEvidenciaUseCase {
     }
 
     return salva;
+  }
+
+  /**
+   * Confere os primeiros bytes contra o tipo declarado, sem consumir o fluxo. Devolve o fluxo a
+   * usar no armazenamento (o mesmo, quando ele ja permite voltar ao inicio).
+   */
+  private static InputStream conferirAssinatura(final Input input) {
+    final InputStream conteudo =
+        input.conteudo().markSupported()
+            ? input.conteudo()
+            : new BufferedInputStream(input.conteudo());
+    final byte[] cabecalho;
+    try {
+      conteudo.mark(AssinaturaDeArquivo.TAMANHO_DO_CABECALHO);
+      cabecalho = conteudo.readNBytes(AssinaturaDeArquivo.TAMANHO_DO_CABECALHO);
+      conteudo.reset();
+    } catch (final IOException e) {
+      throw new UncheckedIOException("Falha ao ler o arquivo enviado", e);
+    }
+    if (!AssinaturaDeArquivo.confere(input.mimeType(), cabecalho)) {
+      throw new ValidationException(
+          "O conteudo do arquivo nao corresponde ao tipo informado: " + input.mimeType());
+    }
+    return conteudo;
   }
 
   private static boolean elegivelParaGaleria(final Input input, final Solicitacao solicitacao) {

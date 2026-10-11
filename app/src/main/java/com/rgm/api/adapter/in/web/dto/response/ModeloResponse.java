@@ -34,7 +34,7 @@ public record ModeloResponse(
         fotoCapaUrl,
         m.isAtivo(),
         m.getMaquina(),
-        m.getTipo() != null ? m.getTipo().name() : null,
+        m.getTipo(),
         m.isTemPendenciaAberta(),
         m.getCriadoEm(),
         m.getAtualizadoEm());

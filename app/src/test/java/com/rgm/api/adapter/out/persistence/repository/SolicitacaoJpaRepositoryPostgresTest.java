@@ -1,6 +1,7 @@
 package com.rgm.api.adapter.out.persistence.repository;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 import com.rgm.api.adapter.out.persistence.entity.SolicitacaoJpaEntity;
@@ -147,6 +148,7 @@ class SolicitacaoJpaRepositoryPostgresTest {
         null,
         emAberto,
         null,
+        null,
         CRITERIO_PADRAO,
         true,
         pageable);
@@ -170,6 +172,7 @@ class SolicitacaoJpaRepositoryPostgresTest {
         null,
         null,
         false,
+        null,
         null,
         criterio.name(),
         ascendente,
@@ -204,6 +207,7 @@ class SolicitacaoJpaRepositoryPostgresTest {
         null,
         false,
         visivelPara,
+        null,
         CRITERIO_PADRAO,
         true,
         PRIMEIRA_PAGINA);
@@ -1448,5 +1452,161 @@ class SolicitacaoJpaRepositoryPostgresTest {
     assertEquals(0L, ((Number) row[0]).longValue());
     assertNull(row[4]);
     assertNull(row[6]);
+  }
+
+  private Page<SolicitacaoJpaEntity> buscar(final String busca, final UUID visivelPara) {
+    return repository.findByFilters(
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        false,
+        visivelPara,
+        busca,
+        CRITERIO_PADRAO,
+        true,
+        PRIMEIRA_PAGINA);
+  }
+
+  private UUID persistirComTexto(
+      final String titulo, final String descricao, final UUID modelo, final UUID abertaPor) {
+    final SolicitacaoJpaEntity s =
+        persistir(StatusSolicitacao.A_FAZER, agora, null, abertaPor, modelo, null);
+    jdbc.update(
+        "UPDATE solicitacoes SET titulo = ?, descricao = ? WHERE id = ?",
+        titulo,
+        descricao,
+        s.getId());
+    return s.getId();
+  }
+
+  @Test
+  void shouldCasarTituloDescricaoECodigoDoModeloSemCaixaESemAcentoWhenBusca() {
+    // Arrange
+    final UUID modeloCorreia = criarModelo("FBOX");
+    jdbc.update("UPDATE modelos SET codigo = 'CORREIA-77' WHERE id = ?", modeloCorreia);
+    final UUID noTitulo = persistirComTexto("Trocar CORREIA", "x", modeloId, usuarioId);
+    final UUID naDescricao =
+        persistirComTexto("Reparo", "A correia está gasta", modeloId, usuarioId);
+    final UUID noCodigo = persistirComTexto("Revisão", "y", modeloCorreia, usuarioId);
+    final UUID fora = persistirComTexto("Pintura", "tinta", modeloId, usuarioId);
+
+    // Act
+    final var ids = ids(buscar("correía", null));
+
+    // Assert
+    assertEquals(List.of(noTitulo, naDescricao, noCodigo).stream().sorted().toList(), ids);
+    assertFalse(ids.contains(fora));
+  }
+
+  @Test
+  void shouldTratarPercentualComoTextoWhenBuscaEscapada() {
+    // Arrange
+    final UUID literal = persistirComTexto("Reduzir 50% da carga", "x", modeloId, usuarioId);
+    persistirComTexto("Reduzir 500 da carga", "x", modeloId, usuarioId);
+
+    // Act
+    final var ids = ids(buscar("50\\%", null));
+
+    // Assert
+    assertEquals(List.of(literal), ids);
+  }
+
+  @Test
+  void shouldRespeitarAVisibilidadeDoOperadorWhenBusca() {
+    // Arrange
+    final UUID outro = criarUsuario();
+    final UUID minha = persistirComTexto("Trocar correia", "x", modeloId, usuarioId);
+    persistirComTexto("Trocar correia do outro", "x", modeloId, outro);
+
+    // Act
+    final var ids = ids(buscar("correia", usuarioId));
+
+    // Assert
+    assertEquals(List.of(minha), ids);
+  }
+
+  @Test
+  void shouldTrazerAEncerradaMaisRecentementePrimeiroWhenOrdenaPorEncerramentoDecrescente() {
+    // Arrange
+    final UUID concluidaAntiga =
+        persistir(
+                StatusSolicitacao.CONCLUIDA,
+                agora.minus(Duration.ofDays(9)),
+                agora.minus(Duration.ofDays(5)))
+            .getId();
+    final UUID canceladaRecente =
+        persistir(
+                StatusSolicitacao.CANCELADA,
+                agora.minus(Duration.ofDays(8)),
+                agora.minus(Duration.ofDays(1)))
+            .getId();
+    final UUID concluidaMeio =
+        persistir(
+                StatusSolicitacao.CONCLUIDA,
+                agora.minus(Duration.ofDays(7)),
+                agora.minus(Duration.ofDays(3)))
+            .getId();
+    final UUID emAberto =
+        persistir(StatusSolicitacao.A_FAZER, agora.minus(Duration.ofDays(2)), null).getId();
+
+    // Act
+    final var page =
+        listarOrdenado(CriterioOrdenacaoSolicitacao.ENCERRADA_EM, false, PRIMEIRA_PAGINA);
+
+    // Assert
+    assertEquals(
+        List.of(canceladaRecente, concluidaMeio, concluidaAntiga, emAberto), idsNaOrdem(page));
+  }
+
+  @Test
+  void shouldContarSoAsEmAbertoPorTipoEPorPrioridadeWhenAgrega() {
+    // Arrange
+    persistir(StatusSolicitacao.A_FAZER, agora, null);
+    persistir(
+        StatusSolicitacao.EM_ANDAMENTO,
+        agora,
+        null,
+        usuarioId,
+        modeloId,
+        PrioridadeSolicitacao.ALTA);
+    persistir(
+        StatusSolicitacao.EM_ANDAMENTO,
+        agora,
+        null,
+        usuarioId,
+        modeloId,
+        PrioridadeSolicitacao.ALTA);
+    persistir(
+        StatusSolicitacao.CONCLUIDA,
+        agora,
+        agora,
+        usuarioId,
+        modeloId,
+        PrioridadeSolicitacao.BAIXA);
+
+    // Act
+    final var porTipo = repository.countEmAbertoPorTipo();
+    final var porPrioridade = repository.countEmAbertoPorPrioridade();
+
+    // Assert
+    assertEquals(1, porTipo.size());
+    assertEquals(3L, porTipo.get(0)[1]);
+    assertEquals(
+        2L,
+        porPrioridade.stream()
+            .filter(l -> l[0] == PrioridadeSolicitacao.ALTA)
+            .findFirst()
+            .get()[1]);
+    assertEquals(1L, porPrioridade.stream().filter(l -> l[0] == null).findFirst().get()[1]);
+    assertEquals(2, porPrioridade.size());
   }
 }

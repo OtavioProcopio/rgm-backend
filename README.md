@@ -37,7 +37,7 @@ cd app && ./mvnw spring-boot:run
 | Health | http://localhost:8080/actuator/health |
 | MinIO Console | http://localhost:9001 |
 
-Login padrão (perfil `dev`): `admin@rgm.com` / `admin123`
+Login padrão (perfis `dev` e `test`): `admin@rgm.com` / `admin123`. Em produção o primeiro administrador vem de `ADMIN_EMAIL` e `ADMIN_SENHA` (ver `docs/configuracao.md`).
 
 ## Testes
 

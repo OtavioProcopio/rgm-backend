@@ -122,6 +122,7 @@ class ListarSolicitacoesUseCaseTest {
         emAberto,
         usuarioAutenticadoId,
         null,
+        null,
         0,
         20);
   }
@@ -129,8 +130,8 @@ class ListarSolicitacoesUseCaseTest {
   private ListarSolicitacoesUseCase.Input inputOrdenado(
       final StatusSolicitacao status, final OrdenacaoSolicitacao ordenacao) {
     return new ListarSolicitacoesUseCase.Input(
-        status, null, null, null, null, null, null, null, null, null, null, null, null, ordenacao,
-        0, 20);
+        status, null, null, null, null, null, null, null, null, null, null, null, null, null,
+        ordenacao, 0, 20);
   }
 
   private Usuario usuarioComPerfil(final UUID id, final PerfilUsuario perfil) {
@@ -175,6 +176,7 @@ class ListarSolicitacoesUseCaseTest {
             null,
             false,
             null,
+            null,
             OrdenacaoSolicitacao.PADRAO,
             0,
             20))
@@ -201,6 +203,7 @@ class ListarSolicitacoesUseCaseTest {
             null,
             null,
             false,
+            null,
             null,
             OrdenacaoSolicitacao.PADRAO,
             0,
@@ -229,6 +232,7 @@ class ListarSolicitacoesUseCaseTest {
             null,
             false,
             null,
+            null,
             ordenacao,
             0,
             20))
@@ -256,6 +260,7 @@ class ListarSolicitacoesUseCaseTest {
             null,
             false,
             null,
+            null,
             ordenacao,
             0,
             20);
@@ -270,7 +275,7 @@ class ListarSolicitacoesUseCaseTest {
     final PageResult<Solicitacao> esperado = new PageResult<>(List.of(), 0, 20, 0, 0);
     when(solicitacaoRepository.findByFilters(
             null, null, null, null, null, null, null, null, null, null, null, null, false, null,
-            ordenacao, 0, 20))
+            null, ordenacao, 0, 20))
         .thenReturn(esperado);
 
     // Act
@@ -281,7 +286,7 @@ class ListarSolicitacoesUseCaseTest {
     verify(solicitacaoRepository, times(1))
         .findByFilters(
             null, null, null, null, null, null, null, null, null, null, null, null, false, null,
-            ordenacao, 0, 20);
+            null, ordenacao, 0, 20);
     verifyNoMoreInteractions(solicitacaoRepository, usuarioRepository);
   }
 
@@ -320,6 +325,7 @@ class ListarSolicitacoesUseCaseTest {
             null,
             false,
             null,
+            null,
             OrdenacaoSolicitacao.PADRAO,
             0,
             20))
@@ -347,6 +353,7 @@ class ListarSolicitacoesUseCaseTest {
             null,
             false,
             null,
+            null,
             OrdenacaoSolicitacao.PADRAO,
             0,
             20);
@@ -371,6 +378,7 @@ class ListarSolicitacoesUseCaseTest {
             null,
             true,
             false,
+            null,
             null,
             OrdenacaoSolicitacao.PADRAO,
             0,
@@ -399,6 +407,7 @@ class ListarSolicitacoesUseCaseTest {
             true,
             false,
             null,
+            null,
             OrdenacaoSolicitacao.PADRAO,
             0,
             20);
@@ -426,6 +435,7 @@ class ListarSolicitacoesUseCaseTest {
             null,
             false,
             operadorId,
+            null,
             OrdenacaoSolicitacao.PADRAO,
             0,
             20))
@@ -455,6 +465,7 @@ class ListarSolicitacoesUseCaseTest {
             null,
             false,
             operadorId,
+            null,
             OrdenacaoSolicitacao.PADRAO,
             0,
             20);
@@ -484,6 +495,7 @@ class ListarSolicitacoesUseCaseTest {
             null,
             false,
             operadorId,
+            null,
             OrdenacaoSolicitacao.PADRAO,
             0,
             20))
@@ -513,6 +525,7 @@ class ListarSolicitacoesUseCaseTest {
             null,
             false,
             operadorId,
+            null,
             OrdenacaoSolicitacao.PADRAO,
             0,
             20);
@@ -561,6 +574,7 @@ class ListarSolicitacoesUseCaseTest {
             null,
             false,
             null,
+            null,
             OrdenacaoSolicitacao.PADRAO,
             0,
             20))
@@ -590,6 +604,7 @@ class ListarSolicitacoesUseCaseTest {
             null,
             false,
             null,
+            null,
             OrdenacaoSolicitacao.PADRAO,
             0,
             20);
@@ -617,6 +632,7 @@ class ListarSolicitacoesUseCaseTest {
             null,
             null,
             false,
+            null,
             null,
             OrdenacaoSolicitacao.PADRAO,
             0,
@@ -647,6 +663,7 @@ class ListarSolicitacoesUseCaseTest {
             null,
             false,
             null,
+            null,
             OrdenacaoSolicitacao.PADRAO,
             0,
             20);
@@ -673,6 +690,7 @@ class ListarSolicitacoesUseCaseTest {
             null,
             null,
             false,
+            null,
             null,
             OrdenacaoSolicitacao.PADRAO,
             0,
@@ -701,6 +719,7 @@ class ListarSolicitacoesUseCaseTest {
             null,
             false,
             null,
+            null,
             OrdenacaoSolicitacao.PADRAO,
             0,
             20);
@@ -727,6 +746,7 @@ class ListarSolicitacoesUseCaseTest {
             null,
             null,
             false,
+            null,
             null,
             OrdenacaoSolicitacao.PADRAO,
             0,
@@ -755,6 +775,7 @@ class ListarSolicitacoesUseCaseTest {
             null,
             false,
             null,
+            null,
             OrdenacaoSolicitacao.PADRAO,
             0,
             20);
@@ -780,6 +801,7 @@ class ListarSolicitacoesUseCaseTest {
             null,
             null,
             true,
+            null,
             null,
             OrdenacaoSolicitacao.PADRAO,
             0,
@@ -808,6 +830,7 @@ class ListarSolicitacoesUseCaseTest {
             null,
             true,
             null,
+            null,
             OrdenacaoSolicitacao.PADRAO,
             0,
             20);
@@ -832,6 +855,7 @@ class ListarSolicitacoesUseCaseTest {
             null,
             null,
             true,
+            null,
             null,
             OrdenacaoSolicitacao.PADRAO,
             0,
@@ -860,6 +884,7 @@ class ListarSolicitacoesUseCaseTest {
             null,
             true,
             null,
+            null,
             OrdenacaoSolicitacao.PADRAO,
             0,
             20);
@@ -880,5 +905,57 @@ class ListarSolicitacoesUseCaseTest {
     assertSame(esperado, result);
     verify(solicitacaoRepository, times(1)).findAll(0, 20);
     verifyNoMoreInteractions(solicitacaoRepository);
+  }
+
+  @Test
+  void shouldUsarAConsultaDeFiltrosWhenSoHaBusca() {
+    // Arrange
+    final PageResult<Solicitacao> esperado = new PageResult<>(List.of(), 0, 20, 0, 0);
+    when(solicitacaoRepository.findByFilters(
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            false,
+            null,
+            "correia",
+            OrdenacaoSolicitacao.PADRAO,
+            0,
+            20))
+        .thenReturn(esperado);
+    final var input =
+        new ListarSolicitacoesUseCase.Input(
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            "correia",
+            OrdenacaoSolicitacao.PADRAO,
+            0,
+            20);
+
+    // Act
+    final PageResult<Solicitacao> result = useCase.execute(input);
+
+    // Assert
+    assertSame(esperado, result);
+    verify(solicitacaoRepository, never()).findAll(0, 20);
   }
 }

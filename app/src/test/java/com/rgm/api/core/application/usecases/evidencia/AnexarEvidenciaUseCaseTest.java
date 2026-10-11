@@ -114,7 +114,7 @@ class AnexarEvidenciaUseCaseTest {
             "foto.jpg",
             "image/jpeg",
             1024L,
-            new ByteArrayInputStream(new byte[1024]),
+            conteudo("image/jpeg", 1024),
             usuarioId,
             null,
             null);
@@ -153,7 +153,7 @@ class AnexarEvidenciaUseCaseTest {
             "servico.jpg",
             "image/jpeg",
             1024L,
-            new ByteArrayInputStream(new byte[1024]),
+            conteudo("image/jpeg", 1024),
             usuarioId,
             TipoEvidencia.SERVICO_REALIZADO,
             "Servico realizado conforme solicitado");
@@ -186,7 +186,7 @@ class AnexarEvidenciaUseCaseTest {
             "servico.jpg",
             "image/jpeg",
             1024L,
-            new ByteArrayInputStream(new byte[1024]),
+            conteudo("image/jpeg", 1024),
             usuarioId,
             TipoEvidencia.SERVICO_REALIZADO,
             "   ");
@@ -256,7 +256,7 @@ class AnexarEvidenciaUseCaseTest {
             "doc.pdf",
             "application/pdf",
             2048L,
-            new ByteArrayInputStream(new byte[2048]),
+            conteudo("application/pdf", 2048),
             usuarioId,
             null,
             null);
@@ -313,11 +313,11 @@ class AnexarEvidenciaUseCaseTest {
             "servico.jpg",
             "image/jpeg",
             1024L,
-            new ByteArrayInputStream(new byte[1024]),
+            conteudo("image/jpeg", 1024),
             usuarioId,
             TipoEvidencia.SERVICO_REALIZADO,
             "Servico realizado conforme solicitado",
-            () -> new ByteArrayInputStream(new byte[1024]));
+            () -> conteudo("image/jpeg", 1024));
 
     final AnexarEvidenciaUseCase.UploadResult uploadResult = useCase.upload(input);
     useCase.persist(input, uploadResult);
@@ -349,11 +349,11 @@ class AnexarEvidenciaUseCaseTest {
             "conclusao.png",
             "image/png",
             1024L,
-            new ByteArrayInputStream(new byte[1024]),
+            conteudo("image/png", 1024),
             usuarioId,
             TipoEvidencia.CONCLUSAO,
             null,
-            () -> new ByteArrayInputStream(new byte[1024]));
+            () -> conteudo("image/png", 1024));
 
     final AnexarEvidenciaUseCase.UploadResult uploadResult = useCase.upload(input);
     useCase.persist(input, uploadResult);
@@ -381,11 +381,11 @@ class AnexarEvidenciaUseCaseTest {
             "abertura.jpg",
             "image/jpeg",
             1024L,
-            new ByteArrayInputStream(new byte[1024]),
+            conteudo("image/jpeg", 1024),
             usuarioId,
             TipoEvidencia.ABERTURA,
             null,
-            () -> new ByteArrayInputStream(new byte[1024]));
+            () -> conteudo("image/jpeg", 1024));
 
     final AnexarEvidenciaUseCase.UploadResult uploadResult = useCase.upload(input);
     useCase.persist(input, uploadResult);
@@ -414,11 +414,11 @@ class AnexarEvidenciaUseCaseTest {
             "servico.gif",
             "image/gif",
             1024L,
-            new ByteArrayInputStream(new byte[1024]),
+            conteudo("image/gif", 1024),
             usuarioId,
             TipoEvidencia.SERVICO_REALIZADO,
             "Feito",
-            () -> new ByteArrayInputStream(new byte[1024]));
+            () -> conteudo("image/gif", 1024));
 
     final AnexarEvidenciaUseCase.UploadResult uploadResult = useCase.upload(input);
     useCase.persist(input, uploadResult);
@@ -449,11 +449,11 @@ class AnexarEvidenciaUseCaseTest {
             "servico.jpg",
             "image/jpeg",
             1024L,
-            new ByteArrayInputStream(new byte[1024]),
+            conteudo("image/jpeg", 1024),
             usuarioId,
             TipoEvidencia.SERVICO_REALIZADO,
             "Feito",
-            () -> new ByteArrayInputStream(new byte[1024]));
+            () -> conteudo("image/jpeg", 1024));
 
     final AnexarEvidenciaUseCase.UploadResult uploadResult = useCase.upload(input);
     final Evidencia resultado = useCase.persist(input, uploadResult);
@@ -525,7 +525,7 @@ class AnexarEvidenciaUseCaseTest {
     // Arrange
     final UUID autorId = UUID.randomUUID();
     final Solicitacao sol = solicitacaoAbertaPor(autorId, StatusSolicitacao.A_FAZER);
-    final ByteArrayInputStream conteudo = new ByteArrayInputStream(new byte[1024]);
+    final ByteArrayInputStream conteudo = conteudo("image/jpeg", 1024);
     when(solicitacaoRepository.findById(sol.getId())).thenReturn(Optional.of(sol));
     when(usuarioRepository.findById(autorId)).thenReturn(Optional.of(operador(autorId, true)));
     when(atribuicaoRepository.existsBySolicitacaoIdAndUsuarioIdAndRemovidoEmIsNull(
@@ -553,7 +553,7 @@ class AnexarEvidenciaUseCaseTest {
     // Arrange
     final UUID autorId = UUID.randomUUID();
     final Solicitacao sol = solicitacaoAbertaPor(autorId, StatusSolicitacao.EM_ANDAMENTO);
-    final ByteArrayInputStream conteudo = new ByteArrayInputStream(new byte[1024]);
+    final ByteArrayInputStream conteudo = conteudo("image/jpeg", 1024);
     when(solicitacaoRepository.findById(sol.getId())).thenReturn(Optional.of(sol));
     when(usuarioRepository.findById(autorId)).thenReturn(Optional.of(operador(autorId, true)));
     when(atribuicaoRepository.existsBySolicitacaoIdAndUsuarioIdAndRemovidoEmIsNull(
@@ -581,7 +581,7 @@ class AnexarEvidenciaUseCaseTest {
     // Arrange
     final UUID autorId = UUID.randomUUID();
     final Solicitacao sol = solicitacaoAbertaPor(autorId, StatusSolicitacao.EM_ANDAMENTO);
-    final ByteArrayInputStream conteudo = new ByteArrayInputStream(new byte[1024]);
+    final ByteArrayInputStream conteudo = conteudo("image/jpeg", 1024);
     when(solicitacaoRepository.findById(sol.getId())).thenReturn(Optional.of(sol));
     when(usuarioRepository.findById(autorId)).thenReturn(Optional.of(operador(autorId, true)));
     when(atribuicaoRepository.existsBySolicitacaoIdAndUsuarioIdAndRemovidoEmIsNull(
@@ -612,7 +612,7 @@ class AnexarEvidenciaUseCaseTest {
     // Arrange
     final UUID autorId = UUID.randomUUID();
     final Solicitacao sol = solicitacaoAbertaPor(autorId, StatusSolicitacao.EM_ANDAMENTO);
-    final ByteArrayInputStream conteudo = new ByteArrayInputStream(new byte[1024]);
+    final ByteArrayInputStream conteudo = conteudo("image/jpeg", 1024);
     when(solicitacaoRepository.findById(sol.getId())).thenReturn(Optional.of(sol));
     when(usuarioRepository.findById(autorId)).thenReturn(Optional.of(operador(autorId, true)));
     when(atribuicaoRepository.existsBySolicitacaoIdAndUsuarioIdAndRemovidoEmIsNull(
@@ -640,7 +640,7 @@ class AnexarEvidenciaUseCaseTest {
     // Arrange
     final UUID estranhoId = UUID.randomUUID();
     final Solicitacao sol = solicitacaoAbertaPor(UUID.randomUUID(), StatusSolicitacao.A_FAZER);
-    final ByteArrayInputStream conteudo = new ByteArrayInputStream(new byte[1024]);
+    final ByteArrayInputStream conteudo = conteudo("image/jpeg", 1024);
     when(solicitacaoRepository.findById(sol.getId())).thenReturn(Optional.of(sol));
     when(usuarioRepository.findById(estranhoId))
         .thenReturn(Optional.of(operador(estranhoId, true)));
@@ -668,7 +668,7 @@ class AnexarEvidenciaUseCaseTest {
     // Arrange
     final UUID autorId = UUID.randomUUID();
     final Solicitacao sol = solicitacaoAbertaPor(autorId, StatusSolicitacao.CANCELADA);
-    final ByteArrayInputStream conteudo = new ByteArrayInputStream(new byte[1024]);
+    final ByteArrayInputStream conteudo = conteudo("image/jpeg", 1024);
     when(solicitacaoRepository.findById(sol.getId())).thenReturn(Optional.of(sol));
 
     // Act
@@ -688,7 +688,7 @@ class AnexarEvidenciaUseCaseTest {
     // Arrange
     final UUID autorId = UUID.randomUUID();
     final Solicitacao sol = solicitacaoAbertaPor(autorId, StatusSolicitacao.A_FAZER);
-    final ByteArrayInputStream conteudo = new ByteArrayInputStream(new byte[1024]);
+    final ByteArrayInputStream conteudo = conteudo("image/jpeg", 1024);
     when(solicitacaoRepository.findById(sol.getId())).thenReturn(Optional.of(sol));
     when(usuarioRepository.findById(autorId)).thenReturn(Optional.of(operador(autorId, false)));
 
@@ -703,5 +703,65 @@ class AnexarEvidenciaUseCaseTest {
     verify(solicitacaoRepository, times(1)).findById(sol.getId());
     verify(usuarioRepository, times(1)).findById(autorId);
     verificarQueNadaMaisFoiChamado();
+  }
+
+  @Test
+  void shouldRejectUploadWhenMimeTypeIsNull() {
+    // Arrange
+    final UUID autorId = UUID.randomUUID();
+    final AnexarEvidenciaUseCase.Input input =
+        new AnexarEvidenciaUseCase.Input(
+            UUID.randomUUID(),
+            "foto.jpg",
+            null,
+            1024L,
+            conteudo("image/jpeg", 1024),
+            autorId,
+            TipoEvidencia.ABERTURA,
+            "Descricao");
+
+    // Act
+    final ValidationException erro =
+        assertThrows(ValidationException.class, () -> useCase.upload(input));
+
+    // Assert
+    assertTrue(erro.getMessage().startsWith("Tipo do arquivo nao informado"));
+    verifyNoInteractions(storageService);
+  }
+
+  @Test
+  void shouldRejectUploadWhenContentDoesNotMatchDeclaredType() {
+    // Arrange
+    final UUID autorId = UUID.randomUUID();
+    final Solicitacao sol = solicitacaoAbertaPor(autorId, StatusSolicitacao.A_FAZER);
+    final ByteArrayInputStream texto = new ByteArrayInputStream("isto e texto puro".getBytes());
+    when(solicitacaoRepository.findById(sol.getId())).thenReturn(Optional.of(sol));
+    when(usuarioRepository.findById(autorId)).thenReturn(Optional.of(operador(autorId, true)));
+    when(atribuicaoRepository.existsBySolicitacaoIdAndUsuarioIdAndRemovidoEmIsNull(
+            sol.getId(), autorId))
+        .thenReturn(false);
+
+    // Act
+    final ValidationException erro =
+        assertThrows(
+            ValidationException.class,
+            () -> useCase.upload(entrada(sol.getId(), autorId, TipoEvidencia.ABERTURA, texto)));
+
+    // Assert
+    assertTrue(erro.getMessage().contains("image/jpeg"));
+    verifyNoInteractions(storageService);
+  }
+
+  private static ByteArrayInputStream conteudo(final String mime, final int tamanho) {
+    final byte[] cabecalho =
+        switch (mime) {
+          case "image/png" -> new byte[] {(byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A};
+          case "image/gif" -> "GIF89a".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+          case "application/pdf" -> "%PDF-1.7".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+          default -> new byte[] {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0};
+        };
+    final byte[] dados = new byte[Math.max(tamanho, 12)];
+    System.arraycopy(cabecalho, 0, dados, 0, cabecalho.length);
+    return new ByteArrayInputStream(dados);
   }
 }

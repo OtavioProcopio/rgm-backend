@@ -100,6 +100,32 @@ class TriarSolicitacaoUseCaseTest {
   }
 
   @Test
+  void shouldTreatRepeatedIdsAsASingleResponsavelWhenTriaging() {
+    // Arrange
+    final Usuario gestor = criarUsuario(PerfilUsuario.GESTOR);
+    final Usuario operador = criarUsuario(PerfilUsuario.OPERADOR);
+    final Solicitacao solicitacao = criarSolicitacao();
+    when(usuarioRepository.findById(gestor.getId())).thenReturn(Optional.of(gestor));
+    when(solicitacaoRepository.findById(solicitacao.getId())).thenReturn(Optional.of(solicitacao));
+    when(usuarioRepository.findAllByIdIn(List.of(operador.getId()))).thenReturn(List.of(operador));
+    when(solicitacaoRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(atribuicaoRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(atividadeRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    // Act
+    useCase.execute(
+        new TriarSolicitacaoUseCase.Input(
+            solicitacao.getId(),
+            PrioridadeSolicitacao.ALTA,
+            List.of(operador.getId(), operador.getId()),
+            gestor.getId()));
+
+    // Assert
+    verify(usuarioRepository, times(1)).findAllByIdIn(List.of(operador.getId()));
+    verify(atribuicaoRepository, times(1)).save(any());
+  }
+
+  @Test
   void deveFalharSeOperadorTentaTriar() {
     final Usuario operador = criarUsuario(PerfilUsuario.OPERADOR);
     when(usuarioRepository.findById(operador.getId())).thenReturn(Optional.of(operador));

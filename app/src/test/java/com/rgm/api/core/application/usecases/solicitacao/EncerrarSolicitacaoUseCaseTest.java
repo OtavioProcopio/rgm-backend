@@ -35,6 +35,7 @@ class EncerrarSolicitacaoUseCaseTest {
   private EventoModeloRepository eventoModeloRepository;
   private DomainEventPublisher eventPublisher;
   private GerenciarModelosUseCase gerenciarModelosUseCase;
+  private CancelarSolicitacaoUseCase cancelarUseCase;
   private EncerrarSolicitacaoUseCase useCase;
 
   @BeforeEach
@@ -45,6 +46,7 @@ class EncerrarSolicitacaoUseCaseTest {
     eventoModeloRepository = mock(EventoModeloRepository.class);
     eventPublisher = mock(DomainEventPublisher.class);
     gerenciarModelosUseCase = mock(GerenciarModelosUseCase.class);
+    cancelarUseCase = mock(CancelarSolicitacaoUseCase.class);
     useCase =
         new EncerrarSolicitacaoUseCase(
             solicitacaoRepository,
@@ -52,7 +54,8 @@ class EncerrarSolicitacaoUseCaseTest {
             atividadeRepository,
             eventoModeloRepository,
             eventPublisher,
-            gerenciarModelosUseCase);
+            gerenciarModelosUseCase,
+            cancelarUseCase);
   }
 
   private Solicitacao criarSolicitacaoEmValidacao() {
@@ -132,24 +135,28 @@ class EncerrarSolicitacaoUseCaseTest {
   }
 
   @Test
-  void deveCancelarSolicitacao() {
+  void shouldDelegateToCancelUseCaseWhenNotConcluding() {
+    // Arrange
     final Usuario gestor = criarGestor();
     final Solicitacao solicitacao = criarSolicitacaoEmValidacao();
-
+    final Solicitacao cancelada = solicitacao.cancelar("Cancelamento", Instant.now());
     when(usuarioRepository.findById(gestor.getId())).thenReturn(Optional.of(gestor));
-    when(solicitacaoRepository.findById(solicitacao.getId())).thenReturn(Optional.of(solicitacao));
-    when(solicitacaoRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-    when(atividadeRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(cancelarUseCase.execute(any())).thenReturn(cancelada);
 
+    // Act
     final Solicitacao resultado =
         useCase.execute(
             new EncerrarSolicitacaoUseCase.Input(
                 solicitacao.getId(), false, "Cancelamento", gestor.getId()));
 
-    assertEquals(StatusSolicitacao.CANCELADA, resultado.getStatus());
-    assertNotNull(resultado.getCanceladaEm());
-    verify(eventPublisher).publish(any(SolicitacaoFinalizadaEvent.class));
-    verify(eventoModeloRepository, never()).save(any(EventoModelo.class));
+    // Assert
+    assertSame(cancelada, resultado);
+    verify(cancelarUseCase, times(1))
+        .execute(
+            new CancelarSolicitacaoUseCase.Input(
+                solicitacao.getId(), "Cancelamento", gestor.getId()));
+    verify(solicitacaoRepository, never()).save(any());
+    verify(atividadeRepository, never()).save(any());
   }
 
   @Test
@@ -204,27 +211,6 @@ class EncerrarSolicitacaoUseCaseTest {
                     solicitacao.getId(), true, "Modelo criado com sucesso", gestor.getId())));
 
     verify(solicitacaoRepository, never()).save(any());
-  }
-
-  @Test
-  void deveCancelarSolicitacaoCriacaoSemModeloVinculado() {
-    final Usuario gestor = criarGestor();
-    final Solicitacao solicitacao = criarSolicitacaoCriacaoEmValidacao();
-
-    when(usuarioRepository.findById(gestor.getId())).thenReturn(Optional.of(gestor));
-    when(solicitacaoRepository.findById(solicitacao.getId())).thenReturn(Optional.of(solicitacao));
-    when(solicitacaoRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-    when(atividadeRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-
-    final Solicitacao resultado =
-        useCase.execute(
-            new EncerrarSolicitacaoUseCase.Input(
-                solicitacao.getId(), false, "Nao precisa mais", gestor.getId()));
-
-    assertEquals(StatusSolicitacao.CANCELADA, resultado.getStatus());
-    assertNull(resultado.getModeloId());
-    verify(eventPublisher).publish(any(SolicitacaoFinalizadaEvent.class));
-    verify(gerenciarModelosUseCase, never()).criar(any());
   }
 
   @Test

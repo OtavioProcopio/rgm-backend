@@ -34,9 +34,11 @@ Este documento descreve as entidades, enums e relacionamentos de alto nível.
 
 ### Modelo
 
+> `tipo` (opcional) e `maquina` são nomes do catálogo administrável (`tipos_modelo` e `maquinas`): o administrador cadastra, renomeia, ativa e desativa; renomear atualiza os modelos que usam o nome. Os cinco tipos que já existiam entram no catálogo com o identificador antigo como nome (`PLACA_ALUMINIO`, `MADEIRA_E_3D`, `ALUMINIO_E_3D`, `RESINA`, `COQUILHA_ACO`).
+
 - `id: UUID`
 - `codigo: string` (código do ferramental)
-- `versao: int` (controle de versão por máquina/encaixe + código)
+- `versao: int` (controle de versão por máquina/encaixe + código; única por `(maquina, codigo, versao)`; a versão nova é a maior existente + 1)
 - `descricao: string`
 - `observacoes: string` (opcional; texto livre para anotações técnicas/operacionais — ex.: cavidades, particularidades, avisos)
 - `estadoAtualDescricao: string` (opcional; texto livre do estado/condição atual)

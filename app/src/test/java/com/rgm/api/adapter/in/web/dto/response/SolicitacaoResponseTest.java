@@ -95,4 +95,38 @@ class SolicitacaoResponseTest {
     assertThat(response.id()).isEqualTo(id);
     assertThat(response.nome()).isEqualTo("Bruno");
   }
+
+  @Test
+  void shouldTakeCodeMachineAndVersionFromModeloWhenSolicitacaoHasModelo() {
+    // Arrange
+    final Solicitacao sol = solicitacao();
+    final var modelo =
+        new com.rgm.api.core.application.usecases.solicitacao.ObterSolicitacaoUseCase.ResumoModelo(
+            "COR-1", "FBOX", 3);
+
+    // Act
+    final SolicitacaoResponse response =
+        SolicitacaoResponse.from(sol, List.of(), null, List.of(), null, modelo);
+
+    // Assert
+    assertThat(response.modeloCodigo()).isEqualTo("COR-1");
+    assertThat(response.modeloMaquina()).isEqualTo("FBOX");
+    assertThat(response.modeloVersao()).isEqualTo(3);
+  }
+
+  @Test
+  void shouldKeepOwnDataAndNullVersionWhenSolicitacaoHasNoModeloSummary() {
+    // Arrange
+    final Solicitacao sol =
+        Solicitacao.abrirCriacao("T", "D", "COD-9", "VICK", null, UUID.randomUUID(), Instant.now());
+
+    // Act
+    final SolicitacaoResponse response =
+        SolicitacaoResponse.from(sol, List.of(), null, List.of(), null, null);
+
+    // Assert
+    assertThat(response.modeloCodigo()).isEqualTo("COD-9");
+    assertThat(response.modeloMaquina()).isEqualTo("VICK");
+    assertThat(response.modeloVersao()).isNull();
+  }
 }

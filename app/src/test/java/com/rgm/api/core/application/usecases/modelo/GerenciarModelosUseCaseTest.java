@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+import com.rgm.api.core.domain.exceptions.ConflitoException;
 import com.rgm.api.core.domain.exceptions.NaoAutorizadoException;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.exceptions.ValidationException;
@@ -13,18 +14,21 @@ import com.rgm.api.core.domain.model.enums.PerfilUsuario;
 import com.rgm.api.core.domain.ports.repositories.EventoModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.MaquinaRepository;
 import com.rgm.api.core.domain.ports.repositories.ModeloRepository;
+import com.rgm.api.core.domain.ports.repositories.TipoDeModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.Executable;
 
 class GerenciarModelosUseCaseTest {
 
   private ModeloRepository modeloRepository;
   private UsuarioRepository usuarioRepository;
   private MaquinaRepository maquinaRepository;
+  private TipoDeModeloRepository tipoDeModeloRepository;
   private EventoModeloRepository eventoModeloRepository;
   private GerenciarModelosUseCase useCase;
 
@@ -33,11 +37,17 @@ class GerenciarModelosUseCaseTest {
     modeloRepository = mock(ModeloRepository.class);
     usuarioRepository = mock(UsuarioRepository.class);
     maquinaRepository = mock(MaquinaRepository.class);
+    tipoDeModeloRepository = mock(TipoDeModeloRepository.class);
+    when(tipoDeModeloRepository.existsByNomeAndAtivoTrue(any())).thenReturn(true);
     eventoModeloRepository = mock(EventoModeloRepository.class);
     when(maquinaRepository.existsByNomeAndAtivoTrue(any())).thenReturn(true);
     useCase =
         new GerenciarModelosUseCase(
-            modeloRepository, usuarioRepository, maquinaRepository, eventoModeloRepository);
+            modeloRepository,
+            usuarioRepository,
+            maquinaRepository,
+            tipoDeModeloRepository,
+            eventoModeloRepository);
   }
 
   private Usuario criarGestor() {
@@ -58,7 +68,7 @@ class GerenciarModelosUseCaseTest {
     final Usuario gestor = criarGestor();
 
     when(usuarioRepository.findById(gestor.getId())).thenReturn(Optional.of(gestor));
-    when(modeloRepository.countByMaquinaAndCodigo("FBOX", "MOD-01")).thenReturn(0);
+    when(modeloRepository.maiorVersao("FBOX", "MOD-01")).thenReturn(0);
     when(modeloRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
     final Modelo resultado =
@@ -87,7 +97,7 @@ class GerenciarModelosUseCaseTest {
     final UUID solicitacaoId = UUID.randomUUID();
 
     when(usuarioRepository.findById(gestor.getId())).thenReturn(Optional.of(gestor));
-    when(modeloRepository.countByMaquinaAndCodigo("FBOX", "MOD-02")).thenReturn(0);
+    when(modeloRepository.maiorVersao("FBOX", "MOD-02")).thenReturn(0);
     when(modeloRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
     useCase.criar(
@@ -296,5 +306,202 @@ class GerenciarModelosUseCaseTest {
         () ->
             useCase.reativar(
                 new GerenciarModelosUseCase.ReativarInput(UUID.randomUUID(), UUID.randomUUID())));
+  }
+
+  private Modelo modeloExistente(final String codigo, final String maquina) {
+    final Instant agora = Instant.now();
+    return new Modelo(
+        UUID.randomUUID(),
+        codigo,
+        3,
+        "Desc",
+        null,
+        null,
+        null,
+        true,
+        maquina,
+        null,
+        false,
+        agora,
+        agora);
+  }
+
+  @Test
+  void shouldUseNextAfterLargestVersionAndTrimMachineWhenCreating() {
+    // Arrange
+    final Usuario gestor = criarGestor();
+    when(usuarioRepository.findById(gestor.getId())).thenReturn(Optional.of(gestor));
+    when(modeloRepository.maiorVersao("FBOX", "MOD-09")).thenReturn(3);
+    when(modeloRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    // Act
+    final Modelo resultado =
+        useCase.criar(
+            new GerenciarModelosUseCase.CriarInput(
+                "MOD-09", "Descricao", null, "  FBOX ", null, gestor.getId()));
+
+    // Assert
+    assertEquals(4, resultado.getVersao());
+    assertEquals("FBOX", resultado.getMaquina());
+    verify(modeloRepository, times(1)).maiorVersao("FBOX", "MOD-09");
+  }
+
+  @Test
+  void shouldEditDescriptionWhenMachineIsInactiveButUnchanged() {
+    // Arrange
+    final Usuario gestor = criarGestor();
+    final Modelo modelo = modeloExistente("MOD-01", "ANTIGA");
+    when(usuarioRepository.findById(gestor.getId())).thenReturn(Optional.of(gestor));
+    when(modeloRepository.findById(modelo.getId())).thenReturn(Optional.of(modelo));
+    when(maquinaRepository.existsByNomeAndAtivoTrue("ANTIGA")).thenReturn(false);
+    when(modeloRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    // Act
+    final Modelo resultado =
+        useCase.editar(
+            new GerenciarModelosUseCase.EditarInput(
+                modelo.getId(), "MOD-01", "Nova descricao", null, "ANTIGA", null, gestor.getId()));
+
+    // Assert
+    assertEquals("Nova descricao", resultado.getDescricao());
+    verify(maquinaRepository, never()).existsByNomeAndAtivoTrue(any());
+  }
+
+  @Test
+  void shouldRejectEditWhenChangingToInactiveMachine() {
+    // Arrange
+    final Usuario gestor = criarGestor();
+    final Modelo modelo = modeloExistente("MOD-01", "FBOX");
+    when(usuarioRepository.findById(gestor.getId())).thenReturn(Optional.of(gestor));
+    when(modeloRepository.findById(modelo.getId())).thenReturn(Optional.of(modelo));
+    when(maquinaRepository.existsByNomeAndAtivoTrue("INATIVA")).thenReturn(false);
+
+    // Act
+    final Executable acao =
+        () ->
+            useCase.editar(
+                new GerenciarModelosUseCase.EditarInput(
+                    modelo.getId(), "MOD-01", "Desc", null, "INATIVA", null, gestor.getId()));
+
+    // Assert
+    assertThrows(ValidationException.class, acao);
+    verify(modeloRepository, never()).save(any());
+  }
+
+  @Test
+  void shouldRejectEditWithConflictWhenIdentificationAlreadyExists() {
+    // Arrange
+    final Usuario gestor = criarGestor();
+    final Modelo modelo = modeloExistente("MOD-B", "FBOX");
+    when(usuarioRepository.findById(gestor.getId())).thenReturn(Optional.of(gestor));
+    when(modeloRepository.findById(modelo.getId())).thenReturn(Optional.of(modelo));
+    when(modeloRepository.existeOutroComIdentificacao("FBOX", "MOD-A", 3, modelo.getId()))
+        .thenReturn(true);
+
+    // Act
+    final ConflitoException erro =
+        assertThrows(
+            ConflitoException.class,
+            () ->
+                useCase.editar(
+                    new GerenciarModelosUseCase.EditarInput(
+                        modelo.getId(), "MOD-A", "Desc", null, "FBOX", null, gestor.getId())));
+
+    // Assert
+    assertEquals("Ja existe o modelo MOD-A versao 3 na maquina FBOX", erro.getMessage());
+    verify(modeloRepository, never()).save(any());
+  }
+
+  @Test
+  void shouldNotCheckIdentificationWhenCodeAndMachineAreUnchanged() {
+    // Arrange
+    final Usuario gestor = criarGestor();
+    final Modelo modelo = modeloExistente("MOD-01", "FBOX");
+    when(usuarioRepository.findById(gestor.getId())).thenReturn(Optional.of(gestor));
+    when(modeloRepository.findById(modelo.getId())).thenReturn(Optional.of(modelo));
+    when(modeloRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    // Act
+    useCase.editar(
+        new GerenciarModelosUseCase.EditarInput(
+            modelo.getId(), "MOD-01", "Outra", null, "FBOX", null, gestor.getId()));
+
+    // Assert
+    verify(modeloRepository, never()).existeOutroComIdentificacao(any(), any(), anyInt(), any());
+  }
+
+  @Test
+  void shouldRejectCreationWhenTipoIsNotInTheCatalog() {
+    // Arrange
+    final Usuario gestor = criarGestor();
+    when(usuarioRepository.findById(gestor.getId())).thenReturn(Optional.of(gestor));
+    when(tipoDeModeloRepository.existsByNomeAndAtivoTrue("INVENTADO")).thenReturn(false);
+
+    // Act
+    final var acao =
+        (Executable)
+            () ->
+                useCase.criar(
+                    new GerenciarModelosUseCase.CriarInput(
+                        "MOD-01", "Desc", null, "FBOX", "INVENTADO", gestor.getId()));
+
+    // Assert
+    assertThrows(ValidationException.class, acao);
+    verify(modeloRepository, never()).save(any());
+  }
+
+  @Test
+  void shouldSaveTipoFromCatalogWhenCreating() {
+    // Arrange
+    final Usuario gestor = criarGestor();
+    when(usuarioRepository.findById(gestor.getId())).thenReturn(Optional.of(gestor));
+    when(modeloRepository.maiorVersao("FBOX", "MOD-02")).thenReturn(0);
+    when(modeloRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    // Act
+    final Modelo resultado =
+        useCase.criar(
+            new GerenciarModelosUseCase.CriarInput(
+                "MOD-02", "Desc", null, "FBOX", " RESINA ", gestor.getId()));
+
+    // Assert
+    assertEquals("RESINA", resultado.getTipo());
+    verify(tipoDeModeloRepository, times(1)).existsByNomeAndAtivoTrue("RESINA");
+  }
+
+  @Test
+  void shouldAllowEditWhenTipoIsUnchangedEvenIfInactive() {
+    // Arrange
+    final Usuario gestor = criarGestor();
+    final Instant agora = Instant.now();
+    final Modelo modelo =
+        new Modelo(
+            UUID.randomUUID(),
+            "MOD-01",
+            1,
+            "Desc",
+            null,
+            null,
+            null,
+            true,
+            "FBOX",
+            "ANTIGO",
+            false,
+            agora,
+            agora);
+    when(usuarioRepository.findById(gestor.getId())).thenReturn(Optional.of(gestor));
+    when(modeloRepository.findById(modelo.getId())).thenReturn(Optional.of(modelo));
+    when(tipoDeModeloRepository.existsByNomeAndAtivoTrue("ANTIGO")).thenReturn(false);
+    when(modeloRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    // Act
+    final Modelo editado =
+        useCase.editar(
+            new GerenciarModelosUseCase.EditarInput(
+                modelo.getId(), "MOD-01", "Nova", null, "FBOX", "ANTIGO", gestor.getId()));
+
+    // Assert
+    assertEquals("Nova", editado.getDescricao());
+    verify(tipoDeModeloRepository, never()).existsByNomeAndAtivoTrue(any());
   }
 }
