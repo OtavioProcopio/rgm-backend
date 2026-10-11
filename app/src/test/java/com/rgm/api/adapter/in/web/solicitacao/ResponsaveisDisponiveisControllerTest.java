@@ -95,7 +95,10 @@ class ResponsaveisDisponiveisControllerTest {
     // Act and Assert
     mockMvc
         .perform(get(ROTA).param("busca", "a").with(user(usuario)))
-        .andExpect(status().isBadRequest());
+        .andExpect(status().isBadRequest())
+        .andExpect(
+            jsonPath("$.message")
+                .value("Parâmetro 'busca' deve ter de 2 a 100 caracteres (recebido: 1)"));
     verify(listarUseCase, never()).execute(any());
   }
 }

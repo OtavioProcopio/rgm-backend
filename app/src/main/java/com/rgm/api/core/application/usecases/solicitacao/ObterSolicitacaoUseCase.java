@@ -13,6 +13,7 @@ import com.rgm.api.core.domain.validation.AcessoSolicitacao;
 import com.rgm.api.core.domain.validation.AcoesPermitidasSolicitacao;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -110,7 +111,8 @@ public final class ObterSolicitacaoUseCase {
 
   /**
    * Resolve codigo, maquina e versao dos modelos das solicitacoes numa so consulta; solicitacao sem
-   * modelo (ou com modelo removido) nao entra no mapa.
+   * modelo (ou com modelo removido) nao entra no mapa. O mapa aceita consulta com chave nula
+   * (solicitacao de criacao ainda sem modelo).
    */
   public Map<UUID, ResumoModelo> resolverModelos(final Collection<Solicitacao> solicitacoes) {
     final List<UUID> ids =
@@ -120,7 +122,7 @@ public final class ObterSolicitacaoUseCase {
             .distinct()
             .toList();
     if (ids.isEmpty()) {
-      return Map.of();
+      return new HashMap<>();
     }
     return modeloRepository.findAllByIdIn(ids).stream()
         .collect(

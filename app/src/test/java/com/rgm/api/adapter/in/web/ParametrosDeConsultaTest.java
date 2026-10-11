@@ -390,8 +390,8 @@ class ParametrosDeConsultaTest {
     final String vazio = "   ";
 
     // Act
-    final String ausente = ParametrosDeConsulta.busca(null);
-    final String branco = ParametrosDeConsulta.busca(vazio);
+    final String ausente = ParametrosDeConsulta.busca("q", null);
+    final String branco = ParametrosDeConsulta.busca("q", vazio);
 
     // Assert
     assertNull(ausente);
@@ -404,7 +404,7 @@ class ParametrosDeConsultaTest {
     final String valor = "  correia  ";
 
     // Act
-    final String termo = ParametrosDeConsulta.busca(valor);
+    final String termo = ParametrosDeConsulta.busca("q", valor);
 
     // Assert
     assertEquals("correia", termo);
@@ -418,14 +418,14 @@ class ParametrosDeConsultaTest {
 
     // Act
     final ValidationException curtaErro =
-        assertThrows(ValidationException.class, () -> ParametrosDeConsulta.busca(curta));
+        assertThrows(ValidationException.class, () -> ParametrosDeConsulta.busca("q", curta));
     final ValidationException longaErro =
-        assertThrows(ValidationException.class, () -> ParametrosDeConsulta.busca(longa));
+        assertThrows(ValidationException.class, () -> ParametrosDeConsulta.busca("busca", longa));
 
     // Assert
     assertEquals(
         "Parâmetro 'q' deve ter de 2 a 100 caracteres (recebido: 1)", curtaErro.getMessage());
     assertEquals(
-        "Parâmetro 'q' deve ter de 2 a 100 caracteres (recebido: 101)", longaErro.getMessage());
+        "Parâmetro 'busca' deve ter de 2 a 100 caracteres (recebido: 101)", longaErro.getMessage());
   }
 }

@@ -289,7 +289,7 @@ public class SolicitacaoController {
       final Authentication authentication) {
     ParametrosDeConsulta.pagina(page, size);
     final OrdenacaoSolicitacao ordenacao = ParametrosDeConsulta.ordenacao(sort, dir);
-    final String busca = ParametrosDeConsulta.busca(q);
+    final String busca = ParametrosDeConsulta.busca("q", q);
     final var result =
         listarUseCase.execute(
             buildInput(

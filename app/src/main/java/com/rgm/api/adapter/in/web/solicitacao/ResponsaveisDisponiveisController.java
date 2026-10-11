@@ -34,7 +34,7 @@ public class ResponsaveisDisponiveisController {
     final var resultado =
         listarUseCase.execute(
             new ListarResponsaveisDisponiveisUseCase.Input(
-                ParametrosDeConsulta.busca(busca),
+                ParametrosDeConsulta.busca("busca", busca),
                 page,
                 size,
                 UUID.fromString(authentication.getName())));
