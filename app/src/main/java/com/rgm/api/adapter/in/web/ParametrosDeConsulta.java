@@ -59,14 +59,16 @@ public final class ParametrosDeConsulta {
    * Termo de busca textual: aparado, de {@value #BUSCA_MINIMA} a {@value #BUSCA_MAXIMA} caracteres;
    * {@code null} (ou em branco) quando o parametro nao foi informado.
    */
-  public static String busca(final String valor) {
+  public static String busca(final String campo, final String valor) {
     if (valor == null || valor.isBlank()) {
       return null;
     }
     final String termo = valor.trim();
     if (termo.length() < BUSCA_MINIMA || termo.length() > BUSCA_MAXIMA) {
       throw new ValidationException(
-          "Parâmetro 'q' deve ter de "
+          "Parâmetro '"
+              + campo
+              + "' deve ter de "
               + BUSCA_MINIMA
               + " a "
               + BUSCA_MAXIMA
