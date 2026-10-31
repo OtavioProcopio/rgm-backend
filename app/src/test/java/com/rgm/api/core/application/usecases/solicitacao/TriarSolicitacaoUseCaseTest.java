@@ -91,12 +91,13 @@ class TriarSolicitacaoUseCaseTest {
                 solicitacao.getId(),
                 PrioridadeSolicitacao.ALTA,
                 List.of(operador.getId()),
+                "Trocar o gabarito",
                 gestor.getId()));
 
     assertEquals(StatusSolicitacao.EM_ANDAMENTO, resultado.getStatus());
     assertEquals(PrioridadeSolicitacao.ALTA, resultado.getPrioridade());
     verify(atribuicaoRepository, times(1)).save(any());
-    verify(atividadeRepository, times(2)).save(any());
+    verify(atividadeRepository, times(3)).save(any());
   }
 
   @Test
@@ -118,6 +119,7 @@ class TriarSolicitacaoUseCaseTest {
             solicitacao.getId(),
             PrioridadeSolicitacao.ALTA,
             List.of(operador.getId(), operador.getId()),
+            "Trocar o gabarito",
             gestor.getId()));
 
     // Assert
@@ -138,6 +140,7 @@ class TriarSolicitacaoUseCaseTest {
                     UUID.randomUUID(),
                     PrioridadeSolicitacao.ALTA,
                     List.of(UUID.randomUUID()),
+                    "Trocar o gabarito",
                     operador.getId())));
   }
 
@@ -154,7 +157,7 @@ class TriarSolicitacaoUseCaseTest {
         () ->
             useCase.execute(
                 new TriarSolicitacaoUseCase.Input(
-                    solicitacao.getId(), PrioridadeSolicitacao.ALTA, List.of(), gestor.getId())));
+                    solicitacao.getId(), PrioridadeSolicitacao.ALTA, List.of(), "Trocar o gabarito", gestor.getId())));
   }
 
   @Test
@@ -185,6 +188,7 @@ class TriarSolicitacaoUseCaseTest {
                     solicitacao.getId(),
                     PrioridadeSolicitacao.ALTA,
                     List.of(inativo.getId()),
+                    "Trocar o gabarito",
                     gestor.getId())));
   }
 
@@ -206,6 +210,24 @@ class TriarSolicitacaoUseCaseTest {
                     solicitacao.getId(),
                     PrioridadeSolicitacao.ALTA,
                     List.of(admin.getId()),
+                    "Trocar o gabarito",
+                    gestor.getId())));
+  }
+
+  @Test
+  void deveFalharSemDescricaoDoQueFazer() {
+    final Usuario gestor = criarUsuario(PerfilUsuario.GESTOR);
+    final Solicitacao solicitacao = criarSolicitacao();
+
+    assertThrows(
+        BusinessRuleException.class,
+        () ->
+            useCase.execute(
+                new TriarSolicitacaoUseCase.Input(
+                    solicitacao.getId(),
+                    PrioridadeSolicitacao.ALTA,
+                    List.of(UUID.randomUUID()),
+                    "   ",
                     gestor.getId())));
   }
 }

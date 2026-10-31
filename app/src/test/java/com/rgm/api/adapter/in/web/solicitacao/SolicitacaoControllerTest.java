@@ -422,7 +422,7 @@ class SolicitacaoControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     objectMapper.writeValueAsString(
-                        new TriarSolicitacaoRequest("ALTA", List.of(UUID.randomUUID())))))
+                        new TriarSolicitacaoRequest("ALTA", List.of(UUID.randomUUID()), "Trocar o gabarito"))))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.status").value("EM_ANDAMENTO"));
   }
