@@ -422,9 +422,85 @@ class SolicitacaoControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     objectMapper.writeValueAsString(
-                        new TriarSolicitacaoRequest("ALTA", List.of(UUID.randomUUID()), "Trocar o gabarito"))))
+                        new TriarSolicitacaoRequest(
+                            "ALTA", List.of(UUID.randomUUID()), "Trocar o gabarito"))))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.status").value("EM_ANDAMENTO"));
+  }
+
+  @Test
+  void shouldReturn400WhenTriarHasNoDescricao() throws Exception {
+    // Arrange
+    final String corpo =
+        "{\"prioridade\":\"ALTA\",\"responsavelIds\":[\"" + UUID.randomUUID() + "\"]}";
+
+    // Act + Assert
+    mockMvc
+        .perform(
+            patch("/api/solicitacoes/{id}/triar", UUID.randomUUID())
+                .with(user(UUID.randomUUID().toString()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(corpo))
+        .andExpect(status().isBadRequest());
+    verifyNoInteractions(triarUseCase);
+  }
+
+  @Test
+  void shouldReturn400WhenTriarDescricaoIsBlankOrTooLong() throws Exception {
+    for (final String descricao : List.of("   ", "x".repeat(2001))) {
+      // Arrange
+      final var corpo =
+          objectMapper.writeValueAsString(
+              new TriarSolicitacaoRequest("ALTA", List.of(UUID.randomUUID()), descricao));
+
+      // Act + Assert
+      mockMvc
+          .perform(
+              patch("/api/solicitacoes/{id}/triar", UUID.randomUUID())
+                  .with(user(UUID.randomUUID().toString()))
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(corpo))
+          .andExpect(status().isBadRequest());
+    }
+    verifyNoInteractions(triarUseCase);
+  }
+
+  @Test
+  void shouldAcceptTriarWhenDescricaoHasExactly2000Characters() throws Exception {
+    // Arrange
+    final UUID solId = UUID.randomUUID();
+    final Instant agora = Instant.now();
+    when(triarUseCase.execute(any()))
+        .thenReturn(
+            new Solicitacao(
+                solId,
+                "Titulo",
+                "Desc",
+                TipoSolicitacao.REPARO,
+                StatusSolicitacao.EM_ANDAMENTO,
+                PrioridadeSolicitacao.ALTA,
+                UUID.randomUUID(),
+                null,
+                null,
+                null,
+                UUID.randomUUID(),
+                null,
+                agora,
+                agora,
+                null,
+                null));
+    final var corpo =
+        objectMapper.writeValueAsString(
+            new TriarSolicitacaoRequest("ALTA", List.of(UUID.randomUUID()), "x".repeat(2000)));
+
+    // Act + Assert
+    mockMvc
+        .perform(
+            patch("/api/solicitacoes/{id}/triar", solId)
+                .with(user(UUID.randomUUID().toString()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(corpo))
+        .andExpect(status().isOk());
   }
 
   @Test

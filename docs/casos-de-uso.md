@@ -21,8 +21,8 @@ Referência de todos os casos de uso implementados no sistema.
 - **Ator**: Gestor, Administrador
 - **Classe**: `TriarSolicitacaoUseCase`
 - **Endpoint**: `PATCH /api/solicitacoes/{id}/triar`
-- **Regras**: Prioridade obrigatória; 1+ responsáveis; ADMINISTRADOR não pode ser atribuído
-- **Erros**: 422 (sem responsáveis), 409 (status inválido), 403 (sem permissão)
+- **Regras**: Prioridade obrigatória; 1+ responsáveis; descrição do que fazer obrigatória (até 2000 caracteres), registrada no histórico (spec 014); ADMINISTRADOR não pode ser atribuído
+- **Erros**: 400 (sem descrição, em branco ou longa demais), 422 (sem responsáveis), 409 (status inválido), 403 (sem permissão)
 
 ## UC-04 — Autorização central de movimentação
 - **Atores**: Operador, Gestor, Administrador

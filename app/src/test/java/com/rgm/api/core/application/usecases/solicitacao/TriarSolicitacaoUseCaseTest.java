@@ -8,9 +8,11 @@ import com.rgm.api.core.domain.exceptions.BusinessRuleException;
 import com.rgm.api.core.domain.exceptions.NaoAutorizadoException;
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
 import com.rgm.api.core.domain.model.aggregates.Usuario;
+import com.rgm.api.core.domain.model.entities.AtividadeSolicitacao;
 import com.rgm.api.core.domain.model.enums.PerfilUsuario;
 import com.rgm.api.core.domain.model.enums.PrioridadeSolicitacao;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
+import com.rgm.api.core.domain.model.enums.TipoAtividadeSolicitacao;
 import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
 import com.rgm.api.core.domain.ports.repositories.AtividadeSolicitacaoRepository;
 import com.rgm.api.core.domain.ports.repositories.SolicitacaoAtribuicaoRepository;
@@ -157,7 +159,11 @@ class TriarSolicitacaoUseCaseTest {
         () ->
             useCase.execute(
                 new TriarSolicitacaoUseCase.Input(
-                    solicitacao.getId(), PrioridadeSolicitacao.ALTA, List.of(), "Trocar o gabarito", gestor.getId())));
+                    solicitacao.getId(),
+                    PrioridadeSolicitacao.ALTA,
+                    List.of(),
+                    "Trocar o gabarito",
+                    gestor.getId())));
   }
 
   @Test
@@ -215,19 +221,79 @@ class TriarSolicitacaoUseCaseTest {
   }
 
   @Test
-  void deveFalharSemDescricaoDoQueFazer() {
+  void shouldFailAndWriteNothingWhenDescricaoIsBlank() {
+    // Arrange
     final Usuario gestor = criarUsuario(PerfilUsuario.GESTOR);
     final Solicitacao solicitacao = criarSolicitacao();
 
+    // Act
+    final var thrown =
+        assertThrows(
+            BusinessRuleException.class,
+            () ->
+                useCase.execute(
+                    new TriarSolicitacaoUseCase.Input(
+                        solicitacao.getId(),
+                        PrioridadeSolicitacao.ALTA,
+                        List.of(UUID.randomUUID()),
+                        "   ",
+                        gestor.getId())));
+
+    // Assert
+    assertNotNull(thrown.getMessage());
+    verifyNoInteractions(solicitacaoRepository, atribuicaoRepository, atividadeRepository);
+  }
+
+  @Test
+  void shouldFailWhenDescricaoIsNull() {
+    // Arrange
+    final Usuario gestor = criarUsuario(PerfilUsuario.GESTOR);
+
+    // Act + Assert
     assertThrows(
         BusinessRuleException.class,
         () ->
             useCase.execute(
                 new TriarSolicitacaoUseCase.Input(
-                    solicitacao.getId(),
+                    UUID.randomUUID(),
                     PrioridadeSolicitacao.ALTA,
                     List.of(UUID.randomUUID()),
-                    "   ",
+                    null,
                     gestor.getId())));
+    verifyNoInteractions(solicitacaoRepository, atribuicaoRepository, atividadeRepository);
+  }
+
+  @Test
+  void shouldRecordTrimmedDescricaoAsComentarioOfGestorWhenTriaging() {
+    // Arrange
+    final Usuario gestor = criarUsuario(PerfilUsuario.GESTOR);
+    final Usuario operador = criarUsuario(PerfilUsuario.OPERADOR);
+    final Solicitacao solicitacao = criarSolicitacao();
+    when(usuarioRepository.findById(gestor.getId())).thenReturn(Optional.of(gestor));
+    when(solicitacaoRepository.findById(solicitacao.getId())).thenReturn(Optional.of(solicitacao));
+    when(usuarioRepository.findAllByIdIn(List.of(operador.getId()))).thenReturn(List.of(operador));
+    when(solicitacaoRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(atribuicaoRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(atividadeRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    // Act
+    useCase.execute(
+        new TriarSolicitacaoUseCase.Input(
+            solicitacao.getId(),
+            PrioridadeSolicitacao.ALTA,
+            List.of(operador.getId()),
+            "  Trocar o gabarito  ",
+            gestor.getId()));
+
+    // Assert
+    final var captor = org.mockito.ArgumentCaptor.forClass(AtividadeSolicitacao.class);
+    verify(atividadeRepository, times(3)).save(captor.capture());
+    final var comentario =
+        captor.getAllValues().stream()
+            .filter(a -> a.getTipo() == TipoAtividadeSolicitacao.COMENTARIO)
+            .findFirst()
+            .orElseThrow();
+    assertEquals("Trocar o gabarito", comentario.getComentario());
+    assertEquals(gestor.getId(), comentario.getAutorUsuarioId());
   }
 }

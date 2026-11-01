@@ -34,3 +34,4 @@ entra nesta tabela na mesma entrega.
 | `metricas-dashboard` | `specs/013-indicadores-de-gestao-relatorios-em-pdf` — `GET /api/solicitacoes/metricas/gestao` (prazo cumprido, mediana e p90, idade do backlog, tempo por etapa, devolução, por máquina, reincidentes e carga por responsável; 7, 30 ou 90 dias) |
 | `solicitacoes-kanban` | `specs/013-indicadores-de-gestao-relatorios-em-pdf` — o PDF da lista segue os filtros, a busca `q` e a ordenação da tela e escreve os filtros e o total no cabeçalho; sem corte silencioso (aviso acima de 5000 linhas) |
 | `modelos` | `specs/013-indicadores-de-gestao-relatorios-em-pdf` — a lista em PDF acompanha os filtros e traz o tipo; a ficha traz histórico e fotos da galeria |
+| `solicitacoes-kanban` | `specs/014-descricao-obrigatoria-na-triagem` — `PATCH /api/solicitacoes/{id}/triar` exige `descricao` (não vazia, até 2000 caracteres), gravada no histórico na mesma transação da triagem; sem ela, 400 |
