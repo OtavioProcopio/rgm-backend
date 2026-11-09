@@ -57,23 +57,18 @@ class VisualizarEvidenciaUseCaseTest {
     final UUID solId = UUID.randomUUID();
     final UUID usuarioId = UUID.randomUUID();
     final Solicitacao sol =
-        new Solicitacao(
-            solId,
-            "T",
-            "D",
-            TipoSolicitacao.REPARO,
-            StatusSolicitacao.EM_ANDAMENTO,
-            PrioridadeSolicitacao.ALTA,
-            UUID.randomUUID(),
-            null /* modeloCodigo */,
-            null /* modeloMaquina */,
-            null /* modeloObservacoes */,
-            UUID.randomUUID(),
-            null,
-            agora,
-            agora,
-            null,
-            null);
+        Solicitacao.builder()
+            .id(solId)
+            .titulo("T")
+            .descricao("D")
+            .tipo(TipoSolicitacao.REPARO)
+            .status(StatusSolicitacao.EM_ANDAMENTO)
+            .prioridade(PrioridadeSolicitacao.ALTA)
+            .modeloId(UUID.randomUUID())
+            .abertaPorUsuarioId(UUID.randomUUID())
+            .criadaEm(agora)
+            .atualizadaEm(agora)
+            .build();
 
     final UUID evId1 = UUID.randomUUID();
     final UUID evId2 = UUID.randomUUID();
@@ -126,23 +121,17 @@ class VisualizarEvidenciaUseCaseTest {
     final UUID solId = UUID.randomUUID();
     final UUID usuarioId = UUID.randomUUID();
     final Solicitacao sol =
-        new Solicitacao(
-            solId,
-            "T",
-            "D",
-            TipoSolicitacao.REPARO,
-            StatusSolicitacao.A_FAZER,
-            null,
-            UUID.randomUUID(),
-            null /* modeloCodigo */,
-            null /* modeloMaquina */,
-            null /* modeloObservacoes */,
-            UUID.randomUUID(),
-            null,
-            agora,
-            agora,
-            null,
-            null);
+        Solicitacao.builder()
+            .id(solId)
+            .titulo("T")
+            .descricao("D")
+            .tipo(TipoSolicitacao.REPARO)
+            .status(StatusSolicitacao.A_FAZER)
+            .modeloId(UUID.randomUUID())
+            .abertaPorUsuarioId(UUID.randomUUID())
+            .criadaEm(agora)
+            .atualizadaEm(agora)
+            .build();
 
     when(solicitacaoRepository.findById(solId)).thenReturn(Optional.of(sol));
     when(usuarioRepository.findById(usuarioId))
@@ -176,23 +165,21 @@ class VisualizarEvidenciaUseCaseTest {
 
   private Solicitacao solicitacaoAbertaPor(final UUID autorId, final StatusSolicitacao status) {
     final Instant agora = Instant.now();
-    return new Solicitacao(
-        UUID.randomUUID(),
-        "T",
-        "D",
-        TipoSolicitacao.REPARO,
-        status,
-        status.exigePrioridade() ? PrioridadeSolicitacao.ALTA : null,
-        UUID.randomUUID(),
-        null,
-        null,
-        null,
-        autorId,
-        status.isTerminal() ? "Comentario final" : null,
-        agora,
-        agora,
-        status == StatusSolicitacao.CONCLUIDA ? agora : null,
-        status == StatusSolicitacao.CANCELADA ? agora : null);
+    return Solicitacao.builder()
+        .id(UUID.randomUUID())
+        .titulo("T")
+        .descricao("D")
+        .tipo(TipoSolicitacao.REPARO)
+        .status(status)
+        .prioridade(status.exigePrioridade() ? PrioridadeSolicitacao.ALTA : null)
+        .modeloId(UUID.randomUUID())
+        .abertaPorUsuarioId(autorId)
+        .comentarioFinal(status.isTerminal() ? "Comentario final" : null)
+        .criadaEm(agora)
+        .atualizadaEm(agora)
+        .concluidaEm(status == StatusSolicitacao.CONCLUIDA ? agora : null)
+        .canceladaEm(status == StatusSolicitacao.CANCELADA ? agora : null)
+        .build();
   }
 
   private Evidencia evidencia(final UUID id) {

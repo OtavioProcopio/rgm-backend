@@ -19,23 +19,20 @@ class SolicitacaoPdfServiceTest {
 
   private Solicitacao solicitacao(final String titulo, final StatusSolicitacao status) {
     final boolean concluida = status == StatusSolicitacao.CONCLUIDA;
-    return new Solicitacao(
-        UUID.randomUUID(),
-        titulo,
-        "Troca de vedações",
-        TipoSolicitacao.REPARO,
-        status,
-        PrioridadeSolicitacao.ALTA,
-        UUID.randomUUID(),
-        null,
-        null,
-        null,
-        UUID.randomUUID(),
-        concluida ? "Concluída com sucesso" : null,
-        Instant.parse("2025-01-01T08:00:00Z"),
-        Instant.now(),
-        concluida ? Instant.parse("2025-01-02T08:00:00Z") : null,
-        null);
+    return Solicitacao.builder()
+        .id(UUID.randomUUID())
+        .titulo(titulo)
+        .descricao("Troca de vedações")
+        .tipo(TipoSolicitacao.REPARO)
+        .status(status)
+        .prioridade(PrioridadeSolicitacao.ALTA)
+        .modeloId(UUID.randomUUID())
+        .abertaPorUsuarioId(UUID.randomUUID())
+        .comentarioFinal(concluida ? "Concluída com sucesso" : null)
+        .criadaEm(Instant.parse("2025-01-01T08:00:00Z"))
+        .atualizadaEm(Instant.now())
+        .concluidaEm(concluida ? Instant.parse("2025-01-02T08:00:00Z") : null)
+        .build();
   }
 
   private ContextoDoRelatorio contexto(

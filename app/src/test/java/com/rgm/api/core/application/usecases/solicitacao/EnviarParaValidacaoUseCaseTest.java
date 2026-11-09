@@ -58,23 +58,18 @@ class EnviarParaValidacaoUseCaseTest {
 
   private Solicitacao criarSolicitacaoEmAndamento() {
     final Instant agora = Instant.now();
-    return new Solicitacao(
-        UUID.randomUUID(),
-        "Titulo",
-        "Desc",
-        TipoSolicitacao.REPARO,
-        StatusSolicitacao.EM_ANDAMENTO,
-        PrioridadeSolicitacao.ALTA,
-        UUID.randomUUID(),
-        null /* modeloCodigo */,
-        null /* modeloMaquina */,
-        null /* modeloObservacoes */,
-        UUID.randomUUID(),
-        null,
-        agora,
-        agora,
-        null,
-        null);
+    return Solicitacao.builder()
+        .id(UUID.randomUUID())
+        .titulo("Titulo")
+        .descricao("Desc")
+        .tipo(TipoSolicitacao.REPARO)
+        .status(StatusSolicitacao.EM_ANDAMENTO)
+        .prioridade(PrioridadeSolicitacao.ALTA)
+        .modeloId(UUID.randomUUID())
+        .abertaPorUsuarioId(UUID.randomUUID())
+        .criadaEm(agora)
+        .atualizadaEm(agora)
+        .build();
   }
 
   @Test
@@ -180,23 +175,17 @@ class EnviarParaValidacaoUseCaseTest {
             agora,
             agora);
     final Solicitacao solicitacaoAFazer =
-        new Solicitacao(
-            UUID.randomUUID(),
-            "T",
-            "D",
-            TipoSolicitacao.REPARO,
-            StatusSolicitacao.A_FAZER,
-            null,
-            UUID.randomUUID(),
-            null /* modeloCodigo */,
-            null /* modeloMaquina */,
-            null /* modeloObservacoes */,
-            UUID.randomUUID(),
-            null,
-            agora,
-            agora,
-            null,
-            null);
+        Solicitacao.builder()
+            .id(UUID.randomUUID())
+            .titulo("T")
+            .descricao("D")
+            .tipo(TipoSolicitacao.REPARO)
+            .status(StatusSolicitacao.A_FAZER)
+            .modeloId(UUID.randomUUID())
+            .abertaPorUsuarioId(UUID.randomUUID())
+            .criadaEm(agora)
+            .atualizadaEm(agora)
+            .build();
 
     when(usuarioRepository.findById(gestor.getId())).thenReturn(Optional.of(gestor));
     when(solicitacaoRepository.findById(solicitacaoAFazer.getId()))
@@ -224,23 +213,18 @@ class EnviarParaValidacaoUseCaseTest {
             agora,
             agora);
     final Solicitacao solicitacao =
-        new Solicitacao(
-            UUID.randomUUID(),
-            "Titulo",
-            "Desc",
-            TipoSolicitacao.REENGENHARIA,
-            StatusSolicitacao.EM_ANDAMENTO,
-            PrioridadeSolicitacao.ALTA,
-            UUID.randomUUID(),
-            null /* modeloCodigo */,
-            null /* modeloMaquina */,
-            null /* modeloObservacoes */,
-            UUID.randomUUID(),
-            null,
-            agora,
-            agora,
-            null,
-            null);
+        Solicitacao.builder()
+            .id(UUID.randomUUID())
+            .titulo("Titulo")
+            .descricao("Desc")
+            .tipo(TipoSolicitacao.REENGENHARIA)
+            .status(StatusSolicitacao.EM_ANDAMENTO)
+            .prioridade(PrioridadeSolicitacao.ALTA)
+            .modeloId(UUID.randomUUID())
+            .abertaPorUsuarioId(UUID.randomUUID())
+            .criadaEm(agora)
+            .atualizadaEm(agora)
+            .build();
 
     when(usuarioRepository.findById(gestor.getId())).thenReturn(Optional.of(gestor));
     when(solicitacaoRepository.findById(solicitacao.getId())).thenReturn(Optional.of(solicitacao));

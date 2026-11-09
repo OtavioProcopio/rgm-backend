@@ -49,23 +49,21 @@ class GerenciarResponsaveisUseCaseTest {
         (status == StatusSolicitacao.CONCLUIDA || status == StatusSolicitacao.CANCELADA)
             ? "Comentario"
             : null;
-    return new Solicitacao(
-        UUID.randomUUID(),
-        "Titulo",
-        "Desc",
-        TipoSolicitacao.REPARO,
-        status,
-        status.exigePrioridade() ? PrioridadeSolicitacao.ALTA : null,
-        UUID.randomUUID(),
-        null /* modeloCodigo */,
-        null /* modeloMaquina */,
-        null /* modeloObservacoes */,
-        UUID.randomUUID(),
-        comentarioFinal,
-        agora,
-        agora,
-        status == StatusSolicitacao.CONCLUIDA ? agora : null,
-        status == StatusSolicitacao.CANCELADA ? agora : null);
+    return Solicitacao.builder()
+        .id(UUID.randomUUID())
+        .titulo("Titulo")
+        .descricao("Desc")
+        .tipo(TipoSolicitacao.REPARO)
+        .status(status)
+        .prioridade(status.exigePrioridade() ? PrioridadeSolicitacao.ALTA : null)
+        .modeloId(UUID.randomUUID())
+        .abertaPorUsuarioId(UUID.randomUUID())
+        .comentarioFinal(comentarioFinal)
+        .criadaEm(agora)
+        .atualizadaEm(agora)
+        .concluidaEm(status == StatusSolicitacao.CONCLUIDA ? agora : null)
+        .canceladaEm(status == StatusSolicitacao.CANCELADA ? agora : null)
+        .build();
   }
 
   private Usuario criarUsuario(final String nome, final PerfilUsuario perfil, final boolean ativo) {

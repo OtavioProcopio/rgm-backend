@@ -57,23 +57,17 @@ class EditarSolicitacaoUseCaseTest {
   }
 
   private Solicitacao criarSolicitacaoAFazer(final UUID abertaPorId) {
-    return new Solicitacao(
-        UUID.randomUUID(),
-        "Titulo",
-        "Descricao",
-        TipoSolicitacao.REPARO,
-        StatusSolicitacao.A_FAZER,
-        null,
-        UUID.randomUUID(),
-        null /* modeloCodigo */,
-        null /* modeloMaquina */,
-        null /* modeloObservacoes */,
-        abertaPorId,
-        null,
-        NOW,
-        NOW,
-        null,
-        null);
+    return Solicitacao.builder()
+        .id(UUID.randomUUID())
+        .titulo("Titulo")
+        .descricao("Descricao")
+        .tipo(TipoSolicitacao.REPARO)
+        .status(StatusSolicitacao.A_FAZER)
+        .modeloId(UUID.randomUUID())
+        .abertaPorUsuarioId(abertaPorId)
+        .criadaEm(NOW)
+        .atualizadaEm(NOW)
+        .build();
   }
 
   private EditarSolicitacaoUseCase.Input input(
@@ -175,25 +169,21 @@ class EditarSolicitacaoUseCaseTest {
   }
 
   private Solicitacao criarSolicitacaoEm(final UUID abertaPorId, final StatusSolicitacao status) {
-    return new Solicitacao(
-        UUID.randomUUID(),
-        "Titulo",
-        "Descricao",
-        TipoSolicitacao.REPARO,
-        status,
-        status == StatusSolicitacao.A_FAZER
-            ? null
-            : com.rgm.api.core.domain.model.enums.PrioridadeSolicitacao.ALTA,
-        UUID.randomUUID(),
-        null,
-        null,
-        null,
-        abertaPorId,
-        null,
-        NOW,
-        NOW,
-        null,
-        null);
+    return Solicitacao.builder()
+        .id(UUID.randomUUID())
+        .titulo("Titulo")
+        .descricao("Descricao")
+        .tipo(TipoSolicitacao.REPARO)
+        .status(status)
+        .prioridade(
+            status == StatusSolicitacao.A_FAZER
+                ? null
+                : com.rgm.api.core.domain.model.enums.PrioridadeSolicitacao.ALTA)
+        .modeloId(UUID.randomUUID())
+        .abertaPorUsuarioId(abertaPorId)
+        .criadaEm(NOW)
+        .atualizadaEm(NOW)
+        .build();
   }
 
   @Test

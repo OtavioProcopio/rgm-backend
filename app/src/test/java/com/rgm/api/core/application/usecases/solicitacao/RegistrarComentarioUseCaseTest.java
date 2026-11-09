@@ -48,23 +48,18 @@ class RegistrarComentarioUseCaseTest {
     final Instant agora = Instant.now();
     final UUID abertaPorId = UUID.randomUUID();
     final Solicitacao solicitacao =
-        new Solicitacao(
-            UUID.randomUUID(),
-            "T",
-            "D",
-            TipoSolicitacao.REPARO,
-            StatusSolicitacao.EM_ANDAMENTO,
-            PrioridadeSolicitacao.ALTA,
-            UUID.randomUUID(),
-            null /* modeloCodigo */,
-            null /* modeloMaquina */,
-            null /* modeloObservacoes */,
-            abertaPorId,
-            null,
-            agora,
-            agora,
-            null,
-            null);
+        Solicitacao.builder()
+            .id(UUID.randomUUID())
+            .titulo("T")
+            .descricao("D")
+            .tipo(TipoSolicitacao.REPARO)
+            .status(StatusSolicitacao.EM_ANDAMENTO)
+            .prioridade(PrioridadeSolicitacao.ALTA)
+            .modeloId(UUID.randomUUID())
+            .abertaPorUsuarioId(abertaPorId)
+            .criadaEm(agora)
+            .atualizadaEm(agora)
+            .build();
 
     final UUID autorId = UUID.randomUUID();
     final Usuario autor =
@@ -88,23 +83,18 @@ class RegistrarComentarioUseCaseTest {
     final Instant agora = Instant.now();
     final UUID abertaPorId = UUID.randomUUID();
     final Solicitacao solicitacao =
-        new Solicitacao(
-            UUID.randomUUID(),
-            "T",
-            "D",
-            TipoSolicitacao.REPARO,
-            StatusSolicitacao.EM_ANDAMENTO,
-            PrioridadeSolicitacao.ALTA,
-            UUID.randomUUID(),
-            null /* modeloCodigo */,
-            null /* modeloMaquina */,
-            null /* modeloObservacoes */,
-            abertaPorId,
-            null,
-            agora,
-            agora,
-            null,
-            null);
+        Solicitacao.builder()
+            .id(UUID.randomUUID())
+            .titulo("T")
+            .descricao("D")
+            .tipo(TipoSolicitacao.REPARO)
+            .status(StatusSolicitacao.EM_ANDAMENTO)
+            .prioridade(PrioridadeSolicitacao.ALTA)
+            .modeloId(UUID.randomUUID())
+            .abertaPorUsuarioId(abertaPorId)
+            .criadaEm(agora)
+            .atualizadaEm(agora)
+            .build();
 
     final UUID autorId = UUID.randomUUID();
     final Usuario autor =
@@ -137,23 +127,18 @@ class RegistrarComentarioUseCaseTest {
   void deveFalharQuandoUsuarioNaoEncontrado() {
     final Instant agora = Instant.now();
     final Solicitacao solicitacao =
-        new Solicitacao(
-            UUID.randomUUID(),
-            "T",
-            "D",
-            TipoSolicitacao.REPARO,
-            StatusSolicitacao.EM_ANDAMENTO,
-            PrioridadeSolicitacao.ALTA,
-            UUID.randomUUID(),
-            null /* modeloCodigo */,
-            null /* modeloMaquina */,
-            null /* modeloObservacoes */,
-            UUID.randomUUID(),
-            null,
-            agora,
-            agora,
-            null,
-            null);
+        Solicitacao.builder()
+            .id(UUID.randomUUID())
+            .titulo("T")
+            .descricao("D")
+            .tipo(TipoSolicitacao.REPARO)
+            .status(StatusSolicitacao.EM_ANDAMENTO)
+            .prioridade(PrioridadeSolicitacao.ALTA)
+            .modeloId(UUID.randomUUID())
+            .abertaPorUsuarioId(UUID.randomUUID())
+            .criadaEm(agora)
+            .atualizadaEm(agora)
+            .build();
 
     final UUID autorId = UUID.randomUUID();
     when(solicitacaoRepository.findById(solicitacao.getId())).thenReturn(Optional.of(solicitacao));
@@ -170,23 +155,18 @@ class RegistrarComentarioUseCaseTest {
   void deveFalharQuandoUsuarioInativo() {
     final Instant agora = Instant.now();
     final Solicitacao solicitacao =
-        new Solicitacao(
-            UUID.randomUUID(),
-            "T",
-            "D",
-            TipoSolicitacao.REPARO,
-            StatusSolicitacao.EM_ANDAMENTO,
-            PrioridadeSolicitacao.ALTA,
-            UUID.randomUUID(),
-            null /* modeloCodigo */,
-            null /* modeloMaquina */,
-            null /* modeloObservacoes */,
-            UUID.randomUUID(),
-            null,
-            agora,
-            agora,
-            null,
-            null);
+        Solicitacao.builder()
+            .id(UUID.randomUUID())
+            .titulo("T")
+            .descricao("D")
+            .tipo(TipoSolicitacao.REPARO)
+            .status(StatusSolicitacao.EM_ANDAMENTO)
+            .prioridade(PrioridadeSolicitacao.ALTA)
+            .modeloId(UUID.randomUUID())
+            .abertaPorUsuarioId(UUID.randomUUID())
+            .criadaEm(agora)
+            .atualizadaEm(agora)
+            .build();
 
     final UUID autorId = UUID.randomUUID();
     final Usuario autor =
@@ -207,23 +187,18 @@ class RegistrarComentarioUseCaseTest {
   void deveFalharQuandoUsuarioPerfilExterno() {
     final Instant agora = Instant.now();
     final Solicitacao solicitacao =
-        new Solicitacao(
-            UUID.randomUUID(),
-            "T",
-            "D",
-            TipoSolicitacao.REPARO,
-            StatusSolicitacao.EM_ANDAMENTO,
-            PrioridadeSolicitacao.ALTA,
-            UUID.randomUUID(),
-            null /* modeloCodigo */,
-            null /* modeloMaquina */,
-            null /* modeloObservacoes */,
-            UUID.randomUUID(),
-            null,
-            agora,
-            agora,
-            null,
-            null);
+        Solicitacao.builder()
+            .id(UUID.randomUUID())
+            .titulo("T")
+            .descricao("D")
+            .tipo(TipoSolicitacao.REPARO)
+            .status(StatusSolicitacao.EM_ANDAMENTO)
+            .prioridade(PrioridadeSolicitacao.ALTA)
+            .modeloId(UUID.randomUUID())
+            .abertaPorUsuarioId(UUID.randomUUID())
+            .criadaEm(agora)
+            .atualizadaEm(agora)
+            .build();
 
     final UUID autorId = UUID.randomUUID();
     final Usuario autor =
@@ -244,23 +219,18 @@ class RegistrarComentarioUseCaseTest {
     final Instant agora = Instant.now();
     final UUID operadorId = UUID.randomUUID();
     final Solicitacao solicitacao =
-        new Solicitacao(
-            UUID.randomUUID(),
-            "T",
-            "D",
-            TipoSolicitacao.REPARO,
-            StatusSolicitacao.EM_ANDAMENTO,
-            PrioridadeSolicitacao.ALTA,
-            UUID.randomUUID(),
-            null /* modeloCodigo */,
-            null /* modeloMaquina */,
-            null /* modeloObservacoes */,
-            operadorId,
-            null,
-            agora,
-            agora,
-            null,
-            null);
+        Solicitacao.builder()
+            .id(UUID.randomUUID())
+            .titulo("T")
+            .descricao("D")
+            .tipo(TipoSolicitacao.REPARO)
+            .status(StatusSolicitacao.EM_ANDAMENTO)
+            .prioridade(PrioridadeSolicitacao.ALTA)
+            .modeloId(UUID.randomUUID())
+            .abertaPorUsuarioId(operadorId)
+            .criadaEm(agora)
+            .atualizadaEm(agora)
+            .build();
 
     final Usuario operador =
         new Usuario(
@@ -289,23 +259,18 @@ class RegistrarComentarioUseCaseTest {
     final Instant agora = Instant.now();
     final UUID operadorId = UUID.randomUUID();
     final Solicitacao solicitacao =
-        new Solicitacao(
-            UUID.randomUUID(),
-            "T",
-            "D",
-            TipoSolicitacao.REPARO,
-            StatusSolicitacao.EM_ANDAMENTO,
-            PrioridadeSolicitacao.ALTA,
-            UUID.randomUUID(),
-            null /* modeloCodigo */,
-            null /* modeloMaquina */,
-            null /* modeloObservacoes */,
-            UUID.randomUUID(),
-            null,
-            agora,
-            agora,
-            null,
-            null);
+        Solicitacao.builder()
+            .id(UUID.randomUUID())
+            .titulo("T")
+            .descricao("D")
+            .tipo(TipoSolicitacao.REPARO)
+            .status(StatusSolicitacao.EM_ANDAMENTO)
+            .prioridade(PrioridadeSolicitacao.ALTA)
+            .modeloId(UUID.randomUUID())
+            .abertaPorUsuarioId(UUID.randomUUID())
+            .criadaEm(agora)
+            .atualizadaEm(agora)
+            .build();
 
     final Usuario operador =
         new Usuario(
@@ -337,23 +302,18 @@ class RegistrarComentarioUseCaseTest {
     final Instant agora = Instant.now();
     final UUID operadorId = UUID.randomUUID();
     final Solicitacao solicitacao =
-        new Solicitacao(
-            UUID.randomUUID(),
-            "T",
-            "D",
-            TipoSolicitacao.REPARO,
-            StatusSolicitacao.EM_ANDAMENTO,
-            PrioridadeSolicitacao.ALTA,
-            UUID.randomUUID(),
-            null /* modeloCodigo */,
-            null /* modeloMaquina */,
-            null /* modeloObservacoes */,
-            UUID.randomUUID(),
-            null,
-            agora,
-            agora,
-            null,
-            null);
+        Solicitacao.builder()
+            .id(UUID.randomUUID())
+            .titulo("T")
+            .descricao("D")
+            .tipo(TipoSolicitacao.REPARO)
+            .status(StatusSolicitacao.EM_ANDAMENTO)
+            .prioridade(PrioridadeSolicitacao.ALTA)
+            .modeloId(UUID.randomUUID())
+            .abertaPorUsuarioId(UUID.randomUUID())
+            .criadaEm(agora)
+            .atualizadaEm(agora)
+            .build();
 
     final Usuario operador =
         new Usuario(
@@ -385,23 +345,20 @@ class RegistrarComentarioUseCaseTest {
     final Instant agora = Instant.now();
     final UUID operadorId = UUID.randomUUID();
     final Solicitacao solicitacao =
-        new Solicitacao(
-            UUID.randomUUID(),
-            "T",
-            "D",
-            TipoSolicitacao.REPARO,
-            StatusSolicitacao.CONCLUIDA,
-            PrioridadeSolicitacao.ALTA,
-            UUID.randomUUID(),
-            null /* modeloCodigo */,
-            null /* modeloMaquina */,
-            null /* modeloObservacoes */,
-            operadorId,
-            "Comentario final",
-            agora,
-            agora,
-            agora,
-            null);
+        Solicitacao.builder()
+            .id(UUID.randomUUID())
+            .titulo("T")
+            .descricao("D")
+            .tipo(TipoSolicitacao.REPARO)
+            .status(StatusSolicitacao.CONCLUIDA)
+            .prioridade(PrioridadeSolicitacao.ALTA)
+            .modeloId(UUID.randomUUID())
+            .abertaPorUsuarioId(operadorId)
+            .comentarioFinal("Comentario final")
+            .criadaEm(agora)
+            .atualizadaEm(agora)
+            .concluidaEm(agora)
+            .build();
 
     final Usuario operador =
         new Usuario(
@@ -429,23 +386,20 @@ class RegistrarComentarioUseCaseTest {
   void devePermitirGestorComentarEmSolicitacaoTerminal() {
     final Instant agora = Instant.now();
     final Solicitacao solicitacao =
-        new Solicitacao(
-            UUID.randomUUID(),
-            "T",
-            "D",
-            TipoSolicitacao.REPARO,
-            StatusSolicitacao.CONCLUIDA,
-            PrioridadeSolicitacao.ALTA,
-            UUID.randomUUID(),
-            null /* modeloCodigo */,
-            null /* modeloMaquina */,
-            null /* modeloObservacoes */,
-            UUID.randomUUID(),
-            "Comentario final",
-            agora,
-            agora,
-            agora,
-            null);
+        Solicitacao.builder()
+            .id(UUID.randomUUID())
+            .titulo("T")
+            .descricao("D")
+            .tipo(TipoSolicitacao.REPARO)
+            .status(StatusSolicitacao.CONCLUIDA)
+            .prioridade(PrioridadeSolicitacao.ALTA)
+            .modeloId(UUID.randomUUID())
+            .abertaPorUsuarioId(UUID.randomUUID())
+            .comentarioFinal("Comentario final")
+            .criadaEm(agora)
+            .atualizadaEm(agora)
+            .concluidaEm(agora)
+            .build();
 
     final UUID gestorId = UUID.randomUUID();
     final Usuario gestor =

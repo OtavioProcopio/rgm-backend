@@ -198,23 +198,19 @@ class SolicitacaoControllerTest {
     final UUID userId = UUID.randomUUID();
     final Instant agora = Instant.now();
     final Solicitacao cancelada =
-        new Solicitacao(
-            solId,
-            "Titulo",
-            "Desc",
-            TipoSolicitacao.REPARO,
-            StatusSolicitacao.CANCELADA,
-            null,
-            UUID.randomUUID(),
-            null /* modeloCodigo */,
-            null /* modeloMaquina */,
-            null /* modeloObservacoes */,
-            UUID.randomUUID(),
-            "Cancelado via API",
-            agora,
-            agora,
-            null,
-            agora);
+        Solicitacao.builder()
+            .id(solId)
+            .titulo("Titulo")
+            .descricao("Desc")
+            .tipo(TipoSolicitacao.REPARO)
+            .status(StatusSolicitacao.CANCELADA)
+            .modeloId(UUID.randomUUID())
+            .abertaPorUsuarioId(UUID.randomUUID())
+            .comentarioFinal("Cancelado via API")
+            .criadaEm(agora)
+            .atualizadaEm(agora)
+            .canceladaEm(agora)
+            .build();
 
     when(cancelarUseCase.execute(any())).thenReturn(cancelada);
 
@@ -396,23 +392,18 @@ class SolicitacaoControllerTest {
     final UUID userId = UUID.randomUUID();
     final Instant agora = Instant.now();
     final Solicitacao triada =
-        new Solicitacao(
-            solId,
-            "Titulo",
-            "Desc",
-            TipoSolicitacao.REPARO,
-            StatusSolicitacao.EM_ANDAMENTO,
-            PrioridadeSolicitacao.ALTA,
-            UUID.randomUUID(),
-            null /* modeloCodigo */,
-            null /* modeloMaquina */,
-            null /* modeloObservacoes */,
-            UUID.randomUUID(),
-            null,
-            agora,
-            agora,
-            null,
-            null);
+        Solicitacao.builder()
+            .id(solId)
+            .titulo("Titulo")
+            .descricao("Desc")
+            .tipo(TipoSolicitacao.REPARO)
+            .status(StatusSolicitacao.EM_ANDAMENTO)
+            .prioridade(PrioridadeSolicitacao.ALTA)
+            .modeloId(UUID.randomUUID())
+            .abertaPorUsuarioId(UUID.randomUUID())
+            .criadaEm(agora)
+            .atualizadaEm(agora)
+            .build();
     when(triarUseCase.execute(any())).thenReturn(triada);
 
     mockMvc
@@ -472,23 +463,18 @@ class SolicitacaoControllerTest {
     final Instant agora = Instant.now();
     when(triarUseCase.execute(any()))
         .thenReturn(
-            new Solicitacao(
-                solId,
-                "Titulo",
-                "Desc",
-                TipoSolicitacao.REPARO,
-                StatusSolicitacao.EM_ANDAMENTO,
-                PrioridadeSolicitacao.ALTA,
-                UUID.randomUUID(),
-                null,
-                null,
-                null,
-                UUID.randomUUID(),
-                null,
-                agora,
-                agora,
-                null,
-                null));
+            Solicitacao.builder()
+                .id(solId)
+                .titulo("Titulo")
+                .descricao("Desc")
+                .tipo(TipoSolicitacao.REPARO)
+                .status(StatusSolicitacao.EM_ANDAMENTO)
+                .prioridade(PrioridadeSolicitacao.ALTA)
+                .modeloId(UUID.randomUUID())
+                .abertaPorUsuarioId(UUID.randomUUID())
+                .criadaEm(agora)
+                .atualizadaEm(agora)
+                .build());
     final var corpo =
         objectMapper.writeValueAsString(
             new TriarSolicitacaoRequest("ALTA", List.of(UUID.randomUUID()), "x".repeat(2000)));
@@ -509,23 +495,18 @@ class SolicitacaoControllerTest {
     final UUID userId = UUID.randomUUID();
     final Instant agora = Instant.now();
     final Solicitacao emValidacao =
-        new Solicitacao(
-            solId,
-            "Titulo",
-            "Desc",
-            TipoSolicitacao.REPARO,
-            StatusSolicitacao.EM_VALIDACAO,
-            PrioridadeSolicitacao.MEDIA,
-            UUID.randomUUID(),
-            null /* modeloCodigo */,
-            null /* modeloMaquina */,
-            null /* modeloObservacoes */,
-            UUID.randomUUID(),
-            null,
-            agora,
-            agora,
-            null,
-            null);
+        Solicitacao.builder()
+            .id(solId)
+            .titulo("Titulo")
+            .descricao("Desc")
+            .tipo(TipoSolicitacao.REPARO)
+            .status(StatusSolicitacao.EM_VALIDACAO)
+            .prioridade(PrioridadeSolicitacao.MEDIA)
+            .modeloId(UUID.randomUUID())
+            .abertaPorUsuarioId(UUID.randomUUID())
+            .criadaEm(agora)
+            .atualizadaEm(agora)
+            .build();
     when(enviarUseCase.execute(any())).thenReturn(emValidacao);
 
     mockMvc
@@ -547,23 +528,18 @@ class SolicitacaoControllerTest {
     final UUID userId = UUID.randomUUID();
     final Instant agora = Instant.now();
     final Solicitacao devolvida =
-        new Solicitacao(
-            solId,
-            "Titulo",
-            "Desc",
-            TipoSolicitacao.REPARO,
-            StatusSolicitacao.EM_ANDAMENTO,
-            PrioridadeSolicitacao.ALTA,
-            UUID.randomUUID(),
-            null /* modeloCodigo */,
-            null /* modeloMaquina */,
-            null /* modeloObservacoes */,
-            UUID.randomUUID(),
-            null,
-            agora,
-            agora,
-            null,
-            null);
+        Solicitacao.builder()
+            .id(solId)
+            .titulo("Titulo")
+            .descricao("Desc")
+            .tipo(TipoSolicitacao.REPARO)
+            .status(StatusSolicitacao.EM_ANDAMENTO)
+            .prioridade(PrioridadeSolicitacao.ALTA)
+            .modeloId(UUID.randomUUID())
+            .abertaPorUsuarioId(UUID.randomUUID())
+            .criadaEm(agora)
+            .atualizadaEm(agora)
+            .build();
     when(devolverUseCase.execute(any())).thenReturn(devolvida);
 
     mockMvc
@@ -584,23 +560,20 @@ class SolicitacaoControllerTest {
     final UUID userId = UUID.randomUUID();
     final Instant agora = Instant.now();
     final Solicitacao concluida =
-        new Solicitacao(
-            solId,
-            "Titulo",
-            "Desc",
-            TipoSolicitacao.REPARO,
-            StatusSolicitacao.CONCLUIDA,
-            PrioridadeSolicitacao.MEDIA,
-            UUID.randomUUID(),
-            null /* modeloCodigo */,
-            null /* modeloMaquina */,
-            null /* modeloObservacoes */,
-            UUID.randomUUID(),
-            "Encerrado OK",
-            agora,
-            agora,
-            agora,
-            null);
+        Solicitacao.builder()
+            .id(solId)
+            .titulo("Titulo")
+            .descricao("Desc")
+            .tipo(TipoSolicitacao.REPARO)
+            .status(StatusSolicitacao.CONCLUIDA)
+            .prioridade(PrioridadeSolicitacao.MEDIA)
+            .modeloId(UUID.randomUUID())
+            .abertaPorUsuarioId(UUID.randomUUID())
+            .comentarioFinal("Encerrado OK")
+            .criadaEm(agora)
+            .atualizadaEm(agora)
+            .concluidaEm(agora)
+            .build();
     when(encerrarUseCase.execute(any())).thenReturn(concluida);
 
     mockMvc

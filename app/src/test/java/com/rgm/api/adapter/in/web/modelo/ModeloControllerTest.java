@@ -557,23 +557,17 @@ class ModeloControllerTest {
 
   private Solicitacao criarSolicitacao(final UUID modeloId, final UUID abertaPorUsuarioId) {
     final Instant agora = Instant.now();
-    return new Solicitacao(
-        UUID.randomUUID(),
-        "Titulo",
-        "Descricao",
-        TipoSolicitacao.REPARO,
-        StatusSolicitacao.A_FAZER,
-        null,
-        modeloId,
-        null,
-        null,
-        null,
-        abertaPorUsuarioId,
-        null,
-        agora,
-        agora,
-        null,
-        null);
+    return Solicitacao.builder()
+        .id(UUID.randomUUID())
+        .titulo("Titulo")
+        .descricao("Descricao")
+        .tipo(TipoSolicitacao.REPARO)
+        .status(StatusSolicitacao.A_FAZER)
+        .modeloId(modeloId)
+        .abertaPorUsuarioId(abertaPorUsuarioId)
+        .criadaEm(agora)
+        .atualizadaEm(agora)
+        .build();
   }
 
   private Usuario criarUsuario(final UUID id, final String nome) {

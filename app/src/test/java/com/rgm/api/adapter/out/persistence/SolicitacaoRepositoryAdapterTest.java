@@ -60,23 +60,18 @@ class SolicitacaoRepositoryAdapterTest {
   }
 
   private Solicitacao criarDomain() {
-    return new Solicitacao(
-        UUID.randomUUID(),
-        "Trocar peça",
-        "Desc",
-        TipoSolicitacao.REPARO,
-        StatusSolicitacao.A_FAZER,
-        PrioridadeSolicitacao.MEDIA,
-        UUID.randomUUID(),
-        null /* modeloCodigo */,
-        null /* modeloMaquina */,
-        null /* modeloObservacoes */,
-        UUID.randomUUID(),
-        null,
-        Instant.now(),
-        Instant.now(),
-        null,
-        null);
+    return Solicitacao.builder()
+        .id(UUID.randomUUID())
+        .titulo("Trocar peça")
+        .descricao("Desc")
+        .tipo(TipoSolicitacao.REPARO)
+        .status(StatusSolicitacao.A_FAZER)
+        .prioridade(PrioridadeSolicitacao.MEDIA)
+        .modeloId(UUID.randomUUID())
+        .abertaPorUsuarioId(UUID.randomUUID())
+        .criadaEm(Instant.now())
+        .atualizadaEm(Instant.now())
+        .build();
   }
 
   @Test

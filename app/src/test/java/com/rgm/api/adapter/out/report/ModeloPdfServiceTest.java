@@ -61,23 +61,18 @@ class ModeloPdfServiceTest {
   }
 
   private Solicitacao solicitacao(final UUID modeloId, final String titulo) {
-    return new Solicitacao(
-        UUID.randomUUID(),
-        titulo,
-        "Troca de vedações",
-        TipoSolicitacao.REPARO,
-        StatusSolicitacao.EM_ANDAMENTO,
-        PrioridadeSolicitacao.ALTA,
-        modeloId,
-        null,
-        null,
-        null,
-        UUID.randomUUID(),
-        null,
-        Instant.now(),
-        Instant.now(),
-        null,
-        null);
+    return Solicitacao.builder()
+        .id(UUID.randomUUID())
+        .titulo(titulo)
+        .descricao("Troca de vedações")
+        .tipo(TipoSolicitacao.REPARO)
+        .status(StatusSolicitacao.EM_ANDAMENTO)
+        .prioridade(PrioridadeSolicitacao.ALTA)
+        .modeloId(modeloId)
+        .abertaPorUsuarioId(UUID.randomUUID())
+        .criadaEm(Instant.now())
+        .atualizadaEm(Instant.now())
+        .build();
   }
 
   private AtividadeSolicitacao comentario(final UUID solicitacaoId, final String texto) {

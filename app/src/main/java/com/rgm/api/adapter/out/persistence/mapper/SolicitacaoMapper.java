@@ -29,23 +29,24 @@ public final class SolicitacaoMapper {
   }
 
   public static Solicitacao toDomain(final SolicitacaoJpaEntity e) {
-    return new Solicitacao(
-        e.getId(),
-        e.getTitulo(),
-        e.getDescricao(),
-        e.getTipo(),
-        e.getStatus(),
-        e.getPrioridade(),
-        e.getModeloId(),
-        e.getModeloCodigo(),
-        e.getModeloMaquina(),
-        e.getModeloObservacoes(),
-        e.getAbertaPorUsuarioId(),
-        e.getComentarioFinal(),
-        e.getCriadaEm(),
-        e.getAtualizadaEm(),
-        e.getConcluidaEm(),
-        e.getCanceladaEm(),
-        e.getVersion());
+    return Solicitacao.builder()
+        .id(e.getId())
+        .titulo(e.getTitulo())
+        .descricao(e.getDescricao())
+        .tipo(e.getTipo())
+        .status(e.getStatus())
+        .prioridade(e.getPrioridade())
+        .modeloId(e.getModeloId())
+        .modeloCodigo(e.getModeloCodigo())
+        .modeloMaquina(e.getModeloMaquina())
+        .modeloObservacoes(e.getModeloObservacoes())
+        .abertaPorUsuarioId(e.getAbertaPorUsuarioId())
+        .comentarioFinal(e.getComentarioFinal())
+        .criadaEm(e.getCriadaEm())
+        .atualizadaEm(e.getAtualizadaEm())
+        .concluidaEm(e.getConcluidaEm())
+        .canceladaEm(e.getCanceladaEm())
+        .version(e.getVersion())
+        .build();
   }
 }

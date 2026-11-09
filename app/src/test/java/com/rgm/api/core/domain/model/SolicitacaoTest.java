@@ -173,23 +173,16 @@ class SolicitacaoTest {
     assertThrows(
         ValidationException.class,
         () ->
-            new Solicitacao(
-                UUID.randomUUID(),
-                "T",
-                "D",
-                TipoSolicitacao.REPARO,
-                StatusSolicitacao.A_FAZER,
-                null,
-                null,
-                null,
-                null,
-                null,
-                usuarioId,
-                null,
-                agora,
-                agora,
-                null,
-                null));
+            Solicitacao.builder()
+                .id(UUID.randomUUID())
+                .titulo("T")
+                .descricao("D")
+                .tipo(TipoSolicitacao.REPARO)
+                .status(StatusSolicitacao.A_FAZER)
+                .abertaPorUsuarioId(usuarioId)
+                .criadaEm(agora)
+                .atualizadaEm(agora)
+                .build());
   }
 
   @Test
@@ -197,23 +190,16 @@ class SolicitacaoTest {
     assertThrows(
         ValidationException.class,
         () ->
-            new Solicitacao(
-                UUID.randomUUID(),
-                "T",
-                "D",
-                TipoSolicitacao.CRIACAO,
-                StatusSolicitacao.A_FAZER,
-                null,
-                null,
-                null,
-                null,
-                null,
-                usuarioId,
-                null,
-                agora,
-                agora,
-                null,
-                null));
+            Solicitacao.builder()
+                .id(UUID.randomUUID())
+                .titulo("T")
+                .descricao("D")
+                .tipo(TipoSolicitacao.CRIACAO)
+                .status(StatusSolicitacao.A_FAZER)
+                .abertaPorUsuarioId(usuarioId)
+                .criadaEm(agora)
+                .atualizadaEm(agora)
+                .build());
   }
 
   @Test
@@ -221,23 +207,19 @@ class SolicitacaoTest {
     assertThrows(
         ValidationException.class,
         () ->
-            new Solicitacao(
-                UUID.randomUUID(),
-                "T",
-                "D",
-                TipoSolicitacao.CRIACAO,
-                StatusSolicitacao.A_FAZER,
-                null,
-                modeloId,
-                "COD",
-                "FBOX",
-                null,
-                usuarioId,
-                null,
-                agora,
-                agora,
-                null,
-                null));
+            Solicitacao.builder()
+                .id(UUID.randomUUID())
+                .titulo("T")
+                .descricao("D")
+                .tipo(TipoSolicitacao.CRIACAO)
+                .status(StatusSolicitacao.A_FAZER)
+                .modeloId(modeloId)
+                .modeloCodigo("COD")
+                .modeloMaquina("FBOX")
+                .abertaPorUsuarioId(usuarioId)
+                .criadaEm(agora)
+                .atualizadaEm(agora)
+                .build());
   }
 
   @Test

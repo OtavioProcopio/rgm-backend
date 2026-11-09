@@ -55,23 +55,17 @@ class TriarSolicitacaoUseCaseTest {
 
   private Solicitacao criarSolicitacao() {
     final Instant agora = Instant.now();
-    return new Solicitacao(
-        UUID.randomUUID(),
-        "Titulo",
-        "Descricao",
-        TipoSolicitacao.REPARO,
-        StatusSolicitacao.A_FAZER,
-        null,
-        UUID.randomUUID(),
-        null /* modeloCodigo */,
-        null /* modeloMaquina */,
-        null /* modeloObservacoes */,
-        UUID.randomUUID(),
-        null,
-        agora,
-        agora,
-        null,
-        null);
+    return Solicitacao.builder()
+        .id(UUID.randomUUID())
+        .titulo("Titulo")
+        .descricao("Descricao")
+        .tipo(TipoSolicitacao.REPARO)
+        .status(StatusSolicitacao.A_FAZER)
+        .modeloId(UUID.randomUUID())
+        .abertaPorUsuarioId(UUID.randomUUID())
+        .criadaEm(agora)
+        .atualizadaEm(agora)
+        .build();
   }
 
   @Test

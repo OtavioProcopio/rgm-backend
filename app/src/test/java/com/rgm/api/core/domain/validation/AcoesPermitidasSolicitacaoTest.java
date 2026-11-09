@@ -36,23 +36,21 @@ class AcoesPermitidasSolicitacaoTest {
   }
 
   private static Solicitacao solicitacao(final UUID autorId, final StatusSolicitacao status) {
-    return new Solicitacao(
-        UUID.randomUUID(),
-        "Titulo",
-        "Descricao",
-        TipoSolicitacao.REPARO,
-        status,
-        status.exigePrioridade() ? PrioridadeSolicitacao.ALTA : null,
-        UUID.randomUUID(),
-        null,
-        null,
-        null,
-        autorId,
-        status.isTerminal() ? "Comentario final" : null,
-        AGORA,
-        AGORA,
-        status == StatusSolicitacao.CONCLUIDA ? AGORA : null,
-        status == StatusSolicitacao.CANCELADA ? AGORA : null);
+    return Solicitacao.builder()
+        .id(UUID.randomUUID())
+        .titulo("Titulo")
+        .descricao("Descricao")
+        .tipo(TipoSolicitacao.REPARO)
+        .status(status)
+        .prioridade(status.exigePrioridade() ? PrioridadeSolicitacao.ALTA : null)
+        .modeloId(UUID.randomUUID())
+        .abertaPorUsuarioId(autorId)
+        .comentarioFinal(status.isTerminal() ? "Comentario final" : null)
+        .criadaEm(AGORA)
+        .atualizadaEm(AGORA)
+        .concluidaEm(status == StatusSolicitacao.CONCLUIDA ? AGORA : null)
+        .canceladaEm(status == StatusSolicitacao.CANCELADA ? AGORA : null)
+        .build();
   }
 
   @ParameterizedTest

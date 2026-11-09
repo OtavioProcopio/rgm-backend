@@ -40,23 +40,18 @@ class DevolverSolicitacaoUseCaseTest {
 
   private Solicitacao criarSolicitacaoEmValidacao() {
     final Instant agora = Instant.now();
-    return new Solicitacao(
-        UUID.randomUUID(),
-        "Titulo",
-        "Descricao",
-        TipoSolicitacao.REPARO,
-        StatusSolicitacao.EM_VALIDACAO,
-        PrioridadeSolicitacao.ALTA,
-        UUID.randomUUID(),
-        null /* modeloCodigo */,
-        null /* modeloMaquina */,
-        null /* modeloObservacoes */,
-        UUID.randomUUID(),
-        null,
-        agora,
-        agora,
-        null,
-        null);
+    return Solicitacao.builder()
+        .id(UUID.randomUUID())
+        .titulo("Titulo")
+        .descricao("Descricao")
+        .tipo(TipoSolicitacao.REPARO)
+        .status(StatusSolicitacao.EM_VALIDACAO)
+        .prioridade(PrioridadeSolicitacao.ALTA)
+        .modeloId(UUID.randomUUID())
+        .abertaPorUsuarioId(UUID.randomUUID())
+        .criadaEm(agora)
+        .atualizadaEm(agora)
+        .build();
   }
 
   private Usuario criarGestor() {

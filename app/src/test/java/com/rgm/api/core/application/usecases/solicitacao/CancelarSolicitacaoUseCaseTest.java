@@ -56,23 +56,18 @@ class CancelarSolicitacaoUseCaseTest {
   }
 
   private Solicitacao criarSolicitacao(final StatusSolicitacao status, final UUID abertaPorId) {
-    return new Solicitacao(
-        UUID.randomUUID(),
-        "Titulo",
-        "Descricao",
-        TipoSolicitacao.REPARO,
-        status,
-        status.exigePrioridade() ? PrioridadeSolicitacao.MEDIA : null,
-        UUID.randomUUID(),
-        null /* modeloCodigo */,
-        null /* modeloMaquina */,
-        null /* modeloObservacoes */,
-        abertaPorId,
-        null,
-        NOW,
-        NOW,
-        null,
-        null);
+    return Solicitacao.builder()
+        .id(UUID.randomUUID())
+        .titulo("Titulo")
+        .descricao("Descricao")
+        .tipo(TipoSolicitacao.REPARO)
+        .status(status)
+        .prioridade(status.exigePrioridade() ? PrioridadeSolicitacao.MEDIA : null)
+        .modeloId(UUID.randomUUID())
+        .abertaPorUsuarioId(abertaPorId)
+        .criadaEm(NOW)
+        .atualizadaEm(NOW)
+        .build();
   }
 
   private Usuario criarUsuario(final PerfilUsuario perfil) {
@@ -198,23 +193,19 @@ class CancelarSolicitacaoUseCaseTest {
   void deveCancelarSolicitacaoDeCriacaoSemModeloVinculado() {
     final Usuario gestor = criarUsuario(PerfilUsuario.GESTOR);
     final Solicitacao solicitacao =
-        new Solicitacao(
-            UUID.randomUUID(),
-            "Novo modelo XYZ",
-            "Descricao pretendida",
-            TipoSolicitacao.CRIACAO,
-            StatusSolicitacao.EM_ANDAMENTO,
-            PrioridadeSolicitacao.MEDIA,
-            null,
-            "COD-XYZ",
-            "FBOX",
-            null,
-            UUID.randomUUID(),
-            null,
-            NOW,
-            NOW,
-            null,
-            null);
+        Solicitacao.builder()
+            .id(UUID.randomUUID())
+            .titulo("Novo modelo XYZ")
+            .descricao("Descricao pretendida")
+            .tipo(TipoSolicitacao.CRIACAO)
+            .status(StatusSolicitacao.EM_ANDAMENTO)
+            .prioridade(PrioridadeSolicitacao.MEDIA)
+            .modeloCodigo("COD-XYZ")
+            .modeloMaquina("FBOX")
+            .abertaPorUsuarioId(UUID.randomUUID())
+            .criadaEm(NOW)
+            .atualizadaEm(NOW)
+            .build();
 
     when(usuarioRepository.findById(gestor.getId())).thenReturn(Optional.of(gestor));
     when(solicitacaoRepository.findById(solicitacao.getId())).thenReturn(Optional.of(solicitacao));
