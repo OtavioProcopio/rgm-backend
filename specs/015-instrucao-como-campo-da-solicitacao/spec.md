@@ -76,7 +76,7 @@ apagá-la, a correção vira comentário solto, e cada campo novo custa dezenas 
 | RF-12 | Operador (inclusive o responsável) e perfil externo não editam a instrução: 403 | obrigatório |
 | RF-13 | Cada edição que muda o texto registra no histórico uma atividade "instrução alterada", com autor, data e o texto anterior; não cria comentário comum. Texto igual ao atual (depois de aparado) não muda nada, não registra atividade e responde 200 | obrigatório |
 | RF-14 | `acoesPermitidas` ganha `EDITAR_INSTRUCAO`, presente só para gestor e administrador com a solicitação `EM_ANDAMENTO` | obrigatório |
-| RF-15 | A edição atualiza `atualizadaEm` e usa o controle de versão da solicitação: duas edições simultâneas não se sobrepõem (a segunda recebe 409); a resposta da edição e o evento "instrucao_editada" trazem a solicitação completa | obrigatório |
+| RF-15 | A edição atualiza `atualizadaEm` e usa o controle de versão da solicitação: duas edições simultâneas não se sobrepõem (a segunda recebe 409); a resposta da edição e o evento "instrucao_editada" trazem a solicitação completa; um aviso de atividade ("solicitacao_atividade", como o do comentário) faz o histórico dos outros usuários atualizar | obrigatório |
 
 ## Requisitos não funcionais
 
@@ -148,6 +148,7 @@ Funcionalidade: Instrução como campo da solicitação
     E o histórico traz "instrução alterada" pelo gestor com o texto anterior "Trocar o gabarito"
     E o histórico não traz comentário novo
     E o evento "instrucao_editada" traz a solicitação completa
+    E o aviso de atividade "instrucao_editada" é publicado para o histórico
 
   Cenário: Editar com o mesmo texto
     Dado uma solicitação EM_ANDAMENTO com a instrução "Trocar o gabarito"

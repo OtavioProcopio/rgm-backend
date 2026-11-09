@@ -24,7 +24,7 @@
 | Histórico da correção | Novo valor `INSTRUCAO_ALTERADA` em `TipoAtividadeSolicitacao`, criado por `AtividadeSolicitacao.instrucaoAlterada(solicitacaoId, textoAnterior, autorId, agora)`, com o texto anterior em `comentario` | Atividade `COMENTARIO` com prefixo; coluna de auditoria; tabela de versões da instrução | A coluna `tipo` é `VARCHAR(50)` sem restrição, então não há migração; o texto anterior cabe em `comentario`; uma tabela de versões é mais do que o requisito pede |
 | Ação oferecida | `AcaoSolicitacao.EDITAR_INSTRUCAO`, em `AcoesPermitidasSolicitacao` quando `perfil.podeTriar()` e status `EM_ANDAMENTO` | Deixar o front deduzir | O front segue `acoesPermitidas` da API (spec 002 do front); regra de permissão não se duplica no cliente |
 | Concorrência | O agregado carrega `version`; a segunda de duas edições simultâneas falha no `save` e o handler existente responde 409 | Lock próprio | Já é o mecanismo do projeto (issue #80) |
-| Evento | `publicar("instrucao_editada", SolicitacaoResponse.from(...))`, como as demais ações | Sem evento | O detalhe aberto de outro usuário precisa atualizar (spec 018) |
+| Evento | `publicar("instrucao_editada", SolicitacaoResponse.from(...))` e, como o comentário, `solicitacao_atividade` com `SolicitacaoAtividadeEvent("instrucao_editada", id)` | Só o primeiro | O evento de solicitação atualiza o detalhe; só o de atividade faz o histórico do outro usuário recarregar (spec 018) |
 
 ## Fases
 

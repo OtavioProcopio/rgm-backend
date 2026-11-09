@@ -44,7 +44,7 @@
 - [ ] T028 `AcaoSolicitacao.EDITAR_INSTRUCAO` e a regra
 - [ ] T029 Testes do `EditarInstrucaoSolicitacaoUseCaseTest`: gestor e administrador editam e gravam solicitação mais atividade com o texto anterior; texto igual não grava nada; operador → `NaoAutorizadoException`; usuário inativo recusado; solicitação inexistente → 404; fora de `EM_ANDAMENTO` não grava atividade (RF-10 a RF-13)
 - [ ] T030 `EditarInstrucaoSolicitacaoUseCase` e `UseCaseConfig`
-- [ ] T031 Testes do controller: `PATCH /instrucao` 200 com a solicitação completa; 400 (ausente, em branco, 2001); 200 com 2000; 409 por status; 403 operador; 401 sem token; 404; evento `instrucao_editada` publicado (RF-10 a RF-12, RF-15)
+- [ ] T031 Testes do controller: `PATCH /instrucao` 200 com a solicitação completa; 400 (ausente, em branco, 2001); 200 com 2000; 409 por status; 403 operador; 401 sem token; 404; eventos `solicitacao` e `solicitacao_atividade` publicados com tipo `instrucao_editada` (RF-10 a RF-12, RF-15)
 - [ ] T032 `EditarInstrucaoRequest` e a rota no `SolicitacaoController`
 - [ ] T033 Teste de Postgres: duas edições partindo da mesma versão — a segunda falha e o texto final é o da primeira (RF-15)
 
