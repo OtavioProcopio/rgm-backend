@@ -1,4 +1,4 @@
 {
-  "active": "specs/014-descricao-obrigatoria-na-triagem",
-  "title": "Descrição do que fazer, obrigatória na triagem (spec 014), base develop; quebra declarada no contrato de /triar"
+  "active": "specs/015-instrucao-como-campo-da-solicitacao",
+  "title": "Instrução da triagem como campo da solicitação e refatoração da construção do agregado (spec 015), base develop; corpo de /triar renomeado"
 }
