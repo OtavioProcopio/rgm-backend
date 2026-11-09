@@ -5,6 +5,7 @@ import static com.rgm.api.core.domain.validation.DomainValidations.requireNonBla
 import static com.rgm.api.core.domain.validation.DomainValidations.requireNonNull;
 
 import com.rgm.api.core.domain.exceptions.BusinessRuleException;
+import com.rgm.api.core.domain.exceptions.ConflitoException;
 import com.rgm.api.core.domain.exceptions.NaoAutorizadoException;
 import com.rgm.api.core.domain.exceptions.TransicaoStatusInvalidaException;
 import com.rgm.api.core.domain.exceptions.ValidationException;
@@ -12,6 +13,7 @@ import com.rgm.api.core.domain.model.enums.PerfilUsuario;
 import com.rgm.api.core.domain.model.enums.PrioridadeSolicitacao;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
 import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
+import com.rgm.api.core.domain.validation.LimitesTexto;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
@@ -31,6 +33,7 @@ public final class Solicitacao {
   private final String modeloObservacoes;
   private final UUID abertaPorUsuarioId;
   private final String comentarioFinal;
+  private final String instrucao;
   private final Instant criadaEm;
   private final Instant atualizadaEm;
   private final Instant concluidaEm;
@@ -50,6 +53,7 @@ public final class Solicitacao {
       final String modeloObservacoes,
       final UUID abertaPorUsuarioId,
       final String comentarioFinal,
+      final String instrucao,
       final Instant criadaEm,
       final Instant atualizadaEm,
       final Instant concluidaEm,
@@ -67,6 +71,7 @@ public final class Solicitacao {
     this.modeloObservacoes = optionalTrimToNull(modeloObservacoes);
     this.abertaPorUsuarioId = requireNonNull(abertaPorUsuarioId, "abertaPorUsuarioId");
     this.comentarioFinal = optionalTrimToNull(comentarioFinal);
+    this.instrucao = optionalTrimToNull(instrucao);
     this.criadaEm = requireNonNull(criadaEm, "criadaEm");
     this.atualizadaEm = requireNonNull(atualizadaEm, "atualizadaEm");
     this.concluidaEm = concluidaEm;
@@ -99,6 +104,7 @@ public final class Solicitacao {
         .modeloObservacoes(modeloObservacoes)
         .abertaPorUsuarioId(abertaPorUsuarioId)
         .comentarioFinal(comentarioFinal)
+        .instrucao(instrucao)
         .criadaEm(criadaEm)
         .atualizadaEm(atualizadaEm)
         .concluidaEm(concluidaEm)
@@ -120,6 +126,7 @@ public final class Solicitacao {
     private String modeloObservacoes;
     private UUID abertaPorUsuarioId;
     private String comentarioFinal;
+    private String instrucao;
     private Instant criadaEm;
     private Instant atualizadaEm;
     private Instant concluidaEm;
@@ -188,6 +195,11 @@ public final class Solicitacao {
       return this;
     }
 
+    public Builder instrucao(final String valor) {
+      this.instrucao = valor;
+      return this;
+    }
+
     public Builder criadaEm(final Instant valor) {
       this.criadaEm = valor;
       return this;
@@ -228,6 +240,7 @@ public final class Solicitacao {
           modeloObservacoes,
           abertaPorUsuarioId,
           comentarioFinal,
+          instrucao,
           criadaEm,
           atualizadaEm,
           concluidaEm,
@@ -285,20 +298,45 @@ public final class Solicitacao {
   }
 
   /**
-   * UC-03: Triar e atribuir (A_FAZER -> EM_ANDAMENTO). Requer prioridade. Validacao de atribuicoes
-   * feita externamente (use case).
+   * UC-03: Triar e atribuir (A_FAZER -> EM_ANDAMENTO). Requer prioridade e a instrucao do que deve
+   * ser feito, que fica gravada na propria solicitacao. So se tria a partir de A_FAZER. Validacao
+   * de atribuicoes feita externamente (use case).
    */
-  public Solicitacao triar(final PrioridadeSolicitacao novaPrioridade, final Instant agora) {
+  public Solicitacao triar(
+      final PrioridadeSolicitacao novaPrioridade, final String novaInstrucao, final Instant agora) {
     requireNonNull(novaPrioridade, "prioridade");
+    if (status != StatusSolicitacao.A_FAZER) {
+      throw new TransicaoStatusInvalidaException(status, StatusSolicitacao.EM_ANDAMENTO);
+    }
     validarTransicao(StatusSolicitacao.EM_ANDAMENTO);
     return toBuilder()
         .status(StatusSolicitacao.EM_ANDAMENTO)
         .prioridade(novaPrioridade)
+        .instrucao(validarInstrucao(novaInstrucao))
         .comentarioFinal(null)
         .atualizadaEm(agora)
         .concluidaEm(null)
         .canceladaEm(null)
         .build();
+  }
+
+  /**
+   * Corrige a instrucao do que fazer. So com a solicitacao EM_ANDAMENTO: antes dela a instrucao
+   * nasce na triagem e, depois, o responsavel ja enviou para validacao. Texto igual ao atual nao
+   * muda nada e devolve a propria instancia.
+   */
+  public Solicitacao editarInstrucao(final String novaInstrucao, final Instant agora) {
+    if (status != StatusSolicitacao.EM_ANDAMENTO) {
+      throw new ConflitoException(
+          "A instrucao so pode ser editada com a solicitacao em andamento (status atual: "
+              + status
+              + ")");
+    }
+    final String valida = validarInstrucao(novaInstrucao);
+    if (valida.equals(instrucao)) {
+      return this;
+    }
+    return toBuilder().instrucao(valida).atualizadaEm(requireNonNull(agora, "agora")).build();
   }
 
   /** UC-05: Enviar para validacao (EM_ANDAMENTO -> EM_VALIDACAO). */
@@ -466,6 +504,18 @@ public final class Solicitacao {
     }
   }
 
+  private static String validarInstrucao(final String texto) {
+    if (texto == null || texto.isBlank()) {
+      throw new ValidationException("instrucao e obrigatoria");
+    }
+    final String aparada = texto.trim();
+    if (aparada.length() > LimitesTexto.SOLICITACAO_INSTRUCAO) {
+      throw new ValidationException(
+          "instrucao deve ter no maximo " + LimitesTexto.SOLICITACAO_INSTRUCAO + " caracteres");
+    }
+    return aparada;
+  }
+
   private void validarTransicao(final StatusSolicitacao novoStatus) {
     if (!status.canTransitionTo(novoStatus)) {
       throw new TransicaoStatusInvalidaException(status, novoStatus);
@@ -499,6 +549,10 @@ public final class Solicitacao {
       if (comentarioFinal == null) {
         throw new ValidationException("comentarioFinal e obrigatorio ao cancelar");
       }
+    }
+
+    if (status == StatusSolicitacao.A_FAZER && instrucao != null) {
+      throw new ValidationException("instrucao so existe depois da triagem");
     }
 
     if (status.isNaoTerminal()) {
@@ -582,6 +636,10 @@ public final class Solicitacao {
 
   public String getComentarioFinal() {
     return comentarioFinal;
+  }
+
+  public String getInstrucao() {
+    return instrucao;
   }
 
   public Instant getCriadaEm() {

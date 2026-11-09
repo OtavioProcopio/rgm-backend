@@ -48,6 +48,7 @@ class SolicitacaoCopiaTest {
         .modeloObservacoes(null)
         .abertaPorUsuarioId(AUTOR)
         .comentarioFinal(concluida || cancelada ? "Comentario final" : null)
+        .instrucao(status == StatusSolicitacao.A_FAZER ? null : "Instrucao original")
         .criadaEm(CRIADA)
         .atualizadaEm(ATUALIZADA)
         .concluidaEm(concluida ? ATUALIZADA : null)
@@ -73,6 +74,7 @@ class SolicitacaoCopiaTest {
         .modeloObservacoes("Observacoes do modelo")
         .abertaPorUsuarioId(AUTOR)
         .comentarioFinal(concluida || cancelada ? "Comentario final" : null)
+        .instrucao(status == StatusSolicitacao.A_FAZER ? null : "Instrucao original")
         .criadaEm(CRIADA)
         .atualizadaEm(ATUALIZADA)
         .concluidaEm(concluida ? ATUALIZADA : null)
@@ -104,12 +106,13 @@ class SolicitacaoCopiaTest {
     final Solicitacao antes = fabrica.apply(StatusSolicitacao.A_FAZER);
 
     // Act
-    final Solicitacao depois = antes.triar(PrioridadeSolicitacao.ALTA, AGORA);
+    final Solicitacao depois = antes.triar(PrioridadeSolicitacao.ALTA, "Trocar o gabarito", AGORA);
 
     // Assert
-    assertSoMudou(antes, depois, "status", "prioridade", "atualizadaEm");
+    assertSoMudou(antes, depois, "status", "prioridade", "instrucao", "atualizadaEm");
     assertThat(depois.getStatus()).isEqualTo(StatusSolicitacao.EM_ANDAMENTO);
     assertThat(depois.getPrioridade()).isEqualTo(PrioridadeSolicitacao.ALTA);
+    assertThat(depois.getInstrucao()).isEqualTo("Trocar o gabarito");
     assertThat(depois.getAtualizadaEm()).isEqualTo(AGORA);
   }
 
@@ -251,5 +254,21 @@ class SolicitacaoCopiaTest {
     assertSoMudou(antes, depois, "status", "comentarioFinal", "atualizadaEm", "canceladaEm");
     assertThat(depois.getStatus()).isEqualTo(StatusSolicitacao.CANCELADA);
     assertThat(depois.getCanceladaEm()).isEqualTo(AGORA);
+  }
+
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("tipos")
+  void shouldChangeOnlyInstrucaoAndAtualizadaEmWhenEditarInstrucao(
+      final String tipo, final Function<StatusSolicitacao, Solicitacao> fabrica) {
+    // Arrange
+    final Solicitacao antes = fabrica.apply(StatusSolicitacao.EM_ANDAMENTO);
+
+    // Act
+    final Solicitacao depois = antes.editarInstrucao("Trocar o gabarito e o pino", AGORA);
+
+    // Assert
+    assertSoMudou(antes, depois, "instrucao", "atualizadaEm");
+    assertThat(depois.getInstrucao()).isEqualTo("Trocar o gabarito e o pino");
+    assertThat(depois.getAtualizadaEm()).isEqualTo(AGORA);
   }
 }

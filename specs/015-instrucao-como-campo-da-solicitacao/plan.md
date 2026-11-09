@@ -15,7 +15,7 @@
 | Onde mora a regra "só de A_FAZER" | No agregado: `triar` recusa qualquer status que não seja `A_FAZER` com `TransicaoStatusInvalidaException` (409 pelo `GlobalExceptionHandler`) | Checar no caso de uso | A regra é do domínio; o caso de uso e qualquer outro chamador a herdam |
 | Onde mora a regra "instrução obrigatória" | No agregado (`triar` exige texto não vazio e ≤ 2000) **e** no DTO (`@NotBlank`, `@Size`) | Só no DTO | O caso de uso é chamado fora do controller; o DTO dá o 400 cedo |
 | Invariante do estado | `instrucao` é nula em `A_FAZER`; fora disso é livre (triadas antigas são nulas) | Exigir instrução em todo `EM_ANDAMENTO` | RF-01: o dado legado não tem instrução e não será inventado |
-| Esquema | `V10__solicitacao_instrucao.sql`: `ALTER TABLE solicitacoes ADD COLUMN instrucao TEXT` anulável, sem valor padrão nem reescrita | `NOT NULL` com valor "—"; preencher a partir dos comentários | RF-01, RNF-05; Princípio 9 (migração nova, número sequencial) |
+| Esquema | `V13__solicitacao_instrucao.sql`: `ALTER TABLE solicitacoes ADD COLUMN instrucao TEXT` anulável, sem valor padrão nem reescrita | `NOT NULL` com valor "—"; preencher a partir dos comentários | RF-01, RNF-05; Princípio 9 (migração nova, número sequencial) |
 | Listagem | `SolicitacaoResponse` ganha `instrucao` e o `from` a preenche sempre, como `descricao` | Só no detalhe | Eventos e listagem usam o mesmo tipo; o peso é o mesmo da `descricao` (RF-07) |
 | PDF | `ModeloPdfService` escreve "Instrução: …" logo após "Descrição: …" quando houver | Seção própria | RF-09; segue o formato atual |
 | Corpo antigo | `descricao` no corpo vira propriedade desconhecida e a falta de `instrucao` dá 400 | Aceitar os dois nomes | RF-06; aceitar os dois esconderia cliente desatualizado |
@@ -49,7 +49,7 @@
 
 | Camada | Arquivo | Ação | Teste espelhado |
 |---|---|---|---|
-| db | `app/src/main/resources/db/migration/V10__solicitacao_instrucao.sql` | criar | `TEST/adapter/out/persistence/FlywayMigrationTest.java` |
+| db | `app/src/main/resources/db/migration/V13__solicitacao_instrucao.sql` | criar | `TEST/adapter/out/persistence/FlywayMigrationTest.java` |
 | domain | `Solicitacao.java` (`instrucao`, `getInstrucao`, `triar(prioridade, instrucao, agora)`, guarda de status) | alterar | `SolicitacaoTest.java`, `SolicitacaoCopiaTest.java` |
 | per | `SolicitacaoJpaEntity.java`, `SolicitacaoMapper.java` | alterar | `MapperRoundtripTest.java`, `SolicitacaoRepositoryAdapterPostgresTest` (ida e volta no Postgres) |
 | uc | `TriarSolicitacaoUseCase.java` (`Input.instrucao`, sem comentário, 2 atividades) | alterar | `TriarSolicitacaoUseCaseTest.java` |
@@ -90,7 +90,7 @@ Nenhuma. AssertJ já vem com o starter de teste.
 
 ## Impacto no contrato de operação
 
-Uma migração Flyway (`V10`). Nenhum alvo ou variável novo.
+Uma migração Flyway (`V13`). Nenhum alvo ou variável novo.
 
 ## Riscos
 
@@ -111,7 +111,7 @@ Uma migração Flyway (`V10`). Nenhum alvo ou variável novo.
 | Simplicidade defensável | Um padrão (Builder com `toBuilder`) para um problema medido (9 cópias); quatro alternativas descartadas por escrito |
 | P7 — mapa de camadas | Builder dentro de `core.domain`, sem Spring nem biblioteca; mapper em `adapter.out` |
 | P8 — linguagem ubíqua | `instrucao`, `triagem`; testes `shouldXWhenY` |
-| P9 — compatibilidade | Resposta aditiva; quebra do corpo declarada com ordem de publicação; migração `V10` nova, sem alterar `V1` a `V9` |
+| P9 — compatibilidade | Resposta aditiva; quebra do corpo declarada com ordem de publicação; migração `V13` nova, sem alterar `V1` a `V12` |
 | P10 — cobertura | Não baixa o mínimo; ≥ 95% por arquivo tocado |
 | P11 — padrão de teste | Testes novos e alterados em AAA, um comportamento por teste |
 | P12 — uma fonte | Spec em `specs/015`; linha em `openspec/README.md` |

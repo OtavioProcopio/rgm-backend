@@ -38,7 +38,7 @@ class SolicitacaoTest {
         Solicitacao.abrir(
             "Titulo", "Descricao", TipoSolicitacao.REPARO, modeloId, usuarioId, agora);
 
-    final Solicitacao triada = sol.triar(PrioridadeSolicitacao.ALTA, agora);
+    final Solicitacao triada = sol.triar(PrioridadeSolicitacao.ALTA, "Trocar o gabarito", agora);
 
     assertEquals(StatusSolicitacao.EM_ANDAMENTO, triada.getStatus());
     assertEquals(PrioridadeSolicitacao.ALTA, triada.getPrioridade());
@@ -57,7 +57,7 @@ class SolicitacaoTest {
   void deveConcluir() {
     final Solicitacao sol =
         Solicitacao.abrir("T", "D", TipoSolicitacao.REPARO, modeloId, usuarioId, agora);
-    final Solicitacao triada = sol.triar(PrioridadeSolicitacao.MEDIA, agora);
+    final Solicitacao triada = sol.triar(PrioridadeSolicitacao.MEDIA, "Trocar o gabarito", agora);
     final Solicitacao emValidacao = triada.enviarParaValidacao(agora);
     final Solicitacao concluida = emValidacao.concluir("Feito", agora);
 
@@ -70,7 +70,7 @@ class SolicitacaoTest {
   void deveCancelar() {
     final Solicitacao sol =
         Solicitacao.abrir("T", "D", TipoSolicitacao.REPARO, modeloId, usuarioId, agora);
-    final Solicitacao triada = sol.triar(PrioridadeSolicitacao.MEDIA, agora);
+    final Solicitacao triada = sol.triar(PrioridadeSolicitacao.MEDIA, "Trocar o gabarito", agora);
     final Solicitacao emValidacao = triada.enviarParaValidacao(agora);
     final Solicitacao cancelada = emValidacao.cancelar("Motivo", agora);
 
@@ -90,7 +90,7 @@ class SolicitacaoTest {
   void deveDevolver() {
     final Solicitacao sol =
         Solicitacao.abrir("T", "D", TipoSolicitacao.REPARO, modeloId, usuarioId, agora);
-    final Solicitacao triada = sol.triar(PrioridadeSolicitacao.MEDIA, agora);
+    final Solicitacao triada = sol.triar(PrioridadeSolicitacao.MEDIA, "Trocar o gabarito", agora);
     final Solicitacao emValidacao = triada.enviarParaValidacao(agora);
     final Solicitacao devolvida = emValidacao.devolver(PrioridadeSolicitacao.ALTA, agora);
 
@@ -113,7 +113,7 @@ class SolicitacaoTest {
   void prazoLimiteEComputadoAPartirDaPrioridadeAposTriagem() {
     final Solicitacao sol =
         Solicitacao.abrir("T", "D", TipoSolicitacao.REPARO, modeloId, usuarioId, agora);
-    final Solicitacao triada = sol.triar(PrioridadeSolicitacao.URGENTE, agora);
+    final Solicitacao triada = sol.triar(PrioridadeSolicitacao.URGENTE, "Trocar o gabarito", agora);
 
     assertEquals(agora.plusSeconds(4 * 3600L), triada.getPrazoLimite());
     assertFalse(triada.isAtrasada(agora));
@@ -123,7 +123,7 @@ class SolicitacaoTest {
   void tempoRestanteFicaNegativoQuandoPrazoVenceu() {
     final Solicitacao sol =
         Solicitacao.abrir("T", "D", TipoSolicitacao.REPARO, modeloId, usuarioId, agora);
-    final Solicitacao triada = sol.triar(PrioridadeSolicitacao.URGENTE, agora);
+    final Solicitacao triada = sol.triar(PrioridadeSolicitacao.URGENTE, "Trocar o gabarito", agora);
     final Instant depoisDoPrazo = agora.plusSeconds(5 * 3600L);
 
     assertTrue(triada.getTempoRestanteSegundos(depoisDoPrazo) < 0);
@@ -134,7 +134,7 @@ class SolicitacaoTest {
   void tempoRestanteENuloEmStatusTerminal() {
     final Solicitacao sol =
         Solicitacao.abrir("T", "D", TipoSolicitacao.REPARO, modeloId, usuarioId, agora);
-    final Solicitacao triada = sol.triar(PrioridadeSolicitacao.URGENTE, agora);
+    final Solicitacao triada = sol.triar(PrioridadeSolicitacao.URGENTE, "Trocar o gabarito", agora);
     final Solicitacao emValidacao = triada.enviarParaValidacao(agora);
     final Instant depoisDoPrazo = agora.plusSeconds(5 * 3600L);
     final Solicitacao concluida = emValidacao.concluir("Feito", depoisDoPrazo);
@@ -148,7 +148,7 @@ class SolicitacaoTest {
   void canceladaNuncaContaComoAtrasada() {
     final Solicitacao sol =
         Solicitacao.abrir("T", "D", TipoSolicitacao.REPARO, modeloId, usuarioId, agora);
-    final Solicitacao triada = sol.triar(PrioridadeSolicitacao.URGENTE, agora);
+    final Solicitacao triada = sol.triar(PrioridadeSolicitacao.URGENTE, "Trocar o gabarito", agora);
     final Instant depoisDoPrazo = agora.plusSeconds(5 * 3600L);
     final Solicitacao cancelada = triada.cancelar("Motivo", depoisDoPrazo);
 
@@ -227,7 +227,7 @@ class SolicitacaoTest {
     final Solicitacao sol =
         Solicitacao.abrirCriacao(
             "Novo modelo XYZ", "Descricao", "COD-XYZ", "FBOX", null, usuarioId, agora);
-    final Solicitacao triada = sol.triar(PrioridadeSolicitacao.MEDIA, agora);
+    final Solicitacao triada = sol.triar(PrioridadeSolicitacao.MEDIA, "Trocar o gabarito", agora);
     final Solicitacao emValidacao = triada.enviarParaValidacao(agora);
     final UUID modeloRecemCriado = UUID.randomUUID();
 
@@ -243,7 +243,7 @@ class SolicitacaoTest {
     final Solicitacao sol =
         Solicitacao.abrirCriacao(
             "Novo modelo XYZ", "Descricao", "COD-XYZ", "FBOX", null, usuarioId, agora);
-    final Solicitacao triada = sol.triar(PrioridadeSolicitacao.MEDIA, agora);
+    final Solicitacao triada = sol.triar(PrioridadeSolicitacao.MEDIA, "Trocar o gabarito", agora);
     final Solicitacao emValidacao = triada.enviarParaValidacao(agora);
 
     assertThrows(BusinessRuleException.class, () -> emValidacao.concluir("Feito", agora));
@@ -253,7 +253,7 @@ class SolicitacaoTest {
   void concluirCriacaoNaoSeAplicaAOutrosTipos() {
     final Solicitacao sol =
         Solicitacao.abrir("T", "D", TipoSolicitacao.REPARO, modeloId, usuarioId, agora);
-    final Solicitacao triada = sol.triar(PrioridadeSolicitacao.MEDIA, agora);
+    final Solicitacao triada = sol.triar(PrioridadeSolicitacao.MEDIA, "Trocar o gabarito", agora);
     final Solicitacao emValidacao = triada.enviarParaValidacao(agora);
 
     assertThrows(

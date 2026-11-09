@@ -42,15 +42,11 @@ public class TriarSolicitacaoUseCase {
       UUID solicitacaoId,
       PrioridadeSolicitacao prioridade,
       List<UUID> responsavelIds,
-      String descricao,
+      String instrucao,
       UUID gestorId) {}
 
   public Solicitacao execute(final Input input) {
     final Instant agora = Instant.now();
-
-    if (input.descricao() == null || input.descricao().isBlank()) {
-      throw new BusinessRuleException("Descricao do que deve ser feito e obrigatoria na triagem");
-    }
 
     final Usuario gestor =
         usuarioRepository
@@ -84,7 +80,7 @@ public class TriarSolicitacaoUseCase {
       Solicitacao.validarPerfilAtribuivel(resp.getPerfil());
     }
 
-    final Solicitacao triada = solicitacao.triar(input.prioridade(), agora);
+    final Solicitacao triada = solicitacao.triar(input.prioridade(), input.instrucao(), agora);
     final Solicitacao salva = solicitacaoRepository.save(triada);
 
     for (final Usuario resp : responsaveis) {
@@ -111,10 +107,6 @@ public class TriarSolicitacaoUseCase {
             StatusSolicitacao.EM_ANDAMENTO,
             input.gestorId(),
             agora));
-
-    atividadeRepository.save(
-        AtividadeSolicitacao.comentario(
-            salva.getId(), input.descricao().trim(), input.gestorId(), agora));
 
     return salva;
   }

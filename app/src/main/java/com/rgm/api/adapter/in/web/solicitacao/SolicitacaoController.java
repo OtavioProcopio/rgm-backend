@@ -539,7 +539,7 @@ public class SolicitacaoController {
                 id,
                 PrioridadeSolicitacao.valueOf(request.prioridade()),
                 request.responsavelIds(),
-                request.descricao(),
+                request.instrucao(),
                 gestorId));
     return ResponseEntity.ok(publicar("triada", SolicitacaoResponse.from(output)));
   }

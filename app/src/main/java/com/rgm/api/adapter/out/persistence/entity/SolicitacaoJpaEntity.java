@@ -12,7 +12,6 @@ import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import java.time.Instant;
 import java.util.UUID;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -22,7 +21,6 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
-@AllArgsConstructor
 public class SolicitacaoJpaEntity {
 
   @Id private UUID id;
@@ -55,6 +53,8 @@ public class SolicitacaoJpaEntity {
   private UUID abertaPorUsuarioId;
 
   private String comentarioFinal;
+
+  private String instrucao;
 
   @Column(nullable = false)
   private Instant criadaEm;

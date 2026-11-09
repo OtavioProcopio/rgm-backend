@@ -6,6 +6,9 @@ public final class LimitesTexto {
   public static final int SOLICITACAO_TITULO = 255;
   public static final int SOLICITACAO_DESCRICAO = 2000;
 
+  /** Instrucao do que fazer, gravada na triagem e corrigida em andamento. */
+  public static final int SOLICITACAO_INSTRUCAO = 2000;
+
   /** Comentario, motivo de cancelamento, motivo de devolucao e comentario de encerramento. */
   public static final int COMENTARIO = 2000;
 

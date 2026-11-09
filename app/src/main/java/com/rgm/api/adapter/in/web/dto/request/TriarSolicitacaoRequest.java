@@ -12,4 +12,4 @@ public record TriarSolicitacaoRequest(
     @NotNull String prioridade,
     @NotEmpty List<UUID> responsavelIds,
     @NotBlank @Size(max = LimitesTexto.COMENTARIO, message = LimitesTexto.MENSAGEM)
-        String descricao) {}
+        String instrucao) {}

@@ -11,7 +11,7 @@
 - [x] T001 Teste `SolicitacaoCopiaTest` (roda verde sobre o código atual: protege a refatoração): solicitação com todos os campos preenchidos; para cada transição (`triar`, `enviarParaValidacao`, `devolver`, `encerrar`, `cancelar`, `editar`) só mudam os campos declarados; `usingRecursiveComparison`
 - [x] T002 `Solicitacao.Builder` e `toBuilder()`; construtor privado; reescrever as 9 cópias e as fábricas `abrir` e `abrirCriacao`; `SolicitacaoTest` e T001 verdes
 - [x] T003 `SolicitacaoMapper.toDomain` pelo builder; `MapperRoundtripTest` verde
-- [~] T004 (movida para a Fase 2, junto do primeiro teste que a usa) Teste e `TEST/support/SolicitacaoTestBuilder` com padrões válidos para cada status (prioridade em `EM_ANDAMENTO` em diante, `concluidaEm` e `comentarioFinal` em `CONCLUIDA`, `canceladaEm` em `CANCELADA`)
+- [x] T004 Teste e `TEST/support/SolicitacaoTestBuilder` com padrões válidos para cada status (prioridade em `EM_ANDAMENTO` em diante, `concluidaEm` e `comentarioFinal` em `CONCLUIDA`, `canceladaEm` em `CANCELADA`)
 - [x] T005 Migrar os 51 usos de `new Solicitacao(` dos testes para `Solicitacao.builder()`, por transformação mecânica que omite campos nulos, sem tocar asserção; suíte verde ao fim
 - [x] T006 Conferir RNF-01 e RNF-02 por busca: `new Solicitacao(` em produção ≤ 3 pontos; em teste só no builder e no teste do construtor
 - [x] T007 `make validate` verde (commit só da refatoração)
@@ -19,15 +19,15 @@
 ## Fase 2 — Campo e triagem (RF-01 a RF-09)
 
 - [ ] T008 Teste de migração: coluna `instrucao` existe, é anulável, e linhas existentes ficam nulas (RF-01, RNF-05)
-- [ ] T009 `V10__solicitacao_instrucao.sql`
+- [x] T009 `V13__solicitacao_instrucao.sql`
 - [ ] T010 Testes de `SolicitacaoTest`: `triar` grava a instrução aparada; recusa em branco, nula e 2001; recusa `EM_ANDAMENTO`, `EM_VALIDACAO`, `CONCLUIDA`, `CANCELADA` com `TransicaoStatusInvalidaException`; `A_FAZER` nasce sem instrução (RF-02, RF-03, RF-04)
-- [ ] T011 `Solicitacao.instrucao`, `getInstrucao`, `triar(prioridade, instrucao, agora)` e a guarda de status; `SolicitacaoCopiaTest` passa a cobrir o campo (RF-08)
+- [x] T011 `Solicitacao.instrucao`, `getInstrucao`, `triar(prioridade, instrucao, agora)` e a guarda de status; `SolicitacaoCopiaTest` passa a cobrir o campo (RF-08)
 - [ ] T012 Teste de ida e volta no mapper e no Postgres (`instrucao` com acento, quebra de linha e 2000 caracteres) (RF-01)
-- [ ] T013 `SolicitacaoJpaEntity` e `SolicitacaoMapper`
-- [ ] T014 Testes do caso de uso: a solicitação salva leva a instrução; duas atividades (atribuição e status) e nenhum comentário; triar fora de `A_FAZER` não grava atribuição nem atividade; regras antigas (RF-03, RF-04, RF-05)
-- [ ] T015 `TriarSolicitacaoUseCase.Input.instrucao`; remover a atividade de comentário
+- [x] T013 `SolicitacaoJpaEntity` e `SolicitacaoMapper`
+- [x] T014 Testes do caso de uso: a solicitação salva leva a instrução; duas atividades (atribuição e status) e nenhum comentário; triar fora de `A_FAZER` não grava atribuição nem atividade; regras antigas (RF-03, RF-04, RF-05)
+- [x] T015 `TriarSolicitacaoUseCase.Input.instrucao`; remover a atividade de comentário
 - [ ] T016 Testes do controller: 400 sem `instrucao`, em branco e com 2001; 200 com 2000; 400 com o corpo antigo (`descricao`); 409 fora de `A_FAZER`; perfil sem permissão continua 403 (RF-02, RF-04, RF-06)
-- [ ] T017 `TriarSolicitacaoRequest` e `SolicitacaoController`
+- [~] T017 `TriarSolicitacaoRequest` e `SolicitacaoController` (código feito: campo `instrucao`; faltam os testes de T016)
 - [ ] T018 Testes de `SolicitacaoResponseTest`: `instrucao` presente e nula; listagem e evento "triada" a trazem (RF-07)
 - [ ] T019 `SolicitacaoResponse`
 - [ ] T020 Teste de `ModeloPdfServiceTest`: PDF lido de volta mostra "Instrução: …" da solicitação que a tem e nenhuma linha na que não tem (RF-09)
