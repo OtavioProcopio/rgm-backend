@@ -19,12 +19,19 @@
 | Listagem | `SolicitacaoResponse` ganha `instrucao` e o `from` a preenche sempre, como `descricao` | Só no detalhe | Eventos e listagem usam o mesmo tipo; o peso é o mesmo da `descricao` (RF-07) |
 | PDF | `ModeloPdfService` escreve "Instrução: …" logo após "Descrição: …" quando houver | Seção própria | RF-09; segue o formato atual |
 | Corpo antigo | `descricao` no corpo vira propriedade desconhecida e a falta de `instrucao` dá 400 | Aceitar os dois nomes | RF-06; aceitar os dois esconderia cliente desatualizado |
+| Edição | Método `Solicitacao.editarInstrucao(nova, agora)`: valida como a triagem, devolve a própria instância se o texto aparado é igual, recusa status ≠ `EM_ANDAMENTO` com `ConflitoException` (409 pelo `GlobalExceptionHandler`) | Reusar `editar` (que muda título e descrição e vale em `A_FAZER` pelo autor); reusar `TransicaoStatusInvalidaException` | `editar` tem outras regras e outro público; não é transição de status, então o nome do erro de transição enganaria |
+| Quem edita | Caso de uso `EditarInstrucaoSolicitacaoUseCase` confere `perfil.podeTriar()` (gestor e administrador) e usuário ativo, e lança `NaoAutorizadoException` (403) | Regra só na rota | Mesma regra de `AlterarResponsaveis`; a regra mora no caso de uso, não no controller |
+| Histórico da correção | Novo valor `INSTRUCAO_ALTERADA` em `TipoAtividadeSolicitacao`, criado por `AtividadeSolicitacao.instrucaoAlterada(solicitacaoId, textoAnterior, autorId, agora)`, com o texto anterior em `comentario` | Atividade `COMENTARIO` com prefixo; coluna de auditoria; tabela de versões da instrução | A coluna `tipo` é `VARCHAR(50)` sem restrição, então não há migração; o texto anterior cabe em `comentario`; uma tabela de versões é mais do que o requisito pede |
+| Ação oferecida | `AcaoSolicitacao.EDITAR_INSTRUCAO`, em `AcoesPermitidasSolicitacao` quando `perfil.podeTriar()` e status `EM_ANDAMENTO` | Deixar o front deduzir | O front segue `acoesPermitidas` da API (spec 002 do front); regra de permissão não se duplica no cliente |
+| Concorrência | O agregado carrega `version`; a segunda de duas edições simultâneas falha no `save` e o handler existente responde 409 | Lock próprio | Já é o mecanismo do projeto (issue #80) |
+| Evento | `publicar("instrucao_editada", SolicitacaoResponse.from(...))`, como as demais ações | Sem evento | O detalhe aberto de outro usuário precisa atualizar (spec 018) |
 
 ## Fases
 
 1. **Refatoração sem mudança de comportamento** (RNF-01 a RNF-03): builder, `toBuilder()`, mapper, `SolicitacaoTestBuilder`, migração dos ~50 usos nos testes, `SolicitacaoCopiaTest`. `make validate` verde **antes** da fase 2. Um PR/commit só dela.
 2. **Campo e triagem** (RF-01 a RF-09, RNF-05): migração, agregado, entidade, caso de uso, DTOs, PDF.
-3. **Documentação e validação**.
+3. **Edição da instrução** (RF-10 a RF-15): método do agregado, atividade, ação permitida, caso de uso, rota, evento.
+4. **Documentação e validação**.
 
 ## Arquivos a criar ou alterar
 
@@ -49,14 +56,33 @@
 | web | `TriarSolicitacaoRequest.java` (`instrucao`), `SolicitacaoController.java` | alterar | `SolicitacaoControllerTest.java`, `SolicitacaoControllerSegurancaTest.java` |
 | web | `SolicitacaoResponse.java` (`instrucao`) | alterar | `SolicitacaoResponseTest.java` |
 | pdf | `ModeloPdfService.java` ("Instrução: …") | alterar | `ModeloPdfServiceTest.java` (PDF lido de volta, com e sem instrução) |
-| docs | `docs/casos-de-uso.md` (UC-03), `docs/modelo_dados.md`, `openspec/README.md` | alterar | — |
+
+### Fase 3 — Edição da instrução
+
+| Camada | Arquivo | Ação | Teste espelhado |
+|---|---|---|---|
+| domain | `Solicitacao.java` (`editarInstrucao`) | alterar | `SolicitacaoTest.java`, `SolicitacaoCopiaTest.java` |
+| domain | `TipoAtividadeSolicitacao.java` (`INSTRUCAO_ALTERADA`), `AtividadeSolicitacao.java` (`instrucaoAlterada`) | alterar | `TEST/core/domain/model/AtividadeSolicitacaoTest.java`, `AtividadeSolicitacaoRepositoryAdapterTest.java` |
+| domain | `AcaoSolicitacao.java` (`EDITAR_INSTRUCAO`), `AcoesPermitidasSolicitacao.java` | alterar | `TEST/core/domain/validation/AcoesPermitidasSolicitacaoTest.java` |
+| uc | `MAIN/core/application/usecases/solicitacao/EditarInstrucaoSolicitacaoUseCase.java` | criar | `TEST/core/application/usecases/solicitacao/EditarInstrucaoSolicitacaoUseCaseTest.java` |
+| config | `MAIN/adapter/config/UseCaseConfig.java` | alterar | `TEST/ApiApplicationTests.java` |
+| web | `MAIN/adapter/in/web/dto/request/EditarInstrucaoRequest.java`, `SolicitacaoController.java` (`PATCH /{id}/instrucao`) | criar/alterar | `SolicitacaoControllerTest.java`, `SolicitacaoControllerSegurancaTest.java` |
+| per | `SolicitacaoRepositoryAdapterPostgresTest` (duas edições com a mesma versão) | alterar | — |
+
+### Documentação
+
+| Camada | Arquivo | Ação | Teste espelhado |
+|---|---|---|---|
+| docs | `docs/casos-de-uso.md` (UC-03 e a edição), `docs/modelo_dados.md`, `openspec/README.md` | alterar | — |
 
 ## Contrato entre camadas
 
 - **Entrada:** `TriarSolicitacaoRequest { prioridade, responsavelIds, instrucao }`.
 - **Domínio:** `Solicitacao.triar(prioridade, instrucao, agora)` recusa status ≠ `A_FAZER` (409) e instrução em branco ou longa (`ValidationException` → 400).
+- **Edição:** `PATCH /api/solicitacoes/{id}/instrucao` com `EditarInstrucaoRequest { instrucao }`; 200 com `SolicitacaoResponse`; 400, 401, 403, 404, 409.
+- **Histórico:** atividade `INSTRUCAO_ALTERADA` com o texto anterior em `comentario`.
 - **Saída:** `SolicitacaoResponse.instrucao` (String, nula quando não houver).
-- **Compatibilidade:** campo de resposta aditivo; corpo de `/triar` quebra, declarado na spec.
+- **Compatibilidade:** campo de resposta, rota, evento, ação e tipo de atividade aditivos; corpo de `/triar` quebra, declarado na spec.
 
 ## Dependências externas
 
@@ -75,6 +101,9 @@ Uma migração Flyway (`V10`). Nenhum alvo ou variável novo.
 | `triar` recusar `EM_VALIDACAO` quebra um fluxo que alguém usa | baixa | O caso nunca foi documentado (UC-03 diz `A_FAZER → EM_ANDAMENTO`); teste de 409 por status; `devolver` continua sendo o caminho de `EM_VALIDACAO → EM_ANDAMENTO` |
 | Front antigo recebe 400 ao triar | alta se publicado sozinho | Ordem de publicação na spec |
 | Triadas antigas aparecem sem instrução | certa | Declarado; o front trata o nulo (spec 018) |
+| Front antigo recebe atividade de tipo desconhecido no histórico | média | Tipo novo só aparece depois de uma edição; a spec 018 trata tipo desconhecido; ordem de publicação |
+| Editar a instrução enquanto o responsável executa muda o que ele faz | média | O histórico guarda o texto anterior e o evento atualiza a tela do responsável; sem notificação ativa (fora de escopo) |
+| Edição concorrente com envio para validação | baixa | Mesma versão: uma das duas recebe 409; o status é rechecado no agregado |
 
 ## Conformidade com a constituição
 

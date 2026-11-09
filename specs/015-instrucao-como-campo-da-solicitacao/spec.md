@@ -4,8 +4,15 @@
 > sem esquema de banco, sem assinatura de função.
 
 Origem: decisão do usuário em 2026-11-09, depois da spec 014 (PR #139): a instrução de
-triagem é uma **decisão** e precisa viver na solicitação, não no histórico. Consumidor:
+triagem é uma **decisão** e precisa viver na solicitação, não no histórico. No mesmo dia o
+usuário decidiu que o gestor pode **corrigir** a instrução enquanto a solicitação estiver em
+andamento, sem apagar o que existia (revisão desta spec antes de qualquer código). Consumidor:
 `rgm-frontend`, spec 018. Base: `develop` com a spec 014 mergeada.
+
+> **Registro de processo (honestidade):** a Fase 1 (refatoração do agregado) foi começada no
+> código antes de esta spec refletir a decisão de editar a instrução. Nada foi commitado: o
+> trabalho parcial ficou guardado em `git stash` e só será retomado depois da aprovação desta
+> revisão.
 
 ## Problema
 
@@ -20,18 +27,26 @@ triagem é uma **decisão** e precisa viver na solicitação, não no histórico
    lista. Acrescentar um campo exige editar 62 pontos em 24 arquivos, e trocar dois campos do
    mesmo tipo compila sem erro.
 
+4. **Uma instrução errada não tem como ser corrigida.** Se o gestor se enganou ao triar, hoje
+   só resta comentar por cima. Corrigir não pode apagar o histórico: quem executa precisa saber
+   que a instrução mudou e o que dizia antes.
+
 **Custo de não resolver:** a instrução continua sem destaque nem proteção, a triagem pode
-apagá-la, e cada campo novo custa dezenas de edições mecânicas.
+apagá-la, a correção vira comentário solto, e cada campo novo custa dezenas de edições mecânicas.
 
 ## Objetivo
 
-- A solicitação tem o campo `instrucao`, gravado uma única vez, na triagem.
+- A solicitação tem o campo `instrucao`, gravado na triagem.
 - Só se tria uma solicitação em `A_FAZER`.
+- Gestor e administrador corrigem a instrução enquanto a solicitação está em andamento, e cada
+  correção fica registrada no histórico com o texto anterior.
 - Acrescentar um campo ao agregado passa a tocar um lugar só no código de produção e um nos testes.
 
 ## Fora de escopo
 
-- Editar a instrução depois de triar.
+- Editar a instrução fora de `EM_ANDAMENTO` (em validação, concluída ou cancelada).
+- Editar a instrução pelo responsável (operador).
+- Desfazer uma correção; a anterior fica no histórico e pode ser digitada de novo.
 - Preencher a instrução das triagens anteriores (não há dado confiável; ver Esclarecimentos).
 - Remover as atividades de comentário já gravadas pela spec 014.
 - Mudar o front: o consumo é da spec 018 do `rgm-frontend`.
@@ -39,8 +54,8 @@ apagá-la, e cada campo novo custa dezenas de edições mecânicas.
 
 ## Personas e cenários de uso
 
-- **Gestor e administrador:** triam e dizem o que fazer.
-- **Responsável (operador):** abre a solicitação e lê a instrução em destaque.
+- **Gestor e administrador:** triam e dizem o que fazer; corrigem a instrução enquanto a solicitação está em andamento.
+- **Responsável (operador):** abre a solicitação e lê a instrução em destaque; vê no histórico quando ela mudou e o que dizia antes.
 - **Quem mantém o código:** acrescenta campos ao agregado sem editar dezenas de arquivos.
 
 ## Requisitos funcionais
@@ -54,8 +69,14 @@ apagá-la, e cada campo novo custa dezenas de edições mecânicas.
 | RF-05 | A triagem deixa de criar atividade de comentário; o histórico mantém a atribuição e a mudança de status | obrigatório |
 | RF-06 | O campo do corpo de `PATCH /api/solicitacoes/{id}/triar` passa a se chamar `instrucao`, no lugar de `descricao` (spec 014) | obrigatório |
 | RF-07 | `instrucao` sai em toda resposta que hoje traz `descricao` da solicitação (detalhe, listagem e eventos), nula quando não houver | obrigatório |
-| RF-08 | A instrução não muda depois de gravada: nenhuma ação existente (editar, devolver, encerrar, cancelar, trocar responsáveis) a altera | obrigatório |
+| RF-08 | A instrução só muda pela edição de instrução (RF-10): nenhuma outra ação existente (editar, devolver, enviar para validação, encerrar, cancelar, trocar responsáveis) a altera | obrigatório |
 | RF-09 | A ficha do modelo em PDF mostra a instrução de cada solicitação que a tem, logo depois da descrição | obrigatório |
+| RF-10 | Gestor e administrador editam a instrução de uma solicitação `EM_ANDAMENTO` por `PATCH /api/solicitacoes/{id}/instrucao` com `{ "instrucao": "…" }`; valem as mesmas regras de RF-02 e RF-03 (obrigatória, até 2000 caracteres, sem espaços nas pontas) | obrigatório |
+| RF-11 | Em qualquer outro status a edição é recusada com 409 e a instrução não muda: `A_FAZER` (a instrução nasce na triagem), `EM_VALIDACAO`, `CONCLUIDA` e `CANCELADA`. Se a solicitação é devolvida e volta a `EM_ANDAMENTO`, pode ser editada de novo | obrigatório |
+| RF-12 | Operador (inclusive o responsável) e perfil externo não editam a instrução: 403 | obrigatório |
+| RF-13 | Cada edição que muda o texto registra no histórico uma atividade "instrução alterada", com autor, data e o texto anterior; não cria comentário comum. Texto igual ao atual (depois de aparado) não muda nada, não registra atividade e responde 200 | obrigatório |
+| RF-14 | `acoesPermitidas` ganha `EDITAR_INSTRUCAO`, presente só para gestor e administrador com a solicitação `EM_ANDAMENTO` | obrigatório |
+| RF-15 | A edição atualiza `atualizadaEm` e usa o controle de versão da solicitação: duas edições simultâneas não se sobrepõem (a segunda recebe 409); a resposta da edição e o evento "instrucao_editada" trazem a solicitação completa | obrigatório |
 
 ## Requisitos não funcionais
 
@@ -65,12 +86,14 @@ apagá-la, e cada campo novo custa dezenas de edições mecânicas.
 | RNF-02 | Manutenibilidade dos testes | Os testes obtêm solicitações por um único construtor de dados de teste; `new Solicitacao(` em teste aparece só nele e no teste do próprio construtor do agregado |
 | RNF-03 | Refatoração sem mudança de comportamento | A suíte existente passa sem alterar nenhuma asserção, antes de qualquer campo novo |
 | RNF-04 | Cobertura dos arquivos tocados | ≥ 95% de linhas por arquivo (Princípio 10); nenhum teste escrito só para cobrir linha |
-| RNF-05 | Esquema | 1 migração nova, aditiva, coluna anulável, sem reescrever linhas existentes |
+| RNF-05 | Esquema | 1 migração nova, aditiva, coluna anulável, sem reescrever linhas existentes; o novo tipo de atividade não exige migração (a coluna `tipo` é texto livre) |
 | RNF-06 | Verificação | `make validate` com 0 falhas e lint limpo |
 
 ## Ordem de publicação (Princípio 9)
 
-- Campo novo na resposta é **aditivo**: o front atual continua funcionando.
+- Campo novo na resposta, valor novo em `acoesPermitidas`, rota nova (`/instrucao`), evento novo
+  (`instrucao_editada`) e tipo de atividade novo são **aditivos**: o front atual continua
+  funcionando (o histórico deve tratar tipo de atividade desconhecido; ver spec 018).
 - Renomear `descricao` para `instrucao` no corpo de `/triar` **quebra** o front atual. A
   `descricao` existe só no `develop` (spec 014, PR #139), não em produção, então a quebra é
   declarada e limitada. Backend e front desta entrega (spec 018) são publicados **juntos, com
@@ -118,6 +141,52 @@ Funcionalidade: Instrução como campo da solicitação
     Quando ela é editada, devolvida, enviada para validação, encerrada
     Então a instrução continua a mesma
 
+  Cenário: Gestor corrige a instrução
+    Dado uma solicitação EM_ANDAMENTO com a instrução "Trocar o gabarito"
+    Quando o gestor edita a instrução para "  Trocar o gabarito e o pino  "
+    Então a instrução passa a "Trocar o gabarito e o pino"
+    E o histórico traz "instrução alterada" pelo gestor com o texto anterior "Trocar o gabarito"
+    E o histórico não traz comentário novo
+    E o evento "instrucao_editada" traz a solicitação completa
+
+  Cenário: Editar com o mesmo texto
+    Dado uma solicitação EM_ANDAMENTO com a instrução "Trocar o gabarito"
+    Quando o gestor edita para "  Trocar o gabarito "
+    Então a resposta é 200
+    E nada muda e o histórico não ganha atividade
+
+  Cenário: Editar sem texto ou longo demais
+    Dado uma solicitação EM_ANDAMENTO
+    Quando o gestor edita com instrução ausente, vazia, só com espaços ou com 2001 caracteres
+    Então a resposta é 400
+    E a instrução continua a mesma
+
+  Cenário: Editar fora de EM_ANDAMENTO
+    Dado uma solicitação A_FAZER, EM_VALIDACAO, CONCLUIDA ou CANCELADA
+    Quando o gestor tenta editar a instrução
+    Então a resposta é 409
+    E a instrução continua a mesma
+
+  Cenário: Editar depois de devolver
+    Dado uma solicitação EM_VALIDACAO devolvida para EM_ANDAMENTO
+    Quando o gestor edita a instrução
+    Então a edição é feita
+
+  Cenário: Operador não edita
+    Dado o operador responsável pela solicitação EM_ANDAMENTO
+    Quando ele tenta editar a instrução
+    Então a resposta é 403
+
+  Cenário: Ação oferecida só a quem pode
+    Dado uma solicitação EM_ANDAMENTO
+    Quando se lê o detalhe como gestor, administrador, operador responsável e operador sem relação
+    Então EDITAR_INSTRUCAO aparece em acoesPermitidas só para gestor e administrador
+
+  Cenário: Duas edições ao mesmo tempo
+    Dado dois gestores com o mesmo detalhe aberto
+    Quando os dois enviam uma edição
+    Então a primeira é feita e a segunda recebe 409
+
   Cenário: Solicitação triada antes do campo
     Dado uma solicitação EM_ANDAMENTO triada antes desta spec
     Quando se lê o detalhe
@@ -158,7 +227,9 @@ Funcionalidade: Instrução como campo da solicitação
 | Pergunta | Resposta | Data |
 |---|---|---|
 | A instrução vira campo da solicitação? | Sim: é decisão, não comentário | 2026-11-09 |
-| Pode editar a instrução depois? | Não nesta spec; fica fora de escopo | 2026-11-09 |
+| Pode editar a instrução depois? | Sim, gestor e administrador, enquanto a solicitação está em andamento; trava quando vai para validação e volta a destravar se for devolvida | 2026-11-09 |
+| A correção apaga o texto antigo? | Não: a atividade "instrução alterada" guarda o texto anterior, com autor e data | 2026-11-09 |
+| Quem corrige? | Gestor e administrador (mesma regra de triar e de trocar responsáveis); o responsável não | 2026-11-09 |
 | Preenche as triagens antigas? | Não. O dado só existe como comentário solto, sem marca que o distinga de uma conversa; copiar seria adivinhar | 2026-11-09 |
 | `descricao` do corpo de `/triar` | Renomeada para `instrucao`: `descricao` já é o texto que o operador escreve ao abrir | 2026-11-09 |
 | Instrução na listagem? | Sim, como `descricao`: o peso é o mesmo (limite de 2000) e o detalhe atualiza por evento | 2026-11-09 |
@@ -167,4 +238,5 @@ Funcionalidade: Instrução como campo da solicitação
 
 - 0 solicitações triadas, depois da publicação, sem `instrucao`.
 - 0 triagens aceitas fora de `A_FAZER`.
+- 0 edições de instrução sem atividade correspondente no histórico (exceto texto igual).
 - Um campo novo no agregado custa ≤ 3 arquivos de produção e 1 de teste.
