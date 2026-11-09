@@ -1,5 +1,6 @@
 package com.rgm.api.adapter.out.persistence.mapper;
 
+import static com.rgm.api.support.SolicitacaoTestBuilder.umaSolicitacao;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
@@ -170,6 +171,47 @@ class MapperRoundtripTest {
   // ──────── ModeloMapper ────────
 
   @Test
+  void shouldKeepInstrucaoWithAccentsLineBreaksAndTheLimitWhenMappedToJpaAndBack() {
+    // Arrange
+    final String instrucao =
+        "Trocar o gabarito\nConferir o furo 3 — ação urgente\n" + "x".repeat(1900);
+    final Solicitacao original =
+        Solicitacao.builder()
+            .id(UUID.randomUUID())
+            .titulo("Trocar rolamento")
+            .descricao("Descricao")
+            .tipo(TipoSolicitacao.REPARO)
+            .status(StatusSolicitacao.EM_ANDAMENTO)
+            .prioridade(PrioridadeSolicitacao.ALTA)
+            .modeloId(UUID.randomUUID())
+            .abertaPorUsuarioId(UUID.randomUUID())
+            .instrucao(instrucao)
+            .criadaEm(T1)
+            .atualizadaEm(T2)
+            .build();
+
+    // Act
+    final var jpa = SolicitacaoMapper.toJpa(original);
+    final Solicitacao result = SolicitacaoMapper.toDomain(jpa);
+
+    // Assert
+    assertEquals(instrucao, jpa.getInstrucao());
+    assertEquals(instrucao, result.getInstrucao());
+  }
+
+  @Test
+  void shouldKeepNullInstrucaoWhenMappedToJpaAndBack() {
+    // Arrange
+    final Solicitacao original = umaSolicitacao().emAndamento().build();
+
+    // Act
+    final Solicitacao result = SolicitacaoMapper.toDomain(SolicitacaoMapper.toJpa(original));
+
+    // Assert
+    assertNull(result.getInstrucao());
+  }
+
+  @Test
   void modeloMapper_fullRoundtrip() {
     final UUID id = UUID.randomUUID();
     final Modelo original =
@@ -261,6 +303,23 @@ class MapperRoundtripTest {
   }
 
   // ──────── AtividadeSolicitacaoMapper ────────
+
+  @Test
+  void shouldKeepTheInstrucaoAlteradaTypeAndPreviousTextWhenMappedToJpaAndBack() {
+    // Arrange
+    final AtividadeSolicitacao original =
+        AtividadeSolicitacao.instrucaoAlterada(
+            UUID.randomUUID(), "Texto anterior\ncom acentuação", UUID.randomUUID(), T1);
+
+    // Act
+    final AtividadeSolicitacao result =
+        AtividadeSolicitacaoMapper.toDomain(AtividadeSolicitacaoMapper.toJpa(original));
+
+    // Assert
+    assertEquals(TipoAtividadeSolicitacao.INSTRUCAO_ALTERADA, result.getTipo());
+    assertEquals("Texto anterior\ncom acentuação", result.getComentario());
+    assertEquals(original.getAutorUsuarioId(), result.getAutorUsuarioId());
+  }
 
   @Test
   void atividadeMapper_fullRoundtrip() {

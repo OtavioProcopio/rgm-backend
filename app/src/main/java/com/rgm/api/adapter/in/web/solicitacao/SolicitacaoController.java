@@ -5,6 +5,7 @@ import com.rgm.api.adapter.in.web.dto.request.AbrirSolicitacaoRequest;
 import com.rgm.api.adapter.in.web.dto.request.CancelarSolicitacaoRequest;
 import com.rgm.api.adapter.in.web.dto.request.ComentarioRequest;
 import com.rgm.api.adapter.in.web.dto.request.DevolverSolicitacaoRequest;
+import com.rgm.api.adapter.in.web.dto.request.EditarInstrucaoRequest;
 import com.rgm.api.adapter.in.web.dto.request.EditarSolicitacaoRequest;
 import com.rgm.api.adapter.in.web.dto.request.EncerrarSolicitacaoRequest;
 import com.rgm.api.adapter.in.web.dto.request.EnviarParaValidacaoRequest;
@@ -23,6 +24,7 @@ import com.rgm.api.adapter.out.report.SolicitacaoPdfService;
 import com.rgm.api.core.application.usecases.solicitacao.AbrirSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.CancelarSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.DevolverSolicitacaoUseCase;
+import com.rgm.api.core.application.usecases.solicitacao.EditarInstrucaoSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.EditarSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.EncerrarSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.EnviarParaValidacaoUseCase;
@@ -78,6 +80,7 @@ public class SolicitacaoController {
   private final EncerrarSolicitacaoUseCase encerrarUseCase;
   private final CancelarSolicitacaoUseCase cancelarUseCase;
   private final RegistrarComentarioUseCase comentarioUseCase;
+  private final EditarInstrucaoSolicitacaoUseCase editarInstrucaoUseCase;
   private final EditarSolicitacaoUseCase editarUseCase;
   private final ListarSolicitacoesUseCase listarUseCase;
   private final ObterMetricasSolicitacoesUseCase obterMetricasUseCase;
@@ -101,6 +104,7 @@ public class SolicitacaoController {
       final CancelarSolicitacaoUseCase cancelarUseCase,
       final RegistrarComentarioUseCase comentarioUseCase,
       final EditarSolicitacaoUseCase editarUseCase,
+      final EditarInstrucaoSolicitacaoUseCase editarInstrucaoUseCase,
       final ListarSolicitacoesUseCase listarUseCase,
       final ObterMetricasSolicitacoesUseCase obterMetricasUseCase,
       final ObterHistoricoMetricasUseCase obterHistoricoMetricasUseCase,
@@ -120,6 +124,7 @@ public class SolicitacaoController {
     this.encerrarUseCase = encerrarUseCase;
     this.cancelarUseCase = cancelarUseCase;
     this.comentarioUseCase = comentarioUseCase;
+    this.editarInstrucaoUseCase = editarInstrucaoUseCase;
     this.editarUseCase = editarUseCase;
     this.listarUseCase = listarUseCase;
     this.obterMetricasUseCase = obterMetricasUseCase;
@@ -598,6 +603,25 @@ public class SolicitacaoController {
     eventPublisher.publish(
         "solicitacao_atividade", new SolicitacaoAtividadeEvent("comentada", id), id);
     return ResponseEntity.status(HttpStatus.CREATED).build();
+  }
+
+  @PatchMapping("/{id}/instrucao")
+  public ResponseEntity<SolicitacaoResponse> editarInstrucao(
+      @PathVariable final UUID id,
+      @Valid @RequestBody final EditarInstrucaoRequest request,
+      final Authentication authentication) {
+    log.info("SolicitacaoController.editarInstrucao iniciado");
+    final UUID usuarioId = UUID.fromString(authentication.getName());
+    final var output =
+        editarInstrucaoUseCase.execute(
+            new EditarInstrucaoSolicitacaoUseCase.Input(id, request.instrucao(), usuarioId));
+    final var response = SolicitacaoResponse.from(output.solicitacao());
+    if (!output.alterada()) {
+      return ResponseEntity.ok(response);
+    }
+    eventPublisher.publish(
+        "solicitacao_atividade", new SolicitacaoAtividadeEvent("instrucao_editada", id), id);
+    return ResponseEntity.ok(publicar("instrucao_editada", response));
   }
 
   @PatchMapping("/{id}/cancelar")

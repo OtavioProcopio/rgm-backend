@@ -236,6 +236,7 @@ classDiagram
         MUDANCA_STATUS
         COMENTARIO
         EVIDENCIA_ADICIONADA
+        INSTRUCAO_ALTERADA
     }
 
     class TipoEventoModelo {
@@ -296,7 +297,7 @@ sequenceDiagram
     else Sem responsaveis
         API-->>WEB: 400 Regra de negocio
     else OK
-        API->>DB: UPDATE Solicitacao status=EM_ANDAMENTO prioridade
+        API->>DB: UPDATE Solicitacao status=EM_ANDAMENTO prioridade instrucao
         API->>DB: INSERT SolicitacaoAtribuicao (1 ou mais)
         API->>DB: INSERT Atividades ATRIBUICAO e MUDANCA_STATUS
         API-->>WEB: 200

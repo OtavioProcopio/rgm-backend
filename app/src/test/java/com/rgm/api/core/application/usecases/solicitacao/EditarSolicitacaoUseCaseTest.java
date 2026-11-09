@@ -1,5 +1,6 @@
 package com.rgm.api.core.application.usecases.solicitacao;
 
+import static com.rgm.api.support.SolicitacaoTestBuilder.umaSolicitacao;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -241,5 +242,24 @@ class EditarSolicitacaoUseCaseTest {
     // Assert
     assertEquals("Novo titulo", editada.getTitulo());
     verify(atividadeRepository, times(1)).save(any());
+  }
+
+  @Test
+  void shouldKeepTheInstrucaoWhenTituloAndDescricaoAreEdited() {
+    // Arrange
+    final Usuario gestor = criarGestor();
+    final Solicitacao sol =
+        umaSolicitacao().emAndamento().comInstrucao("Trocar o gabarito").build();
+    when(usuarioRepository.findById(gestor.getId())).thenReturn(Optional.of(gestor));
+    when(solicitacaoRepository.findById(sol.getId())).thenReturn(Optional.of(sol));
+    when(solicitacaoRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+    // Act
+    final Solicitacao result =
+        useCase.execute(input(sol.getId(), gestor.getId(), TipoSolicitacao.REPARO));
+
+    // Assert
+    assertEquals("Novo titulo", result.getTitulo());
+    assertEquals("Trocar o gabarito", result.getInstrucao());
   }
 }

@@ -1,5 +1,6 @@
 package com.rgm.api.core.application.usecases.solicitacao;
 
+import static com.rgm.api.support.SolicitacaoTestBuilder.umaSolicitacao;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -274,5 +275,37 @@ class EnviarParaValidacaoUseCaseTest {
                         solicitacao.getId(), gestor.getId(), "Serviço realizado com sucesso")));
 
     assertTrue(ex.getMessage().contains("exigem o anexo de pelo menos 1 evidência"));
+  }
+
+  @Test
+  void shouldKeepTheInstrucaoWhenEnviarParaValidacao() {
+    // Arrange
+    final Instant agora = Instant.now();
+    final Usuario gestor =
+        new Usuario(
+            UUID.randomUUID(),
+            "Gestor",
+            "g@test.com",
+            "hash",
+            PerfilUsuario.GESTOR,
+            true,
+            agora,
+            agora);
+    final Solicitacao sol =
+        umaSolicitacao().emAndamento().comInstrucao("Trocar o gabarito").build();
+    when(usuarioRepository.findById(gestor.getId())).thenReturn(Optional.of(gestor));
+    when(solicitacaoRepository.findById(sol.getId())).thenReturn(Optional.of(sol));
+    when(solicitacaoRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(atividadeRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    // Act
+    final Solicitacao resultado =
+        useCase.execute(
+            new EnviarParaValidacaoUseCase.Input(
+                sol.getId(), gestor.getId(), "Feito aqui, conferido"));
+
+    // Assert
+    assertEquals(StatusSolicitacao.EM_VALIDACAO, resultado.getStatus());
+    assertEquals("Trocar o gabarito", resultado.getInstrucao());
   }
 }

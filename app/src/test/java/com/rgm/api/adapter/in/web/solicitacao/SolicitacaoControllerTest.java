@@ -1,5 +1,6 @@
 package com.rgm.api.adapter.in.web.solicitacao;
 
+import static com.rgm.api.support.SolicitacaoTestBuilder.umaSolicitacao;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -35,6 +36,7 @@ import com.rgm.api.adapter.out.security.JwtAuthenticationFilter;
 import com.rgm.api.core.application.usecases.solicitacao.AbrirSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.CancelarSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.DevolverSolicitacaoUseCase;
+import com.rgm.api.core.application.usecases.solicitacao.EditarInstrucaoSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.EditarSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.EncerrarSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.EnviarParaValidacaoUseCase;
@@ -45,6 +47,7 @@ import com.rgm.api.core.application.usecases.solicitacao.ObterMetricasSolicitaco
 import com.rgm.api.core.application.usecases.solicitacao.ObterSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.RegistrarComentarioUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.TriarSolicitacaoUseCase;
+import com.rgm.api.core.domain.exceptions.ConflitoException;
 import com.rgm.api.core.domain.exceptions.NaoAutorizadoException;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
@@ -90,6 +93,7 @@ class SolicitacaoControllerTest {
   @Autowired private ObjectMapper objectMapper;
   @MockitoBean private AbrirSolicitacaoUseCase abrirUseCase;
   @MockitoBean private TriarSolicitacaoUseCase triarUseCase;
+  @MockitoBean private EditarInstrucaoSolicitacaoUseCase editarInstrucaoUseCase;
   @MockitoBean private EnviarParaValidacaoUseCase enviarUseCase;
   @MockitoBean private DevolverSolicitacaoUseCase devolverUseCase;
   @MockitoBean private EncerrarSolicitacaoUseCase encerrarUseCase;
@@ -420,7 +424,7 @@ class SolicitacaoControllerTest {
   }
 
   @Test
-  void shouldReturn400WhenTriarHasNoDescricao() throws Exception {
+  void shouldReturn400WhenTriarHasNoInstrucao() throws Exception {
     // Arrange
     final String corpo =
         "{\"prioridade\":\"ALTA\",\"responsavelIds\":[\"" + UUID.randomUUID() + "\"]}";
@@ -437,12 +441,12 @@ class SolicitacaoControllerTest {
   }
 
   @Test
-  void shouldReturn400WhenTriarDescricaoIsBlankOrTooLong() throws Exception {
-    for (final String descricao : List.of("   ", "x".repeat(2001))) {
+  void shouldReturn400WhenTriarInstrucaoIsBlankOrTooLong() throws Exception {
+    for (final String instrucao : List.of("   ", "x".repeat(2001))) {
       // Arrange
       final var corpo =
           objectMapper.writeValueAsString(
-              new TriarSolicitacaoRequest("ALTA", List.of(UUID.randomUUID()), descricao));
+              new TriarSolicitacaoRequest("ALTA", List.of(UUID.randomUUID()), instrucao));
 
       // Act + Assert
       mockMvc
@@ -457,7 +461,7 @@ class SolicitacaoControllerTest {
   }
 
   @Test
-  void shouldAcceptTriarWhenDescricaoHasExactly2000Characters() throws Exception {
+  void shouldAcceptTriarWhenInstrucaoHasExactly2000Characters() throws Exception {
     // Arrange
     final UUID solId = UUID.randomUUID();
     final Instant agora = Instant.now();
@@ -487,6 +491,194 @@ class SolicitacaoControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(corpo))
         .andExpect(status().isOk());
+  }
+
+  @Test
+  void shouldReturn400WhenTriarUsesTheOldDescricaoField() throws Exception {
+    // Arrange: o corpo da spec 014 (descricao) nao vale mais
+    final String corpo =
+        "{\"prioridade\":\"ALTA\",\"responsavelIds\":[\""
+            + UUID.randomUUID()
+            + "\"],\"descricao\":\"Trocar o gabarito\"}";
+
+    // Act + Assert
+    mockMvc
+        .perform(
+            patch("/api/solicitacoes/{id}/triar", UUID.randomUUID())
+                .with(user(UUID.randomUUID().toString()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(corpo))
+        .andExpect(status().isBadRequest());
+    verifyNoInteractions(triarUseCase);
+  }
+
+  @Test
+  void shouldPassTheInstrucaoToTheUseCaseWhenTriar() throws Exception {
+    // Arrange
+    final UUID solId = UUID.randomUUID();
+    final UUID gestorId = UUID.randomUUID();
+    final UUID responsavel = UUID.randomUUID();
+    when(triarUseCase.execute(any()))
+        .thenReturn(umaSolicitacao().emAndamento().comInstrucao("Trocar o gabarito").build());
+
+    // Act
+    mockMvc
+        .perform(
+            patch("/api/solicitacoes/{id}/triar", solId)
+                .with(user(gestorId.toString()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        new TriarSolicitacaoRequest(
+                            "ALTA", List.of(responsavel), "Trocar o gabarito"))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.instrucao").value("Trocar o gabarito"));
+
+    // Assert
+    final var input = ArgumentCaptor.forClass(TriarSolicitacaoUseCase.Input.class);
+    verify(triarUseCase).execute(input.capture());
+    assertEquals("Trocar o gabarito", input.getValue().instrucao());
+    assertEquals(gestorId, input.getValue().gestorId());
+  }
+
+  // ── PATCH /{id}/instrucao ─────────────────────────────────────────────────
+
+  private MockHttpServletRequestBuilder editarInstrucao(final UUID id, final String corpo) {
+    return patch("/api/solicitacoes/{id}/instrucao", id)
+        .with(user(UUID.randomUUID().toString()))
+        .contentType(MediaType.APPLICATION_JSON)
+        .content(corpo);
+  }
+
+  @Test
+  void shouldReturnTheSolicitacaoAndPublishBothEventsWhenEditarInstrucaoChangesTheText()
+      throws Exception {
+    // Arrange
+    final Solicitacao editada =
+        umaSolicitacao().emAndamento().comInstrucao("Nova instrucao").build();
+    when(editarInstrucaoUseCase.execute(any()))
+        .thenReturn(new EditarInstrucaoSolicitacaoUseCase.Output(editada, true));
+
+    // Act
+    mockMvc
+        .perform(editarInstrucao(editada.getId(), "{\"instrucao\":\"Nova instrucao\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(editada.getId().toString()))
+        .andExpect(jsonPath("$.instrucao").value("Nova instrucao"));
+
+    // Assert
+    final var evento = ArgumentCaptor.forClass(SolicitacaoEvent.class);
+    verify(eventPublisher).publish(eq("solicitacao"), evento.capture(), eq(editada.getId()), any());
+    assertEquals("instrucao_editada", evento.getValue().tipo());
+    assertEquals("Nova instrucao", evento.getValue().solicitacao().instrucao());
+    final var atividade = ArgumentCaptor.forClass(SolicitacaoAtividadeEvent.class);
+    verify(eventPublisher)
+        .publish(eq("solicitacao_atividade"), atividade.capture(), eq(editada.getId()));
+    assertEquals("instrucao_editada", atividade.getValue().tipo());
+  }
+
+  @Test
+  void shouldRespond200AndPublishNothingWhenEditarInstrucaoChangesNothing() throws Exception {
+    // Arrange
+    final Solicitacao igual = umaSolicitacao().emAndamento().comInstrucao("Igual").build();
+    when(editarInstrucaoUseCase.execute(any()))
+        .thenReturn(new EditarInstrucaoSolicitacaoUseCase.Output(igual, false));
+
+    // Act + Assert
+    mockMvc
+        .perform(editarInstrucao(igual.getId(), "{\"instrucao\":\"Igual\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.instrucao").value("Igual"));
+    verifyNoInteractions(eventPublisher);
+  }
+
+  @Test
+  void shouldPassTheAuthenticatedUserAndTheTextToTheUseCaseWhenEditarInstrucao() throws Exception {
+    // Arrange
+    final UUID solId = UUID.randomUUID();
+    final UUID usuarioId = UUID.randomUUID();
+    when(editarInstrucaoUseCase.execute(any()))
+        .thenReturn(
+            new EditarInstrucaoSolicitacaoUseCase.Output(
+                umaSolicitacao().emAndamento().comInstrucao("Texto").build(), true));
+
+    // Act
+    mockMvc
+        .perform(
+            patch("/api/solicitacoes/{id}/instrucao", solId)
+                .with(user(usuarioId.toString()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"instrucao\":\"Texto\"}"))
+        .andExpect(status().isOk());
+
+    // Assert
+    final var input = ArgumentCaptor.forClass(EditarInstrucaoSolicitacaoUseCase.Input.class);
+    verify(editarInstrucaoUseCase).execute(input.capture());
+    assertEquals(
+        new EditarInstrucaoSolicitacaoUseCase.Input(solId, "Texto", usuarioId), input.getValue());
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {"{}", "{\"instrucao\":null}", "{\"instrucao\":\"\"}", "{\"instrucao\":\"   \"}"})
+  void shouldReturn400WhenEditarInstrucaoHasNoText(final String corpo) throws Exception {
+    mockMvc.perform(editarInstrucao(UUID.randomUUID(), corpo)).andExpect(status().isBadRequest());
+    verifyNoInteractions(editarInstrucaoUseCase);
+  }
+
+  @Test
+  void shouldReturn400WhenEditarInstrucaoExceedsTheLimitAndAcceptTheLimit() throws Exception {
+    // Arrange
+    when(editarInstrucaoUseCase.execute(any()))
+        .thenReturn(
+            new EditarInstrucaoSolicitacaoUseCase.Output(
+                umaSolicitacao().emAndamento().comInstrucao("x".repeat(2000)).build(), true));
+
+    // Act + Assert
+    mockMvc
+        .perform(editarInstrucao(UUID.randomUUID(), "{\"instrucao\":\"" + "x".repeat(2001) + "\"}"))
+        .andExpect(status().isBadRequest());
+    mockMvc
+        .perform(editarInstrucao(UUID.randomUUID(), "{\"instrucao\":\"" + "x".repeat(2000) + "\"}"))
+        .andExpect(status().isOk());
+  }
+
+  @Test
+  void shouldRespond409WhenEditarInstrucaoIsOutsideEmAndamento() throws Exception {
+    // Arrange
+    when(editarInstrucaoUseCase.execute(any()))
+        .thenThrow(new ConflitoException("fora de andamento"));
+
+    // Act + Assert
+    mockMvc
+        .perform(editarInstrucao(UUID.randomUUID(), "{\"instrucao\":\"Nova\"}"))
+        .andExpect(status().isConflict());
+    verifyNoInteractions(eventPublisher);
+  }
+
+  @Test
+  void shouldRespond403WhenTheProfileCannotEditarInstrucao() throws Exception {
+    // Arrange
+    when(editarInstrucaoUseCase.execute(any()))
+        .thenThrow(new NaoAutorizadoException("sem permissao"));
+
+    // Act + Assert
+    mockMvc
+        .perform(editarInstrucao(UUID.randomUUID(), "{\"instrucao\":\"Nova\"}"))
+        .andExpect(status().isForbidden());
+    verifyNoInteractions(eventPublisher);
+  }
+
+  @Test
+  void shouldRespond404WhenTheSolicitacaoDoesNotExistOnEditarInstrucao() throws Exception {
+    // Arrange
+    when(editarInstrucaoUseCase.execute(any()))
+        .thenThrow(new RecursoNaoEncontradoException("Solicitacao nao encontrada"));
+
+    // Act + Assert
+    mockMvc
+        .perform(editarInstrucao(UUID.randomUUID(), "{\"instrucao\":\"Nova\"}"))
+        .andExpect(status().isNotFound());
   }
 
   @Test

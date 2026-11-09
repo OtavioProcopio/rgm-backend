@@ -17,6 +17,7 @@ import com.rgm.api.core.domain.model.aggregates.EventoModelo;
 import com.rgm.api.core.domain.model.aggregates.Modelo;
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
 import com.rgm.api.core.domain.model.entities.AtividadeSolicitacao;
+import com.rgm.api.core.domain.model.enums.TipoAtividadeSolicitacao;
 import com.rgm.api.core.domain.ports.repositories.MetricaModeloRow;
 import java.awt.Color;
 import java.io.ByteArrayOutputStream;
@@ -519,6 +520,15 @@ public class ModeloPdfService {
         doc.add(desc);
       }
 
+      if (s.getInstrucao() != null && !s.getInstrucao().isBlank()) {
+        final var instrucao =
+            new Paragraph(
+                "Instrução: " + s.getInstrucao(),
+                FontFactory.getFont(FontFactory.HELVETICA, 7, new Color(80, 80, 80)));
+        instrucao.setSpacingAfter(2);
+        doc.add(instrucao);
+      }
+
       if (s.getComentarioFinal() != null && !s.getComentarioFinal().isBlank()) {
         final var comentFinal =
             new Paragraph(
@@ -558,7 +568,7 @@ public class ModeloPdfService {
                     + statusLabel(a.getParaStatus().name())
                 : "—";
         addCell(table, mudanca, bg, CELL_FONT);
-        addCell(table, a.getComentario() != null ? a.getComentario() : "—", bg, CELL_FONT);
+        addCell(table, detalheDaAtividade(a), bg, CELL_FONT);
         isEven = !isEven;
       }
       doc.add(table);
@@ -635,6 +645,16 @@ public class ModeloPdfService {
     };
   }
 
+  /** O texto da atividade; na correcao da instrucao, ele e o que estava escrito antes. */
+  private static String detalheDaAtividade(final AtividadeSolicitacao a) {
+    if (a.getComentario() == null) {
+      return "—";
+    }
+    return a.getTipo() == TipoAtividadeSolicitacao.INSTRUCAO_ALTERADA
+        ? "Antes: " + a.getComentario()
+        : a.getComentario();
+  }
+
   private String tipoAtividadeLabel(final String tipo) {
     return switch (tipo) {
       case "ABERTURA" -> "Abertura";
@@ -642,6 +662,7 @@ public class ModeloPdfService {
       case "MUDANCA_STATUS" -> "Mudança de status";
       case "COMENTARIO" -> "Comentário";
       case "EVIDENCIA_ADICIONADA" -> "Evidência";
+      case "INSTRUCAO_ALTERADA" -> "Instrução alterada";
       default -> tipo;
     };
   }

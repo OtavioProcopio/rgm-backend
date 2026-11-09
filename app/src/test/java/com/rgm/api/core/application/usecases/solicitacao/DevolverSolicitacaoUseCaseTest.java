@@ -1,5 +1,6 @@
 package com.rgm.api.core.application.usecases.solicitacao;
 
+import static com.rgm.api.support.SolicitacaoTestBuilder.umaSolicitacao;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -118,5 +119,26 @@ class DevolverSolicitacaoUseCaseTest {
             useCase.execute(
                 new DevolverSolicitacaoUseCase.Input(
                     UUID.randomUUID(), "motivo", null, operador.getId())));
+  }
+
+  @Test
+  void shouldKeepTheInstrucaoWhenDevolver() {
+    // Arrange
+    final Usuario gestor = criarGestor();
+    final Solicitacao sol =
+        umaSolicitacao().emValidacao().comInstrucao("Trocar o gabarito").build();
+    when(usuarioRepository.findById(gestor.getId())).thenReturn(Optional.of(gestor));
+    when(solicitacaoRepository.findById(sol.getId())).thenReturn(Optional.of(sol));
+    when(solicitacaoRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(atividadeRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    // Act
+    final Solicitacao resultado =
+        useCase.execute(
+            new DevolverSolicitacaoUseCase.Input(sol.getId(), "Refazer", null, gestor.getId()));
+
+    // Assert
+    assertEquals(StatusSolicitacao.EM_ANDAMENTO, resultado.getStatus());
+    assertEquals("Trocar o gabarito", resultado.getInstrucao());
   }
 }

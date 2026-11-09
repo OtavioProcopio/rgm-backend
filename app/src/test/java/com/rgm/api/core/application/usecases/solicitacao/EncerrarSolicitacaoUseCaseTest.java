@@ -1,5 +1,6 @@
 package com.rgm.api.core.application.usecases.solicitacao;
 
+import static com.rgm.api.support.SolicitacaoTestBuilder.umaSolicitacao;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -226,5 +227,26 @@ class EncerrarSolicitacaoUseCaseTest {
             useCase.execute(
                 new EncerrarSolicitacaoUseCase.Input(
                     UUID.randomUUID(), true, "Teste", operador.getId())));
+  }
+
+  @Test
+  void shouldKeepTheInstrucaoWhenConcluir() {
+    // Arrange
+    final Usuario gestor = criarGestor();
+    final Solicitacao sol =
+        umaSolicitacao().emValidacao().comInstrucao("Trocar o gabarito").build();
+    when(usuarioRepository.findById(gestor.getId())).thenReturn(Optional.of(gestor));
+    when(solicitacaoRepository.findById(sol.getId())).thenReturn(Optional.of(sol));
+    when(solicitacaoRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(atividadeRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    // Act
+    final Solicitacao resultado =
+        useCase.execute(
+            new EncerrarSolicitacaoUseCase.Input(sol.getId(), true, "Feito", gestor.getId()));
+
+    // Assert
+    assertEquals(StatusSolicitacao.CONCLUIDA, resultado.getStatus());
+    assertEquals("Trocar o gabarito", resultado.getInstrucao());
   }
 }

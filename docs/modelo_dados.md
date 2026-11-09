@@ -16,7 +16,7 @@ Este documento descreve as entidades, enums e relacionamentos de alto nível.
 - `StatusSolicitacao`: `A_FAZER` | `EM_ANDAMENTO` | `EM_VALIDACAO` | `CONCLUIDA` | `CANCELADA`
 - `PrioridadeSolicitacao`: `BAIXA` | `MEDIA` | `ALTA` | `URGENTE`
 - `TipoSolicitacao`: `REPARO` | `INSPECAO` | `REENGENHARIA`
-- `TipoAtividadeSolicitacao`: `ABERTURA` | `ATRIBUICAO` | `MUDANCA_STATUS` | `COMENTARIO` | `EVIDENCIA_ADICIONADA`
+- `TipoAtividadeSolicitacao`: `ABERTURA` | `ATRIBUICAO` | `MUDANCA_STATUS` | `COMENTARIO` | `EVIDENCIA_ADICIONADA` | `INSTRUCAO_ALTERADA` (o texto anterior fica em `comentario`)
 - `TipoEventoModelo`: `MODIFICACAO` | `INSPECAO` | `REPARO` | `AJUSTE` | `MANUTENCAO` | `OUTRO`
 
 ## Entidades
@@ -61,6 +61,7 @@ Relação (conceitual):
 - `tipo: TipoSolicitacao`
 - `status: StatusSolicitacao`
 - `prioridade: PrioridadeSolicitacao` (opcional em `A_FAZER`; obrigatória a partir de `EM_ANDAMENTO`)
+- `instrucao: String?` (até 2000; gravada na triagem e corrigida em andamento; nula em `A_FAZER` e nas solicitações triadas antes da migração V13)
 - `modeloId: UUID`
 - `abertaPorUsuarioId: UUID`
 - `comentarioFinal: string` (opcional)
