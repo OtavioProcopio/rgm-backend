@@ -82,8 +82,8 @@ apagá-la, a correção vira comentário solto, e cada campo novo custa dezenas 
 
 | ID | Requisito | Critério mensurável |
 |---|---|---|
-| RNF-01 | Manutenibilidade do agregado | Acrescentar um campo à `Solicitacao` altera 1 método de cópia no agregado e 1 ponto no mapper; `new Solicitacao(` em código de produção aparece em no máximo 3 pontos (fábricas e reidratação) |
-| RNF-02 | Manutenibilidade dos testes | Os testes obtêm solicitações por um único construtor de dados de teste; `new Solicitacao(` em teste aparece só nele e no teste do próprio construtor do agregado |
+| RNF-01 | Manutenibilidade do agregado | Acrescentar um campo à `Solicitacao` altera o `Builder`, o `toBuilder()` e o construtor no agregado e 1 ponto no mapper; `new Solicitacao(` em código de produção aparece em 1 ponto só (`Builder.build()`) |
+| RNF-02 | Manutenibilidade dos testes | Os testes montam solicitações por `Solicitacao.builder()` (campos nomeados, só os que importam) ou pelo `SolicitacaoTestBuilder` (padrões válidos por status); `new Solicitacao(` não aparece em teste algum |
 | RNF-03 | Refatoração sem mudança de comportamento | A suíte existente passa sem alterar nenhuma asserção, antes de qualquer campo novo |
 | RNF-04 | Cobertura dos arquivos tocados | ≥ 95% de linhas por arquivo (Princípio 10); nenhum teste escrito só para cobrir linha |
 | RNF-05 | Esquema | 1 migração nova, aditiva, coluna anulável, sem reescrever linhas existentes; o novo tipo de atividade não exige migração (a coluna `tipo` é texto livre) |
@@ -91,14 +91,12 @@ apagá-la, a correção vira comentário solto, e cada campo novo custa dezenas 
 
 ## Ordem de publicação (Princípio 9)
 
-- Campo novo na resposta, valor novo em `acoesPermitidas`, rota nova (`/instrucao`), evento novo
-  (`instrucao_editada`) e tipo de atividade novo são **aditivos**: o front atual continua
-  funcionando (o histórico deve tratar tipo de atividade desconhecido; ver spec 018).
-- Renomear `descricao` para `instrucao` no corpo de `/triar` **quebra** o front atual. A
-  `descricao` existe só no `develop` (spec 014, PR #139), não em produção, então a quebra é
-  declarada e limitada. Backend e front desta entrega (spec 018) são publicados **juntos, com
-  o backend primeiro no mesmo deploy**.
-- Fica proibido publicar o backend da spec 014 sem esta spec: a `descricao` do corpo nunca chega à produção.
+Decisão do usuário (2026-11-09): o backend é feito por completo primeiro e o `rgm-frontend`
+(spec 018) em seguida; o intervalo em que o front atual convive com o backend novo é aceito, sem
+comportamento de reserva. Mudanças aditivas (campo `instrucao`, rota `/instrucao`, evento,
+ação `EDITAR_INSTRUCAO`, tipo de atividade `INSTRUCAO_ALTERADA`) não quebram o contrato. O corpo
+de `/triar` muda de `descricao` para `instrucao`: é a única quebra, declarada aqui, e o campo
+`descricao` existe só no `develop` (spec 014), nunca foi publicado em produção.
 
 ## Critérios de aceite
 

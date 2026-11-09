@@ -2,7 +2,7 @@
 
 > Descreve **como**. Deriva da spec e da constituição; não introduz requisito novo.
 > `MAIN` = `app/src/main/java/com/rgm/api`, `TEST` = `app/src/test/java/com/rgm/api`.
-> Base: `develop` com a spec 014. Publicação: junto do front (spec 018), backend primeiro.
+> Base: `develop` com a spec 014. Publicação: backend completo primeiro, front (spec 018) depois.
 
 ## Decisões técnicas
 
@@ -10,7 +10,7 @@
 |---|---|---|---|
 | Cópia do agregado | `Solicitacao.Builder` aninhado, com `toBuilder()` privado: cada transição diz só o que muda (`toBuilder().status(X).atualizadaEm(agora).build()`); o construtor vira privado e é chamado em **um** ponto (`build()`) | (a) Lombok `@Builder`/`@With`; (b) `record` com `with`; (c) agregado mutável com setters; (d) manter o construtor e só adicionar o argumento | (a) `core` não importa framework nem biblioteca externa (P7); (b) o construtor canônico de 17 componentes tem o mesmo problema e o agregado tem comportamento e invariantes; (c) quebra a imutabilidade e a leitura segura entre threads; (d) é o problema atual |
 | Reidratação | O mapper usa `Solicitacao.builder()` público (mesmo `build()`, mesmas invariantes) | Fábrica estática com 17 parâmetros | Nomeia cada campo; evita trocar dois `Instant` |
-| Dados de teste | `SolicitacaoTestBuilder` (Test Data Builder) em `TEST/support`, com padrões válidos por status (`umaSolicitacao().emAndamento().comInstrucao("…").build()`) | Mother com um método por cenário; construtor direto em cada teste | Um ponto de mudança; nomeia o que importa para o teste e esconde o resto |
+| Dados de teste | Os 51 usos existentes migram para `Solicitacao.builder()`, omitindo os campos nulos (o `Builder` já é nulo por padrão); testes novos usam `SolicitacaoTestBuilder` em `TEST/support`, com padrões válidos por status (`umaSolicitacao().emAndamento().comInstrucao("…").build()`), criado junto do primeiro teste que o usa | Migrar tudo para o `SolicitacaoTestBuilder` de uma vez; construtor direto em cada teste | A migração mecânica não muda semântica e fecha o construtor; o builder de dados entra quando houver teste novo que precise dele, sem código sem uso |
 | Guarda contra campo esquecido | Teste `SolicitacaoCopiaTest`: monta uma solicitação com **todos** os campos preenchidos, aplica cada transição e compara, com `usingRecursiveComparison().ignoringFields(...)`, que só os campos declarados da transição mudaram | Confiar na revisão | Um campo novo que a cópia esquecer faz o teste falhar; é o teste que justifica o `toBuilder()` |
 | Onde mora a regra "só de A_FAZER" | No agregado: `triar` recusa qualquer status que não seja `A_FAZER` com `TransicaoStatusInvalidaException` (409 pelo `GlobalExceptionHandler`) | Checar no caso de uso | A regra é do domínio; o caso de uso e qualquer outro chamador a herdam |
 | Onde mora a regra "instrução obrigatória" | No agregado (`triar` exige texto não vazio e ≤ 2000) **e** no DTO (`@NotBlank`, `@Size`) | Só no DTO | O caso de uso é chamado fora do controller; o DTO dá o 400 cedo |
@@ -41,7 +41,7 @@
 |---|---|---|---|
 | domain | `MAIN/core/domain/model/aggregates/Solicitacao.java` (`Builder`, `toBuilder`, construtor privado, 9 cópias reescritas) | alterar | `TEST/core/domain/model/SolicitacaoTest.java` |
 | per | `MAIN/adapter/out/persistence/mapper/SolicitacaoMapper.java` (`toDomain` pelo builder) | alterar | `TEST/adapter/out/persistence/mapper/MapperRoundtripTest.java` |
-| test | `TEST/support/SolicitacaoTestBuilder.java` | criar | `TEST/support/SolicitacaoTestBuilderTest.java` (padrões válidos por status) |
+| test | `TEST/support/SolicitacaoTestBuilder.java` (criado na Fase 2, junto do primeiro teste que o usa) | criar | `TEST/support/SolicitacaoTestBuilderTest.java` (padrões válidos por status) |
 | test | `TEST/core/domain/model/SolicitacaoCopiaTest.java` | criar | — |
 | test | os ~24 arquivos que hoje usam `new Solicitacao(` | alterar (mecânico) | — |
 
@@ -99,9 +99,7 @@ Uma migração Flyway (`V10`). Nenhum alvo ou variável novo.
 | A refatoração esquece de copiar um campo numa transição | média | `SolicitacaoCopiaTest` com comparação recursiva de todos os campos; roda antes da fase 2 |
 | Migração dos ~50 usos de teste mascara um teste que dependia de um padrão | baixa | Fase 1 não altera nenhuma asserção (RNF-03); revisão do diff só de construção |
 | `triar` recusar `EM_VALIDACAO` quebra um fluxo que alguém usa | baixa | O caso nunca foi documentado (UC-03 diz `A_FAZER → EM_ANDAMENTO`); teste de 409 por status; `devolver` continua sendo o caminho de `EM_VALIDACAO → EM_ANDAMENTO` |
-| Front antigo recebe 400 ao triar | alta se publicado sozinho | Ordem de publicação na spec |
 | Triadas antigas aparecem sem instrução | certa | Declarado; o front trata o nulo (spec 018) |
-| Front antigo recebe atividade de tipo desconhecido no histórico | média | Tipo novo só aparece depois de uma edição; a spec 018 trata tipo desconhecido; ordem de publicação |
 | Editar a instrução enquanto o responsável executa muda o que ele faz | média | O histórico guarda o texto anterior e o evento atualiza a tela do responsável; sem notificação ativa (fora de escopo) |
 | Edição concorrente com envio para validação | baixa | Mesma versão: uma das duas recebe 409; o status é rechecado no agregado |
 

@@ -8,13 +8,13 @@
 > Registro: um primeiro rascunho desta fase (T001 e T002) foi escrito antes da revisão da spec e
 > está em `git stash`, não commitado. Retoma-se dele depois da aprovação, refazendo o que mudar.
 
-- [ ] T001 Teste `SolicitacaoCopiaTest` (roda verde sobre o código atual: protege a refatoração): solicitação com todos os campos preenchidos; para cada transição (`triar`, `enviarParaValidacao`, `devolver`, `encerrar`, `cancelar`, `editar`) só mudam os campos declarados; `usingRecursiveComparison`
-- [ ] T002 `Solicitacao.Builder` e `toBuilder()`; construtor privado; reescrever as 9 cópias e as fábricas `abrir` e `abrirCriacao`; `SolicitacaoTest` e T001 verdes
-- [ ] T003 `SolicitacaoMapper.toDomain` pelo builder; `MapperRoundtripTest` verde
-- [ ] T004 Teste e `TEST/support/SolicitacaoTestBuilder` com padrões válidos para cada status (prioridade em `EM_ANDAMENTO` em diante, `concluidaEm` e `comentarioFinal` em `CONCLUIDA`, `canceladaEm` em `CANCELADA`)
-- [ ] T005 Migrar os ~50 usos de `new Solicitacao(` dos testes para o builder, arquivo a arquivo, sem tocar asserção; suíte verde ao fim
-- [ ] T006 Conferir RNF-01 e RNF-02 por busca: `new Solicitacao(` em produção ≤ 3 pontos; em teste só no builder e no teste do construtor
-- [ ] T007 `make validate` verde (commit só da refatoração)
+- [x] T001 Teste `SolicitacaoCopiaTest` (roda verde sobre o código atual: protege a refatoração): solicitação com todos os campos preenchidos; para cada transição (`triar`, `enviarParaValidacao`, `devolver`, `encerrar`, `cancelar`, `editar`) só mudam os campos declarados; `usingRecursiveComparison`
+- [x] T002 `Solicitacao.Builder` e `toBuilder()`; construtor privado; reescrever as 9 cópias e as fábricas `abrir` e `abrirCriacao`; `SolicitacaoTest` e T001 verdes
+- [x] T003 `SolicitacaoMapper.toDomain` pelo builder; `MapperRoundtripTest` verde
+- [~] T004 (movida para a Fase 2, junto do primeiro teste que a usa) Teste e `TEST/support/SolicitacaoTestBuilder` com padrões válidos para cada status (prioridade em `EM_ANDAMENTO` em diante, `concluidaEm` e `comentarioFinal` em `CONCLUIDA`, `canceladaEm` em `CANCELADA`)
+- [x] T005 Migrar os 51 usos de `new Solicitacao(` dos testes para `Solicitacao.builder()`, por transformação mecânica que omite campos nulos, sem tocar asserção; suíte verde ao fim
+- [x] T006 Conferir RNF-01 e RNF-02 por busca: `new Solicitacao(` em produção ≤ 3 pontos; em teste só no builder e no teste do construtor
+- [x] T007 `make validate` verde (commit só da refatoração)
 
 ## Fase 2 — Campo e triagem (RF-01 a RF-09)
 
