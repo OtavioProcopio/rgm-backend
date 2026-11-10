@@ -125,6 +125,61 @@ class FlywayMigrationTest {
     }
   }
 
+  @Test
+  void migrationV13DeveAcrescentarAInstrucaoAnulavelSemTocarNasSolicitacoesExistentes()
+      throws SQLException {
+    // Arrange: uma solicitacao ja triada, como existe em producao antes da V13
+    final DataSource ds = dataSource("rgm_v13");
+    Flyway.configure()
+        .dataSource(ds)
+        .locations("classpath:db/migration")
+        .target("12")
+        .load()
+        .migrate();
+    try (Connection c = ds.getConnection();
+        Statement st = c.createStatement()) {
+      st.execute(
+          "INSERT INTO usuarios (id, nome, perfil) VALUES "
+              + "('00000000-0000-0000-0000-0000000000b1', 'Gestor', 'GESTOR')");
+      st.execute(
+          "INSERT INTO modelos (id, codigo, versao, descricao, maquina) VALUES "
+              + "('00000000-0000-0000-0000-0000000000b2', 'M13', 1, 'm', 'M1')");
+      st.execute(
+          "INSERT INTO solicitacoes (id, titulo, tipo, status, prioridade, modelo_id, "
+              + "aberta_por_usuario_id) VALUES ('00000000-0000-0000-0000-0000000000b3', 'Antiga', "
+              + "'REPARO', 'EM_ANDAMENTO', 'ALTA', '00000000-0000-0000-0000-0000000000b2', "
+              + "'00000000-0000-0000-0000-0000000000b1')");
+    }
+
+    // Act
+    Flyway.configure().dataSource(ds).locations("classpath:db/migration").load().migrate();
+
+    // Assert
+    try (Connection c = ds.getConnection();
+        Statement st = c.createStatement()) {
+      assertEquals(
+          "text/YES",
+          unico(
+              st,
+              "SELECT data_type || '/' || is_nullable FROM information_schema.columns "
+                  + "WHERE table_name = 'solicitacoes' AND column_name = 'instrucao'"));
+      assertNull(
+          unico(
+              st,
+              "SELECT instrucao FROM solicitacoes WHERE id = '00000000-0000-0000-0000-0000000000b3'"),
+          "a solicitacao existente fica sem instrucao, sem texto inventado");
+      assertEquals("1", unico(st, "SELECT count(*) FROM solicitacoes"));
+      st.execute(
+          "UPDATE solicitacoes SET instrucao = 'Trocar o gabarito' "
+              + "WHERE id = '00000000-0000-0000-0000-0000000000b3'");
+      assertEquals(
+          "Trocar o gabarito",
+          unico(
+              st,
+              "SELECT instrucao FROM solicitacoes WHERE id = '00000000-0000-0000-0000-0000000000b3'"));
+    }
+  }
+
   private static List<String> versoes(final Statement st, final String maquina)
       throws SQLException {
     final List<String> r = new ArrayList<>();

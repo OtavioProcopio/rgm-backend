@@ -55,43 +55,37 @@ class ObterMetricasSolicitacoesUseCaseTest {
 
     final Instant criada1 = agora.minus(120, ChronoUnit.MINUTES);
     final Solicitacao sol1 =
-        new Solicitacao(
-            UUID.randomUUID(),
-            "Sol 1",
-            "Desc 1",
-            TipoSolicitacao.REPARO,
-            StatusSolicitacao.CONCLUIDA,
-            PrioridadeSolicitacao.MEDIA,
-            modeloId,
-            null /* modeloCodigo */,
-            null /* modeloMaquina */,
-            null /* modeloObservacoes */,
-            abertaPor,
-            "Comentario 1",
-            criada1,
-            agora,
-            agora,
-            null);
+        Solicitacao.builder()
+            .id(UUID.randomUUID())
+            .titulo("Sol 1")
+            .descricao("Desc 1")
+            .tipo(TipoSolicitacao.REPARO)
+            .status(StatusSolicitacao.CONCLUIDA)
+            .prioridade(PrioridadeSolicitacao.MEDIA)
+            .modeloId(modeloId)
+            .abertaPorUsuarioId(abertaPor)
+            .comentarioFinal("Comentario 1")
+            .criadaEm(criada1)
+            .atualizadaEm(agora)
+            .concluidaEm(agora)
+            .build();
 
     final Instant criada2 = agora.minus(60, ChronoUnit.MINUTES);
     final Solicitacao sol2 =
-        new Solicitacao(
-            UUID.randomUUID(),
-            "Sol 2",
-            "Desc 2",
-            TipoSolicitacao.REPARO,
-            StatusSolicitacao.CONCLUIDA,
-            PrioridadeSolicitacao.MEDIA,
-            modeloId,
-            null /* modeloCodigo */,
-            null /* modeloMaquina */,
-            null /* modeloObservacoes */,
-            abertaPor,
-            "Comentario 2",
-            criada2,
-            agora,
-            agora,
-            null);
+        Solicitacao.builder()
+            .id(UUID.randomUUID())
+            .titulo("Sol 2")
+            .descricao("Desc 2")
+            .tipo(TipoSolicitacao.REPARO)
+            .status(StatusSolicitacao.CONCLUIDA)
+            .prioridade(PrioridadeSolicitacao.MEDIA)
+            .modeloId(modeloId)
+            .abertaPorUsuarioId(abertaPor)
+            .comentarioFinal("Comentario 2")
+            .criadaEm(criada2)
+            .atualizadaEm(agora)
+            .concluidaEm(agora)
+            .build();
 
     when(solicitacaoRepository.getTempoMedioResolucaoSegundos()).thenReturn(5400L);
     when(solicitacaoRepository.countGroupByModeloId()).thenReturn(Map.of(modeloId, 2L));

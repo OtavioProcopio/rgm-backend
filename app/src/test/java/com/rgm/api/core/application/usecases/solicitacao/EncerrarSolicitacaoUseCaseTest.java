@@ -1,5 +1,6 @@
 package com.rgm.api.core.application.usecases.solicitacao;
 
+import static com.rgm.api.support.SolicitacaoTestBuilder.umaSolicitacao;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -60,44 +61,35 @@ class EncerrarSolicitacaoUseCaseTest {
 
   private Solicitacao criarSolicitacaoEmValidacao() {
     final Instant agora = Instant.now();
-    return new Solicitacao(
-        UUID.randomUUID(),
-        "Titulo",
-        "Descricao",
-        TipoSolicitacao.REPARO,
-        StatusSolicitacao.EM_VALIDACAO,
-        PrioridadeSolicitacao.ALTA,
-        UUID.randomUUID(),
-        null /* modeloCodigo */,
-        null /* modeloMaquina */,
-        null /* modeloObservacoes */,
-        UUID.randomUUID(),
-        null,
-        agora,
-        agora,
-        null,
-        null);
+    return Solicitacao.builder()
+        .id(UUID.randomUUID())
+        .titulo("Titulo")
+        .descricao("Descricao")
+        .tipo(TipoSolicitacao.REPARO)
+        .status(StatusSolicitacao.EM_VALIDACAO)
+        .prioridade(PrioridadeSolicitacao.ALTA)
+        .modeloId(UUID.randomUUID())
+        .abertaPorUsuarioId(UUID.randomUUID())
+        .criadaEm(agora)
+        .atualizadaEm(agora)
+        .build();
   }
 
   private Solicitacao criarSolicitacaoCriacaoEmValidacao() {
     final Instant agora = Instant.now();
-    return new Solicitacao(
-        UUID.randomUUID(),
-        "Novo modelo XYZ",
-        "Descricao do modelo pretendido",
-        TipoSolicitacao.CRIACAO,
-        StatusSolicitacao.EM_VALIDACAO,
-        PrioridadeSolicitacao.ALTA,
-        null,
-        "COD-XYZ",
-        "FBOX",
-        null,
-        UUID.randomUUID(),
-        null,
-        agora,
-        agora,
-        null,
-        null);
+    return Solicitacao.builder()
+        .id(UUID.randomUUID())
+        .titulo("Novo modelo XYZ")
+        .descricao("Descricao do modelo pretendido")
+        .tipo(TipoSolicitacao.CRIACAO)
+        .status(StatusSolicitacao.EM_VALIDACAO)
+        .prioridade(PrioridadeSolicitacao.ALTA)
+        .modeloCodigo("COD-XYZ")
+        .modeloMaquina("FBOX")
+        .abertaPorUsuarioId(UUID.randomUUID())
+        .criadaEm(agora)
+        .atualizadaEm(agora)
+        .build();
   }
 
   private Usuario criarGestor() {
@@ -235,5 +227,26 @@ class EncerrarSolicitacaoUseCaseTest {
             useCase.execute(
                 new EncerrarSolicitacaoUseCase.Input(
                     UUID.randomUUID(), true, "Teste", operador.getId())));
+  }
+
+  @Test
+  void shouldKeepTheInstrucaoWhenConcluir() {
+    // Arrange
+    final Usuario gestor = criarGestor();
+    final Solicitacao sol =
+        umaSolicitacao().emValidacao().comInstrucao("Trocar o gabarito").build();
+    when(usuarioRepository.findById(gestor.getId())).thenReturn(Optional.of(gestor));
+    when(solicitacaoRepository.findById(sol.getId())).thenReturn(Optional.of(sol));
+    when(solicitacaoRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(atividadeRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    // Act
+    final Solicitacao resultado =
+        useCase.execute(
+            new EncerrarSolicitacaoUseCase.Input(sol.getId(), true, "Feito", gestor.getId()));
+
+    // Assert
+    assertEquals(StatusSolicitacao.CONCLUIDA, resultado.getStatus());
+    assertEquals("Trocar o gabarito", resultado.getInstrucao());
   }
 }

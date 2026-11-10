@@ -1,5 +1,6 @@
 package com.rgm.api.core.application.usecases.solicitacao;
 
+import static com.rgm.api.support.SolicitacaoTestBuilder.umaSolicitacao;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -40,23 +41,18 @@ class DevolverSolicitacaoUseCaseTest {
 
   private Solicitacao criarSolicitacaoEmValidacao() {
     final Instant agora = Instant.now();
-    return new Solicitacao(
-        UUID.randomUUID(),
-        "Titulo",
-        "Descricao",
-        TipoSolicitacao.REPARO,
-        StatusSolicitacao.EM_VALIDACAO,
-        PrioridadeSolicitacao.ALTA,
-        UUID.randomUUID(),
-        null /* modeloCodigo */,
-        null /* modeloMaquina */,
-        null /* modeloObservacoes */,
-        UUID.randomUUID(),
-        null,
-        agora,
-        agora,
-        null,
-        null);
+    return Solicitacao.builder()
+        .id(UUID.randomUUID())
+        .titulo("Titulo")
+        .descricao("Descricao")
+        .tipo(TipoSolicitacao.REPARO)
+        .status(StatusSolicitacao.EM_VALIDACAO)
+        .prioridade(PrioridadeSolicitacao.ALTA)
+        .modeloId(UUID.randomUUID())
+        .abertaPorUsuarioId(UUID.randomUUID())
+        .criadaEm(agora)
+        .atualizadaEm(agora)
+        .build();
   }
 
   private Usuario criarGestor() {
@@ -123,5 +119,26 @@ class DevolverSolicitacaoUseCaseTest {
             useCase.execute(
                 new DevolverSolicitacaoUseCase.Input(
                     UUID.randomUUID(), "motivo", null, operador.getId())));
+  }
+
+  @Test
+  void shouldKeepTheInstrucaoWhenDevolver() {
+    // Arrange
+    final Usuario gestor = criarGestor();
+    final Solicitacao sol =
+        umaSolicitacao().emValidacao().comInstrucao("Trocar o gabarito").build();
+    when(usuarioRepository.findById(gestor.getId())).thenReturn(Optional.of(gestor));
+    when(solicitacaoRepository.findById(sol.getId())).thenReturn(Optional.of(sol));
+    when(solicitacaoRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(atividadeRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    // Act
+    final Solicitacao resultado =
+        useCase.execute(
+            new DevolverSolicitacaoUseCase.Input(sol.getId(), "Refazer", null, gestor.getId()));
+
+    // Assert
+    assertEquals(StatusSolicitacao.EM_ANDAMENTO, resultado.getStatus());
+    assertEquals("Trocar o gabarito", resultado.getInstrucao());
   }
 }

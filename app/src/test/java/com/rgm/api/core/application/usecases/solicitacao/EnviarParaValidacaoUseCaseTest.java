@@ -1,5 +1,6 @@
 package com.rgm.api.core.application.usecases.solicitacao;
 
+import static com.rgm.api.support.SolicitacaoTestBuilder.umaSolicitacao;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -58,23 +59,18 @@ class EnviarParaValidacaoUseCaseTest {
 
   private Solicitacao criarSolicitacaoEmAndamento() {
     final Instant agora = Instant.now();
-    return new Solicitacao(
-        UUID.randomUUID(),
-        "Titulo",
-        "Desc",
-        TipoSolicitacao.REPARO,
-        StatusSolicitacao.EM_ANDAMENTO,
-        PrioridadeSolicitacao.ALTA,
-        UUID.randomUUID(),
-        null /* modeloCodigo */,
-        null /* modeloMaquina */,
-        null /* modeloObservacoes */,
-        UUID.randomUUID(),
-        null,
-        agora,
-        agora,
-        null,
-        null);
+    return Solicitacao.builder()
+        .id(UUID.randomUUID())
+        .titulo("Titulo")
+        .descricao("Desc")
+        .tipo(TipoSolicitacao.REPARO)
+        .status(StatusSolicitacao.EM_ANDAMENTO)
+        .prioridade(PrioridadeSolicitacao.ALTA)
+        .modeloId(UUID.randomUUID())
+        .abertaPorUsuarioId(UUID.randomUUID())
+        .criadaEm(agora)
+        .atualizadaEm(agora)
+        .build();
   }
 
   @Test
@@ -180,23 +176,17 @@ class EnviarParaValidacaoUseCaseTest {
             agora,
             agora);
     final Solicitacao solicitacaoAFazer =
-        new Solicitacao(
-            UUID.randomUUID(),
-            "T",
-            "D",
-            TipoSolicitacao.REPARO,
-            StatusSolicitacao.A_FAZER,
-            null,
-            UUID.randomUUID(),
-            null /* modeloCodigo */,
-            null /* modeloMaquina */,
-            null /* modeloObservacoes */,
-            UUID.randomUUID(),
-            null,
-            agora,
-            agora,
-            null,
-            null);
+        Solicitacao.builder()
+            .id(UUID.randomUUID())
+            .titulo("T")
+            .descricao("D")
+            .tipo(TipoSolicitacao.REPARO)
+            .status(StatusSolicitacao.A_FAZER)
+            .modeloId(UUID.randomUUID())
+            .abertaPorUsuarioId(UUID.randomUUID())
+            .criadaEm(agora)
+            .atualizadaEm(agora)
+            .build();
 
     when(usuarioRepository.findById(gestor.getId())).thenReturn(Optional.of(gestor));
     when(solicitacaoRepository.findById(solicitacaoAFazer.getId()))
@@ -224,23 +214,18 @@ class EnviarParaValidacaoUseCaseTest {
             agora,
             agora);
     final Solicitacao solicitacao =
-        new Solicitacao(
-            UUID.randomUUID(),
-            "Titulo",
-            "Desc",
-            TipoSolicitacao.REENGENHARIA,
-            StatusSolicitacao.EM_ANDAMENTO,
-            PrioridadeSolicitacao.ALTA,
-            UUID.randomUUID(),
-            null /* modeloCodigo */,
-            null /* modeloMaquina */,
-            null /* modeloObservacoes */,
-            UUID.randomUUID(),
-            null,
-            agora,
-            agora,
-            null,
-            null);
+        Solicitacao.builder()
+            .id(UUID.randomUUID())
+            .titulo("Titulo")
+            .descricao("Desc")
+            .tipo(TipoSolicitacao.REENGENHARIA)
+            .status(StatusSolicitacao.EM_ANDAMENTO)
+            .prioridade(PrioridadeSolicitacao.ALTA)
+            .modeloId(UUID.randomUUID())
+            .abertaPorUsuarioId(UUID.randomUUID())
+            .criadaEm(agora)
+            .atualizadaEm(agora)
+            .build();
 
     when(usuarioRepository.findById(gestor.getId())).thenReturn(Optional.of(gestor));
     when(solicitacaoRepository.findById(solicitacao.getId())).thenReturn(Optional.of(solicitacao));
@@ -290,5 +275,37 @@ class EnviarParaValidacaoUseCaseTest {
                         solicitacao.getId(), gestor.getId(), "Serviço realizado com sucesso")));
 
     assertTrue(ex.getMessage().contains("exigem o anexo de pelo menos 1 evidência"));
+  }
+
+  @Test
+  void shouldKeepTheInstrucaoWhenEnviarParaValidacao() {
+    // Arrange
+    final Instant agora = Instant.now();
+    final Usuario gestor =
+        new Usuario(
+            UUID.randomUUID(),
+            "Gestor",
+            "g@test.com",
+            "hash",
+            PerfilUsuario.GESTOR,
+            true,
+            agora,
+            agora);
+    final Solicitacao sol =
+        umaSolicitacao().emAndamento().comInstrucao("Trocar o gabarito").build();
+    when(usuarioRepository.findById(gestor.getId())).thenReturn(Optional.of(gestor));
+    when(solicitacaoRepository.findById(sol.getId())).thenReturn(Optional.of(sol));
+    when(solicitacaoRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(atividadeRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    // Act
+    final Solicitacao resultado =
+        useCase.execute(
+            new EnviarParaValidacaoUseCase.Input(
+                sol.getId(), gestor.getId(), "Feito aqui, conferido"));
+
+    // Assert
+    assertEquals(StatusSolicitacao.EM_VALIDACAO, resultado.getStatus());
+    assertEquals("Trocar o gabarito", resultado.getInstrucao());
   }
 }

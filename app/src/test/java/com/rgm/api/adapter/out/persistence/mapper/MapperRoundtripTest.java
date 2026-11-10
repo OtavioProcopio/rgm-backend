@@ -1,5 +1,6 @@
 package com.rgm.api.adapter.out.persistence.mapper;
 
+import static com.rgm.api.support.SolicitacaoTestBuilder.umaSolicitacao;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
@@ -86,23 +87,20 @@ class MapperRoundtripTest {
     final UUID modeloId = UUID.randomUUID();
     final UUID abertaPor = UUID.randomUUID();
     final Solicitacao original =
-        new Solicitacao(
-            id,
-            "Trocar rolamento",
-            "Descricao detalhada",
-            TipoSolicitacao.REPARO,
-            StatusSolicitacao.CONCLUIDA,
-            PrioridadeSolicitacao.ALTA,
-            modeloId,
-            null /* modeloCodigo */,
-            null /* modeloMaquina */,
-            null /* modeloObservacoes */,
-            abertaPor,
-            "Comentario final",
-            T1,
-            T2,
-            T3,
-            null);
+        Solicitacao.builder()
+            .id(id)
+            .titulo("Trocar rolamento")
+            .descricao("Descricao detalhada")
+            .tipo(TipoSolicitacao.REPARO)
+            .status(StatusSolicitacao.CONCLUIDA)
+            .prioridade(PrioridadeSolicitacao.ALTA)
+            .modeloId(modeloId)
+            .abertaPorUsuarioId(abertaPor)
+            .comentarioFinal("Comentario final")
+            .criadaEm(T1)
+            .atualizadaEm(T2)
+            .concluidaEm(T3)
+            .build();
 
     final Solicitacao result = SolicitacaoMapper.toDomain(SolicitacaoMapper.toJpa(original));
 
@@ -124,23 +122,20 @@ class MapperRoundtripTest {
   @Test
   void solicitacaoMapper_fullRoundtrip_cancelada() {
     final Solicitacao original =
-        new Solicitacao(
-            UUID.randomUUID(),
-            "Cancelada",
-            "Desc",
-            TipoSolicitacao.REPARO,
-            StatusSolicitacao.CANCELADA,
-            PrioridadeSolicitacao.BAIXA,
-            UUID.randomUUID(),
-            null /* modeloCodigo */,
-            null /* modeloMaquina */,
-            null /* modeloObservacoes */,
-            UUID.randomUUID(),
-            "Motivo do cancelamento",
-            T1,
-            T2,
-            null,
-            T4);
+        Solicitacao.builder()
+            .id(UUID.randomUUID())
+            .titulo("Cancelada")
+            .descricao("Desc")
+            .tipo(TipoSolicitacao.REPARO)
+            .status(StatusSolicitacao.CANCELADA)
+            .prioridade(PrioridadeSolicitacao.BAIXA)
+            .modeloId(UUID.randomUUID())
+            .abertaPorUsuarioId(UUID.randomUUID())
+            .comentarioFinal("Motivo do cancelamento")
+            .criadaEm(T1)
+            .atualizadaEm(T2)
+            .canceladaEm(T4)
+            .build();
 
     final Solicitacao result = SolicitacaoMapper.toDomain(SolicitacaoMapper.toJpa(original));
 
@@ -153,23 +148,17 @@ class MapperRoundtripTest {
   @Test
   void solicitacaoMapper_fullRoundtrip_camposNulos() {
     final Solicitacao original =
-        new Solicitacao(
-            UUID.randomUUID(),
-            "T",
-            "D",
-            TipoSolicitacao.INSPECAO,
-            StatusSolicitacao.A_FAZER,
-            null,
-            UUID.randomUUID(),
-            null /* modeloCodigo */,
-            null /* modeloMaquina */,
-            null /* modeloObservacoes */,
-            UUID.randomUUID(),
-            null,
-            T1,
-            T1,
-            null,
-            null);
+        Solicitacao.builder()
+            .id(UUID.randomUUID())
+            .titulo("T")
+            .descricao("D")
+            .tipo(TipoSolicitacao.INSPECAO)
+            .status(StatusSolicitacao.A_FAZER)
+            .modeloId(UUID.randomUUID())
+            .abertaPorUsuarioId(UUID.randomUUID())
+            .criadaEm(T1)
+            .atualizadaEm(T1)
+            .build();
 
     final Solicitacao result = SolicitacaoMapper.toDomain(SolicitacaoMapper.toJpa(original));
 
@@ -180,6 +169,47 @@ class MapperRoundtripTest {
   }
 
   // ──────── ModeloMapper ────────
+
+  @Test
+  void shouldKeepInstrucaoWithAccentsLineBreaksAndTheLimitWhenMappedToJpaAndBack() {
+    // Arrange
+    final String instrucao =
+        "Trocar o gabarito\nConferir o furo 3 — ação urgente\n" + "x".repeat(1900);
+    final Solicitacao original =
+        Solicitacao.builder()
+            .id(UUID.randomUUID())
+            .titulo("Trocar rolamento")
+            .descricao("Descricao")
+            .tipo(TipoSolicitacao.REPARO)
+            .status(StatusSolicitacao.EM_ANDAMENTO)
+            .prioridade(PrioridadeSolicitacao.ALTA)
+            .modeloId(UUID.randomUUID())
+            .abertaPorUsuarioId(UUID.randomUUID())
+            .instrucao(instrucao)
+            .criadaEm(T1)
+            .atualizadaEm(T2)
+            .build();
+
+    // Act
+    final var jpa = SolicitacaoMapper.toJpa(original);
+    final Solicitacao result = SolicitacaoMapper.toDomain(jpa);
+
+    // Assert
+    assertEquals(instrucao, jpa.getInstrucao());
+    assertEquals(instrucao, result.getInstrucao());
+  }
+
+  @Test
+  void shouldKeepNullInstrucaoWhenMappedToJpaAndBack() {
+    // Arrange
+    final Solicitacao original = umaSolicitacao().emAndamento().build();
+
+    // Act
+    final Solicitacao result = SolicitacaoMapper.toDomain(SolicitacaoMapper.toJpa(original));
+
+    // Assert
+    assertNull(result.getInstrucao());
+  }
 
   @Test
   void modeloMapper_fullRoundtrip() {
@@ -275,6 +305,23 @@ class MapperRoundtripTest {
   // ──────── AtividadeSolicitacaoMapper ────────
 
   @Test
+  void shouldKeepTheInstrucaoAlteradaTypeAndPreviousTextWhenMappedToJpaAndBack() {
+    // Arrange
+    final AtividadeSolicitacao original =
+        AtividadeSolicitacao.instrucaoAlterada(
+            UUID.randomUUID(), "Texto anterior\ncom acentuação", UUID.randomUUID(), T1);
+
+    // Act
+    final AtividadeSolicitacao result =
+        AtividadeSolicitacaoMapper.toDomain(AtividadeSolicitacaoMapper.toJpa(original));
+
+    // Assert
+    assertEquals(TipoAtividadeSolicitacao.INSTRUCAO_ALTERADA, result.getTipo());
+    assertEquals("Texto anterior\ncom acentuação", result.getComentario());
+    assertEquals(original.getAutorUsuarioId(), result.getAutorUsuarioId());
+  }
+
+  @Test
   void atividadeMapper_fullRoundtrip() {
     final UUID id = UUID.randomUUID();
     final UUID solId = UUID.randomUUID();
@@ -362,24 +409,19 @@ class MapperRoundtripTest {
   void shouldKeepOptimisticLockVersionWhenSolicitacaoIsMappedToJpaAndBack() {
     // Arrange
     final Solicitacao original =
-        new Solicitacao(
-            UUID.randomUUID(),
-            "T",
-            "D",
-            TipoSolicitacao.REPARO,
-            StatusSolicitacao.EM_ANDAMENTO,
-            PrioridadeSolicitacao.MEDIA,
-            UUID.randomUUID(),
-            null,
-            null,
-            null,
-            UUID.randomUUID(),
-            null,
-            T1,
-            T1,
-            null,
-            null,
-            5L);
+        Solicitacao.builder()
+            .id(UUID.randomUUID())
+            .titulo("T")
+            .descricao("D")
+            .tipo(TipoSolicitacao.REPARO)
+            .status(StatusSolicitacao.EM_ANDAMENTO)
+            .prioridade(PrioridadeSolicitacao.MEDIA)
+            .modeloId(UUID.randomUUID())
+            .abertaPorUsuarioId(UUID.randomUUID())
+            .criadaEm(T1)
+            .atualizadaEm(T1)
+            .version(5L)
+            .build();
 
     // Act
     final Solicitacao result = SolicitacaoMapper.toDomain(SolicitacaoMapper.toJpa(original));

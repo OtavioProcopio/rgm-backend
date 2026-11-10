@@ -5,6 +5,7 @@ import static com.rgm.api.core.domain.validation.DomainValidations.requireNonBla
 import static com.rgm.api.core.domain.validation.DomainValidations.requireNonNull;
 
 import com.rgm.api.core.domain.exceptions.BusinessRuleException;
+import com.rgm.api.core.domain.exceptions.ConflitoException;
 import com.rgm.api.core.domain.exceptions.NaoAutorizadoException;
 import com.rgm.api.core.domain.exceptions.TransicaoStatusInvalidaException;
 import com.rgm.api.core.domain.exceptions.ValidationException;
@@ -12,6 +13,7 @@ import com.rgm.api.core.domain.model.enums.PerfilUsuario;
 import com.rgm.api.core.domain.model.enums.PrioridadeSolicitacao;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
 import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
+import com.rgm.api.core.domain.validation.LimitesTexto;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
@@ -31,13 +33,14 @@ public final class Solicitacao {
   private final String modeloObservacoes;
   private final UUID abertaPorUsuarioId;
   private final String comentarioFinal;
+  private final String instrucao;
   private final Instant criadaEm;
   private final Instant atualizadaEm;
   private final Instant concluidaEm;
   private final Instant canceladaEm;
   private final Long version;
 
-  public Solicitacao(
+  private Solicitacao(
       final UUID id,
       final String titulo,
       final String descricao,
@@ -50,48 +53,7 @@ public final class Solicitacao {
       final String modeloObservacoes,
       final UUID abertaPorUsuarioId,
       final String comentarioFinal,
-      final Instant criadaEm,
-      final Instant atualizadaEm,
-      final Instant concluidaEm,
-      final Instant canceladaEm) {
-    this(
-        id,
-        titulo,
-        descricao,
-        tipo,
-        status,
-        prioridade,
-        modeloId,
-        modeloCodigo,
-        modeloMaquina,
-        modeloObservacoes,
-        abertaPorUsuarioId,
-        comentarioFinal,
-        criadaEm,
-        atualizadaEm,
-        concluidaEm,
-        canceladaEm,
-        null);
-  }
-
-  /**
-   * Construtor completo, incluindo o {@code version} usado para lock otimista na persistencia
-   * (issue #80) — preservado, nao recalculado, a cada transicao. O construtor publico de 16
-   * argumentos cobre o caso comum (version nulo, ainda nao persistido).
-   */
-  public Solicitacao(
-      final UUID id,
-      final String titulo,
-      final String descricao,
-      final TipoSolicitacao tipo,
-      final StatusSolicitacao status,
-      final PrioridadeSolicitacao prioridade,
-      final UUID modeloId,
-      final String modeloCodigo,
-      final String modeloMaquina,
-      final String modeloObservacoes,
-      final UUID abertaPorUsuarioId,
-      final String comentarioFinal,
+      final String instrucao,
       final Instant criadaEm,
       final Instant atualizadaEm,
       final Instant concluidaEm,
@@ -109,6 +71,7 @@ public final class Solicitacao {
     this.modeloObservacoes = optionalTrimToNull(modeloObservacoes);
     this.abertaPorUsuarioId = requireNonNull(abertaPorUsuarioId, "abertaPorUsuarioId");
     this.comentarioFinal = optionalTrimToNull(comentarioFinal);
+    this.instrucao = optionalTrimToNull(instrucao);
     this.criadaEm = requireNonNull(criadaEm, "criadaEm");
     this.atualizadaEm = requireNonNull(atualizadaEm, "atualizadaEm");
     this.concluidaEm = concluidaEm;
@@ -116,6 +79,174 @@ public final class Solicitacao {
     this.version = version;
 
     validateInvariants();
+  }
+
+  /** Ponto unico de montagem: nomeia cada campo e roda as mesmas invariantes do construtor. */
+  public static Builder builder() {
+    return new Builder();
+  }
+
+  /**
+   * Copia desta solicitacao para uma transicao: quem chama diz so o que muda. Um campo novo do
+   * agregado entra aqui e em {@link Builder}, e nas transicoes nao precisa ser repetido.
+   */
+  private Builder toBuilder() {
+    return new Builder()
+        .id(id)
+        .titulo(titulo)
+        .descricao(descricao)
+        .tipo(tipo)
+        .status(status)
+        .prioridade(prioridade)
+        .modeloId(modeloId)
+        .modeloCodigo(modeloCodigo)
+        .modeloMaquina(modeloMaquina)
+        .modeloObservacoes(modeloObservacoes)
+        .abertaPorUsuarioId(abertaPorUsuarioId)
+        .comentarioFinal(comentarioFinal)
+        .instrucao(instrucao)
+        .criadaEm(criadaEm)
+        .atualizadaEm(atualizadaEm)
+        .concluidaEm(concluidaEm)
+        .canceladaEm(canceladaEm)
+        .version(version);
+  }
+
+  /** Montagem nomeada de {@link Solicitacao}; {@link #build()} valida as invariantes. */
+  public static final class Builder {
+    private UUID id;
+    private String titulo;
+    private String descricao;
+    private TipoSolicitacao tipo;
+    private StatusSolicitacao status;
+    private PrioridadeSolicitacao prioridade;
+    private UUID modeloId;
+    private String modeloCodigo;
+    private String modeloMaquina;
+    private String modeloObservacoes;
+    private UUID abertaPorUsuarioId;
+    private String comentarioFinal;
+    private String instrucao;
+    private Instant criadaEm;
+    private Instant atualizadaEm;
+    private Instant concluidaEm;
+    private Instant canceladaEm;
+    private Long version;
+
+    private Builder() {}
+
+    public Builder id(final UUID valor) {
+      this.id = valor;
+      return this;
+    }
+
+    public Builder titulo(final String valor) {
+      this.titulo = valor;
+      return this;
+    }
+
+    public Builder descricao(final String valor) {
+      this.descricao = valor;
+      return this;
+    }
+
+    public Builder tipo(final TipoSolicitacao valor) {
+      this.tipo = valor;
+      return this;
+    }
+
+    public Builder status(final StatusSolicitacao valor) {
+      this.status = valor;
+      return this;
+    }
+
+    public Builder prioridade(final PrioridadeSolicitacao valor) {
+      this.prioridade = valor;
+      return this;
+    }
+
+    public Builder modeloId(final UUID valor) {
+      this.modeloId = valor;
+      return this;
+    }
+
+    public Builder modeloCodigo(final String valor) {
+      this.modeloCodigo = valor;
+      return this;
+    }
+
+    public Builder modeloMaquina(final String valor) {
+      this.modeloMaquina = valor;
+      return this;
+    }
+
+    public Builder modeloObservacoes(final String valor) {
+      this.modeloObservacoes = valor;
+      return this;
+    }
+
+    public Builder abertaPorUsuarioId(final UUID valor) {
+      this.abertaPorUsuarioId = valor;
+      return this;
+    }
+
+    public Builder comentarioFinal(final String valor) {
+      this.comentarioFinal = valor;
+      return this;
+    }
+
+    public Builder instrucao(final String valor) {
+      this.instrucao = valor;
+      return this;
+    }
+
+    public Builder criadaEm(final Instant valor) {
+      this.criadaEm = valor;
+      return this;
+    }
+
+    public Builder atualizadaEm(final Instant valor) {
+      this.atualizadaEm = valor;
+      return this;
+    }
+
+    public Builder concluidaEm(final Instant valor) {
+      this.concluidaEm = valor;
+      return this;
+    }
+
+    public Builder canceladaEm(final Instant valor) {
+      this.canceladaEm = valor;
+      return this;
+    }
+
+    /** Controle de versao do lock otimista: nulo enquanto a solicitacao nao foi persistida. */
+    public Builder version(final Long valor) {
+      this.version = valor;
+      return this;
+    }
+
+    public Solicitacao build() {
+      return new Solicitacao(
+          id,
+          titulo,
+          descricao,
+          tipo,
+          status,
+          prioridade,
+          modeloId,
+          modeloCodigo,
+          modeloMaquina,
+          modeloObservacoes,
+          abertaPorUsuarioId,
+          comentarioFinal,
+          instrucao,
+          criadaEm,
+          atualizadaEm,
+          concluidaEm,
+          canceladaEm,
+          version);
+    }
   }
 
   /** UC-02: Abre uma nova solicitacao em A_FAZER, vinculada a um modelo existente. */
@@ -126,23 +257,17 @@ public final class Solicitacao {
       final UUID modeloId,
       final UUID abertaPorUsuarioId,
       final Instant agora) {
-    return new Solicitacao(
-        UUID.randomUUID(),
-        titulo,
-        descricao,
-        tipo,
-        StatusSolicitacao.A_FAZER,
-        null,
-        modeloId,
-        null,
-        null,
-        null,
-        abertaPorUsuarioId,
-        null,
-        agora,
-        agora,
-        null,
-        null);
+    return builder()
+        .id(UUID.randomUUID())
+        .titulo(titulo)
+        .descricao(descricao)
+        .tipo(tipo)
+        .status(StatusSolicitacao.A_FAZER)
+        .modeloId(modeloId)
+        .abertaPorUsuarioId(abertaPorUsuarioId)
+        .criadaEm(agora)
+        .atualizadaEm(agora)
+        .build();
   }
 
   /**
@@ -157,73 +282,73 @@ public final class Solicitacao {
       final String modeloObservacoes,
       final UUID abertaPorUsuarioId,
       final Instant agora) {
-    return new Solicitacao(
-        UUID.randomUUID(),
-        titulo,
-        descricao,
-        TipoSolicitacao.CRIACAO,
-        StatusSolicitacao.A_FAZER,
-        null,
-        null,
-        modeloCodigo,
-        modeloMaquina,
-        modeloObservacoes,
-        abertaPorUsuarioId,
-        null,
-        agora,
-        agora,
-        null,
-        null);
+    return builder()
+        .id(UUID.randomUUID())
+        .titulo(titulo)
+        .descricao(descricao)
+        .tipo(TipoSolicitacao.CRIACAO)
+        .status(StatusSolicitacao.A_FAZER)
+        .modeloCodigo(modeloCodigo)
+        .modeloMaquina(modeloMaquina)
+        .modeloObservacoes(modeloObservacoes)
+        .abertaPorUsuarioId(abertaPorUsuarioId)
+        .criadaEm(agora)
+        .atualizadaEm(agora)
+        .build();
   }
 
   /**
-   * UC-03: Triar e atribuir (A_FAZER -> EM_ANDAMENTO). Requer prioridade. Validacao de atribuicoes
-   * feita externamente (use case).
+   * UC-03: Triar e atribuir (A_FAZER -> EM_ANDAMENTO). Requer prioridade e a instrucao do que deve
+   * ser feito, que fica gravada na propria solicitacao. So se tria a partir de A_FAZER. Validacao
+   * de atribuicoes feita externamente (use case).
    */
-  public Solicitacao triar(final PrioridadeSolicitacao novaPrioridade, final Instant agora) {
+  public Solicitacao triar(
+      final PrioridadeSolicitacao novaPrioridade, final String novaInstrucao, final Instant agora) {
     requireNonNull(novaPrioridade, "prioridade");
+    if (status != StatusSolicitacao.A_FAZER) {
+      throw new TransicaoStatusInvalidaException(status, StatusSolicitacao.EM_ANDAMENTO);
+    }
     validarTransicao(StatusSolicitacao.EM_ANDAMENTO);
-    return new Solicitacao(
-        id,
-        titulo,
-        descricao,
-        tipo,
-        StatusSolicitacao.EM_ANDAMENTO,
-        novaPrioridade,
-        modeloId,
-        modeloCodigo,
-        modeloMaquina,
-        modeloObservacoes,
-        abertaPorUsuarioId,
-        null,
-        criadaEm,
-        agora,
-        null,
-        null,
-        version);
+    return toBuilder()
+        .status(StatusSolicitacao.EM_ANDAMENTO)
+        .prioridade(novaPrioridade)
+        .instrucao(validarInstrucao(novaInstrucao))
+        .comentarioFinal(null)
+        .atualizadaEm(agora)
+        .concluidaEm(null)
+        .canceladaEm(null)
+        .build();
+  }
+
+  /**
+   * Corrige a instrucao do que fazer. So com a solicitacao EM_ANDAMENTO: antes dela a instrucao
+   * nasce na triagem e, depois, o responsavel ja enviou para validacao. Texto igual ao atual nao
+   * muda nada e devolve a propria instancia.
+   */
+  public Solicitacao editarInstrucao(final String novaInstrucao, final Instant agora) {
+    if (status != StatusSolicitacao.EM_ANDAMENTO) {
+      throw new ConflitoException(
+          "A instrucao so pode ser editada com a solicitacao em andamento (status atual: "
+              + status
+              + ")");
+    }
+    final String valida = validarInstrucao(novaInstrucao);
+    if (valida.equals(instrucao)) {
+      return this;
+    }
+    return toBuilder().instrucao(valida).atualizadaEm(requireNonNull(agora, "agora")).build();
   }
 
   /** UC-05: Enviar para validacao (EM_ANDAMENTO -> EM_VALIDACAO). */
   public Solicitacao enviarParaValidacao(final Instant agora) {
     validarTransicao(StatusSolicitacao.EM_VALIDACAO);
-    return new Solicitacao(
-        id,
-        titulo,
-        descricao,
-        tipo,
-        StatusSolicitacao.EM_VALIDACAO,
-        prioridade,
-        modeloId,
-        modeloCodigo,
-        modeloMaquina,
-        modeloObservacoes,
-        abertaPorUsuarioId,
-        null,
-        criadaEm,
-        agora,
-        null,
-        null,
-        version);
+    return toBuilder()
+        .status(StatusSolicitacao.EM_VALIDACAO)
+        .comentarioFinal(null)
+        .atualizadaEm(agora)
+        .concluidaEm(null)
+        .canceladaEm(null)
+        .build();
   }
 
   /** UC-06: Devolver para correcao (EM_VALIDACAO -> EM_ANDAMENTO). */
@@ -231,24 +356,14 @@ public final class Solicitacao {
     validarTransicao(StatusSolicitacao.EM_ANDAMENTO);
     final PrioridadeSolicitacao prioridadeFinal =
         novaPrioridade != null ? novaPrioridade : this.prioridade;
-    return new Solicitacao(
-        id,
-        titulo,
-        descricao,
-        tipo,
-        StatusSolicitacao.EM_ANDAMENTO,
-        prioridadeFinal,
-        modeloId,
-        modeloCodigo,
-        modeloMaquina,
-        modeloObservacoes,
-        abertaPorUsuarioId,
-        null,
-        criadaEm,
-        agora,
-        null,
-        null,
-        version);
+    return toBuilder()
+        .status(StatusSolicitacao.EM_ANDAMENTO)
+        .prioridade(prioridadeFinal)
+        .comentarioFinal(null)
+        .atualizadaEm(agora)
+        .concluidaEm(null)
+        .canceladaEm(null)
+        .build();
   }
 
   /**
@@ -267,24 +382,11 @@ public final class Solicitacao {
     if (novoTipo != null && novoTipo != tipo) {
       throw new BusinessRuleException("Tipo da solicitacao e imutavel apos a abertura");
     }
-    return new Solicitacao(
-        id,
-        requireNonBlank(novoTitulo, "titulo"),
-        requireNonBlank(novaDescricao, "descricao"),
-        tipo,
-        status,
-        prioridade,
-        modeloId,
-        modeloCodigo,
-        modeloMaquina,
-        modeloObservacoes,
-        abertaPorUsuarioId,
-        comentarioFinal,
-        criadaEm,
-        agora,
-        concluidaEm,
-        canceladaEm,
-        version);
+    return toBuilder()
+        .titulo(requireNonBlank(novoTitulo, "titulo"))
+        .descricao(requireNonBlank(novaDescricao, "descricao"))
+        .atualizadaEm(agora)
+        .build();
   }
 
   /**
@@ -292,24 +394,7 @@ public final class Solicitacao {
    * o controle de versao, para que duas trocas simultaneas nao se sobreponham.
    */
   public Solicitacao registrarAlteracaoDeResponsaveis(final Instant agora) {
-    return new Solicitacao(
-        id,
-        titulo,
-        descricao,
-        tipo,
-        status,
-        prioridade,
-        modeloId,
-        modeloCodigo,
-        modeloMaquina,
-        modeloObservacoes,
-        abertaPorUsuarioId,
-        comentarioFinal,
-        criadaEm,
-        requireNonNull(agora, "agora"),
-        concluidaEm,
-        canceladaEm,
-        version);
+    return toBuilder().atualizadaEm(requireNonNull(agora, "agora")).build();
   }
 
   /** UC-07: Concluir solicitacao (EM_VALIDACAO -> CONCLUIDA). Nao se aplica ao tipo CRIACAO. */
@@ -321,24 +406,13 @@ public final class Solicitacao {
     }
     requireNonBlank(novoComentarioFinal, "comentarioFinal");
     validarTransicao(StatusSolicitacao.CONCLUIDA);
-    return new Solicitacao(
-        id,
-        titulo,
-        descricao,
-        tipo,
-        StatusSolicitacao.CONCLUIDA,
-        prioridade,
-        modeloId,
-        modeloCodigo,
-        modeloMaquina,
-        modeloObservacoes,
-        abertaPorUsuarioId,
-        novoComentarioFinal,
-        criadaEm,
-        agora,
-        agora,
-        null,
-        version);
+    return toBuilder()
+        .status(StatusSolicitacao.CONCLUIDA)
+        .comentarioFinal(novoComentarioFinal)
+        .atualizadaEm(agora)
+        .concluidaEm(agora)
+        .canceladaEm(null)
+        .build();
   }
 
   /**
@@ -354,48 +428,27 @@ public final class Solicitacao {
     requireNonBlank(novoComentarioFinal, "comentarioFinal");
     requireNonNull(modeloIdCriado, "modeloId");
     validarTransicao(StatusSolicitacao.CONCLUIDA);
-    return new Solicitacao(
-        id,
-        titulo,
-        descricao,
-        tipo,
-        StatusSolicitacao.CONCLUIDA,
-        prioridade,
-        modeloIdCriado,
-        modeloCodigo,
-        modeloMaquina,
-        modeloObservacoes,
-        abertaPorUsuarioId,
-        novoComentarioFinal,
-        criadaEm,
-        agora,
-        agora,
-        null,
-        version);
+    return toBuilder()
+        .status(StatusSolicitacao.CONCLUIDA)
+        .modeloId(modeloIdCriado)
+        .comentarioFinal(novoComentarioFinal)
+        .atualizadaEm(agora)
+        .concluidaEm(agora)
+        .canceladaEm(null)
+        .build();
   }
 
   /** UC-07: Cancelar solicitacao (status permitido -> CANCELADA). */
   public Solicitacao cancelar(final String novoComentarioFinal, final Instant agora) {
     requireNonBlank(novoComentarioFinal, "comentarioFinal");
     validarTransicao(StatusSolicitacao.CANCELADA);
-    return new Solicitacao(
-        id,
-        titulo,
-        descricao,
-        tipo,
-        StatusSolicitacao.CANCELADA,
-        prioridade,
-        modeloId,
-        modeloCodigo,
-        modeloMaquina,
-        modeloObservacoes,
-        abertaPorUsuarioId,
-        novoComentarioFinal,
-        criadaEm,
-        agora,
-        null,
-        agora,
-        version);
+    return toBuilder()
+        .status(StatusSolicitacao.CANCELADA)
+        .comentarioFinal(novoComentarioFinal)
+        .atualizadaEm(agora)
+        .concluidaEm(null)
+        .canceladaEm(agora)
+        .build();
   }
 
   /**
@@ -451,6 +504,18 @@ public final class Solicitacao {
     }
   }
 
+  private static String validarInstrucao(final String texto) {
+    if (texto == null || texto.isBlank()) {
+      throw new ValidationException("instrucao e obrigatoria");
+    }
+    final String aparada = texto.trim();
+    if (aparada.length() > LimitesTexto.SOLICITACAO_INSTRUCAO) {
+      throw new ValidationException(
+          "instrucao deve ter no maximo " + LimitesTexto.SOLICITACAO_INSTRUCAO + " caracteres");
+    }
+    return aparada;
+  }
+
   private void validarTransicao(final StatusSolicitacao novoStatus) {
     if (!status.canTransitionTo(novoStatus)) {
       throw new TransicaoStatusInvalidaException(status, novoStatus);
@@ -484,6 +549,10 @@ public final class Solicitacao {
       if (comentarioFinal == null) {
         throw new ValidationException("comentarioFinal e obrigatorio ao cancelar");
       }
+    }
+
+    if (status == StatusSolicitacao.A_FAZER && instrucao != null) {
+      throw new ValidationException("instrucao so existe depois da triagem");
     }
 
     if (status.isNaoTerminal()) {
@@ -567,6 +636,10 @@ public final class Solicitacao {
 
   public String getComentarioFinal() {
     return comentarioFinal;
+  }
+
+  public String getInstrucao() {
+    return instrucao;
   }
 
   public Instant getCriadaEm() {

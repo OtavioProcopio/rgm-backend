@@ -20,6 +20,7 @@ import com.rgm.api.core.application.usecases.auth.AutenticarAcessoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.AbrirSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.CancelarSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.DevolverSolicitacaoUseCase;
+import com.rgm.api.core.application.usecases.solicitacao.EditarInstrucaoSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.EditarSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.EncerrarSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.EnviarParaValidacaoUseCase;
@@ -95,6 +96,7 @@ class MetricasContratoV15Test {
   @MockitoBean private ObterPainelPorPeriodoUseCase obterPainelUseCase;
   @MockitoBean private AbrirSolicitacaoUseCase abrirUseCase;
   @MockitoBean private TriarSolicitacaoUseCase triarUseCase;
+  @MockitoBean private EditarInstrucaoSolicitacaoUseCase editarInstrucaoUseCase;
   @MockitoBean private EnviarParaValidacaoUseCase enviarUseCase;
   @MockitoBean private DevolverSolicitacaoUseCase devolverUseCase;
   @MockitoBean private EncerrarSolicitacaoUseCase encerrarUseCase;

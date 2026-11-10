@@ -99,6 +99,27 @@ public final class AtividadeSolicitacao {
         agora);
   }
 
+  /**
+   * Registra a correcao da instrucao do que fazer. O texto anterior fica em {@code comentario}
+   * (nulo quando a solicitacao ainda nao tinha instrucao), para a correcao nunca apagar o que
+   * existia.
+   */
+  public static AtividadeSolicitacao instrucaoAlterada(
+      final UUID solicitacaoId,
+      final String instrucaoAnterior,
+      final UUID autorId,
+      final Instant agora) {
+    return new AtividadeSolicitacao(
+        UUID.randomUUID(),
+        solicitacaoId,
+        TipoAtividadeSolicitacao.INSTRUCAO_ALTERADA,
+        null,
+        null,
+        instrucaoAnterior,
+        autorId,
+        agora);
+  }
+
   /** Registra evidencia adicionada. */
   public static AtividadeSolicitacao evidenciaAdicionada(
       final UUID solicitacaoId, final UUID autorId, final Instant agora) {

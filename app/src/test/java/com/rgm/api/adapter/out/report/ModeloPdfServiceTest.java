@@ -1,5 +1,7 @@
 package com.rgm.api.adapter.out.report;
 
+import static com.rgm.api.support.SolicitacaoTestBuilder.umaSolicitacao;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -61,23 +63,18 @@ class ModeloPdfServiceTest {
   }
 
   private Solicitacao solicitacao(final UUID modeloId, final String titulo) {
-    return new Solicitacao(
-        UUID.randomUUID(),
-        titulo,
-        "Troca de vedações",
-        TipoSolicitacao.REPARO,
-        StatusSolicitacao.EM_ANDAMENTO,
-        PrioridadeSolicitacao.ALTA,
-        modeloId,
-        null,
-        null,
-        null,
-        UUID.randomUUID(),
-        null,
-        Instant.now(),
-        Instant.now(),
-        null,
-        null);
+    return Solicitacao.builder()
+        .id(UUID.randomUUID())
+        .titulo(titulo)
+        .descricao("Troca de vedações")
+        .tipo(TipoSolicitacao.REPARO)
+        .status(StatusSolicitacao.EM_ANDAMENTO)
+        .prioridade(PrioridadeSolicitacao.ALTA)
+        .modeloId(modeloId)
+        .abertaPorUsuarioId(UUID.randomUUID())
+        .criadaEm(Instant.now())
+        .atualizadaEm(Instant.now())
+        .build();
   }
 
   private AtividadeSolicitacao comentario(final UUID solicitacaoId, final String texto) {
@@ -198,6 +195,69 @@ class ModeloPdfServiceTest {
     assertTrue(texto.contains("Trocar vedação"));
     assertTrue(texto.contains("Peça substituída"));
     assertFalse(texto.contains("Foto indisponível"));
+  }
+
+  @Test
+  void shouldShowTheInstrucaoOfTheSolicitacoesThatHaveOneAndNothingForTheOthers() {
+    // Arrange
+    final var modelo = modelo("MOD-600", "COQUILHA_ACO", true);
+    final var comInstrucao =
+        umaSolicitacao()
+            .emAndamento()
+            .comTitulo("Com instrucao")
+            .comInstrucao("Trocar o gabarito antes de montar")
+            .build();
+    final var semInstrucao = umaSolicitacao().emAndamento().comTitulo("Sem instrucao").build();
+
+    // Act
+    final byte[] pdf =
+        service.gerarFicha(
+            ficha(modelo, List.of(comInstrucao, semInstrucao), Map.of(), List.of()), "Gestor");
+
+    // Assert
+    final String texto = TextoDoPdf.de(pdf);
+    assertTrue(texto.contains("Instrução: Trocar o gabarito antes de montar"));
+    assertEquals(1, texto.split("Instrução: ", -1).length - 1);
+  }
+
+  @Test
+  void shouldShowTheCorrectionWithThePreviousTextInTheHistory() {
+    // Arrange
+    final var modelo = modelo("MOD-601", "COQUILHA_ACO", true);
+    final var solicitacao = umaSolicitacao().emAndamento().comInstrucao("Texto novo").build();
+    final var correcao =
+        AtividadeSolicitacao.instrucaoAlterada(
+            solicitacao.getId(), "Texto anterior", UUID.randomUUID(), Instant.now());
+    final var atividades = Map.of(solicitacao.getId(), List.of(correcao));
+
+    // Act
+    final byte[] pdf =
+        service.gerarFicha(ficha(modelo, List.of(solicitacao), atividades, List.of()), "Gestor");
+
+    // Assert
+    final String texto = TextoDoPdf.de(pdf);
+    assertTrue(texto.contains("Instrução alterada"));
+    assertTrue(texto.contains("Antes: Texto anterior"));
+  }
+
+  @Test
+  void shouldShowADashWhenAnActivityHasNoText() {
+    // Arrange
+    final var modelo = modelo("MOD-602", "COQUILHA_ACO", true);
+    final var solicitacao = umaSolicitacao().emAndamento().build();
+    final var semTexto =
+        AtividadeSolicitacao.evidenciaAdicionada(
+            solicitacao.getId(), UUID.randomUUID(), Instant.now());
+    final var atividades = Map.of(solicitacao.getId(), List.of(semTexto));
+
+    // Act
+    final byte[] pdf =
+        service.gerarFicha(ficha(modelo, List.of(solicitacao), atividades, List.of()), "Gestor");
+
+    // Assert
+    final String texto = TextoDoPdf.de(pdf);
+    assertTrue(texto.contains("Evidência"));
+    assertFalse(texto.contains("Antes:"));
   }
 
   @Test

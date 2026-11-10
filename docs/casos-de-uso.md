@@ -21,7 +21,7 @@ Referência de todos os casos de uso implementados no sistema.
 - **Ator**: Gestor, Administrador
 - **Classe**: `TriarSolicitacaoUseCase`
 - **Endpoint**: `PATCH /api/solicitacoes/{id}/triar`
-- **Regras**: Prioridade obrigatória; 1+ responsáveis; descrição do que fazer obrigatória (até 2000 caracteres), registrada no histórico (spec 014); ADMINISTRADOR não pode ser atribuído
+- **Regras**: Prioridade obrigatória; 1+ responsáveis; **instrução do que fazer** obrigatória no corpo (`instrucao`, até 2000 caracteres, sem espaços nas pontas), gravada na própria solicitação (spec 015); só se tria a partir de `A_FAZER`; ADMINISTRADOR não pode ser atribuído. O histórico traz a atribuição e a mudança de status, sem comentário
 - **Erros**: 400 (sem descrição, em branco ou longa demais), 422 (sem responsáveis), 409 (status inválido), 403 (sem permissão)
 
 ## UC-04 — Autorização central de movimentação
@@ -169,6 +169,14 @@ Referência de todos os casos de uso implementados no sistema.
 - **Regras**: agregado no banco, nunca carrega solicitação em memória; dias no fuso da fábrica (`rgm.fabrica.fuso`). "Aberta ao fim do dia" = criada até o fim do dia e ainda não concluída nem cancelada nesse instante. "Atrasada ao fim do dia" = aberta nesse instante e com o prazo (criação + horas da prioridade) já vencido; **usa a prioridade de hoje** (aproximação aceita: se a prioridade mudou depois, o atraso de dias passados reflete a atual). Solicitação sem prioridade nunca é atrasada. Concluir e cancelar contam no dia em que aconteceram, não no dia da criação
 - **Compatibilidade**: rota nova e aditiva; `/metricas` e `/metricas/historico` não mudam de formato (`slaMediaHoras` e `slaGlobalMediaHoras` seguem como tempo de resolução em horas inteiras, mantidos para o frontend v1.5.0)
 - **Erros**: 400 (`dias` diferente de 7, 30 e 90), 401, 403
+
+## UC-24 — Editar a instrução do que fazer
+- **Atores**: Gestor, Administrador. Operador e externo recebem 403; anônimo 401
+- **Classe**: `EditarInstrucaoSolicitacaoUseCase`
+- **Endpoint**: `PATCH /api/solicitacoes/{id}/instrucao` com `{ "instrucao": "…" }`
+- **Regras**: só com a solicitação `EM_ANDAMENTO` (trava ao ir para validação; volta a editar se for devolvida). Mesmas regras de texto da triagem (obrigatória, até 2000 caracteres, aparada). Texto igual ao atual não muda nada, não registra atividade e responde 200. Cada correção grava a atividade `INSTRUCAO_ALTERADA` com autor, data e o **texto anterior** em `comentario` (nulo se a solicitação, triada antes do campo, não tinha instrução). `acoesPermitidas` traz `EDITAR_INSTRUCAO` só para gestor e administrador ativos com a solicitação em andamento. Duas correções simultâneas não se sobrepõem: a segunda recebe 409 (lock otimista)
+- **Eventos**: `solicitacao` e `solicitacao_atividade`, ambos com tipo `instrucao_editada`
+- **Erros**: 400 (texto ausente, vazio ou acima de 2000), 401, 403, 404, 409 (fora de `EM_ANDAMENTO` ou correção concorrente)
 
 ## Limites de texto
 

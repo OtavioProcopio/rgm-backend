@@ -1,5 +1,6 @@
 package com.rgm.api.adapter.in.web.dto.response;
 
+import static com.rgm.api.support.SolicitacaoTestBuilder.umaSolicitacao;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.rgm.api.core.application.usecases.solicitacao.ObterSolicitacaoUseCase.ResponsavelNome;
@@ -128,5 +129,27 @@ class SolicitacaoResponseTest {
     assertThat(response.modeloCodigo()).isEqualTo("COD-9");
     assertThat(response.modeloMaquina()).isEqualTo("VICK");
     assertThat(response.modeloVersao()).isNull();
+  }
+
+  @Test
+  void shouldExposeTheInstrucaoWhenTheSolicitacaoHasOne() {
+    // Arrange
+    final Solicitacao sol =
+        umaSolicitacao().emAndamento().comInstrucao("Trocar o gabarito").build();
+
+    // Act
+    final SolicitacaoResponse response = SolicitacaoResponse.from(sol);
+
+    // Assert
+    assertThat(response.instrucao()).isEqualTo("Trocar o gabarito");
+  }
+
+  @Test
+  void shouldHaveNullInstrucaoWhenTheSolicitacaoHasNone() {
+    // Act
+    final SolicitacaoResponse response = SolicitacaoResponse.from(solicitacao());
+
+    // Assert
+    assertThat(response.instrucao()).isNull();
   }
 }

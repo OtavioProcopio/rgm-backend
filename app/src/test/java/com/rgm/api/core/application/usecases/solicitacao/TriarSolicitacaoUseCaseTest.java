@@ -1,11 +1,14 @@
 package com.rgm.api.core.application.usecases.solicitacao;
 
+import static com.rgm.api.support.SolicitacaoTestBuilder.umaSolicitacao;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 import com.rgm.api.core.domain.exceptions.BusinessRuleException;
 import com.rgm.api.core.domain.exceptions.NaoAutorizadoException;
+import com.rgm.api.core.domain.exceptions.TransicaoStatusInvalidaException;
+import com.rgm.api.core.domain.exceptions.ValidationException;
 import com.rgm.api.core.domain.model.aggregates.Solicitacao;
 import com.rgm.api.core.domain.model.aggregates.Usuario;
 import com.rgm.api.core.domain.model.entities.AtividadeSolicitacao;
@@ -24,6 +27,10 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
 
 class TriarSolicitacaoUseCaseTest {
 
@@ -55,23 +62,17 @@ class TriarSolicitacaoUseCaseTest {
 
   private Solicitacao criarSolicitacao() {
     final Instant agora = Instant.now();
-    return new Solicitacao(
-        UUID.randomUUID(),
-        "Titulo",
-        "Descricao",
-        TipoSolicitacao.REPARO,
-        StatusSolicitacao.A_FAZER,
-        null,
-        UUID.randomUUID(),
-        null /* modeloCodigo */,
-        null /* modeloMaquina */,
-        null /* modeloObservacoes */,
-        UUID.randomUUID(),
-        null,
-        agora,
-        agora,
-        null,
-        null);
+    return Solicitacao.builder()
+        .id(UUID.randomUUID())
+        .titulo("Titulo")
+        .descricao("Descricao")
+        .tipo(TipoSolicitacao.REPARO)
+        .status(StatusSolicitacao.A_FAZER)
+        .modeloId(UUID.randomUUID())
+        .abertaPorUsuarioId(UUID.randomUUID())
+        .criadaEm(agora)
+        .atualizadaEm(agora)
+        .build();
   }
 
   @Test
@@ -98,8 +99,9 @@ class TriarSolicitacaoUseCaseTest {
 
     assertEquals(StatusSolicitacao.EM_ANDAMENTO, resultado.getStatus());
     assertEquals(PrioridadeSolicitacao.ALTA, resultado.getPrioridade());
+    assertEquals("Trocar o gabarito", resultado.getInstrucao());
     verify(atribuicaoRepository, times(1)).save(any());
-    verify(atividadeRepository, times(3)).save(any());
+    verify(atividadeRepository, times(2)).save(any());
   }
 
   @Test
@@ -220,58 +222,71 @@ class TriarSolicitacaoUseCaseTest {
                     gestor.getId())));
   }
 
-  @Test
-  void shouldFailAndWriteNothingWhenDescricaoIsBlank() {
-    // Arrange
-    final Usuario gestor = criarUsuario(PerfilUsuario.GESTOR);
-    final Solicitacao solicitacao = criarSolicitacao();
-
-    // Act
-    final var thrown =
-        assertThrows(
-            BusinessRuleException.class,
-            () ->
-                useCase.execute(
-                    new TriarSolicitacaoUseCase.Input(
-                        solicitacao.getId(),
-                        PrioridadeSolicitacao.ALTA,
-                        List.of(UUID.randomUUID()),
-                        "   ",
-                        gestor.getId())));
-
-    // Assert
-    assertNotNull(thrown.getMessage());
-    verifyNoInteractions(solicitacaoRepository, atribuicaoRepository, atividadeRepository);
+  private void prepararLeituras(final Usuario gestor, final Usuario operador, final Solicitacao s) {
+    when(usuarioRepository.findById(gestor.getId())).thenReturn(Optional.of(gestor));
+    when(solicitacaoRepository.findById(s.getId())).thenReturn(Optional.of(s));
+    when(usuarioRepository.findAllByIdIn(List.of(operador.getId()))).thenReturn(List.of(operador));
   }
 
-  @Test
-  void shouldFailWhenDescricaoIsNull() {
-    // Arrange
-    final Usuario gestor = criarUsuario(PerfilUsuario.GESTOR);
-
-    // Act + Assert
-    assertThrows(
-        BusinessRuleException.class,
-        () ->
-            useCase.execute(
-                new TriarSolicitacaoUseCase.Input(
-                    UUID.randomUUID(),
-                    PrioridadeSolicitacao.ALTA,
-                    List.of(UUID.randomUUID()),
-                    null,
-                    gestor.getId())));
-    verifyNoInteractions(solicitacaoRepository, atribuicaoRepository, atividadeRepository);
+  private void verificarQueNadaFoiGravado() {
+    verify(solicitacaoRepository, never()).save(any());
+    verifyNoInteractions(atribuicaoRepository, atividadeRepository);
   }
 
-  @Test
-  void shouldRecordTrimmedDescricaoAsComentarioOfGestorWhenTriaging() {
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = {"   ", "\n\t "})
+  void shouldFailAndWriteNothingWhenInstrucaoIsBlank(final String instrucao) {
     // Arrange
     final Usuario gestor = criarUsuario(PerfilUsuario.GESTOR);
     final Usuario operador = criarUsuario(PerfilUsuario.OPERADOR);
     final Solicitacao solicitacao = criarSolicitacao();
-    when(usuarioRepository.findById(gestor.getId())).thenReturn(Optional.of(gestor));
-    when(solicitacaoRepository.findById(solicitacao.getId())).thenReturn(Optional.of(solicitacao));
-    when(usuarioRepository.findAllByIdIn(List.of(operador.getId()))).thenReturn(List.of(operador));
+    prepararLeituras(gestor, operador, solicitacao);
+
+    // Act + Assert
+    assertThrows(
+        ValidationException.class,
+        () ->
+            useCase.execute(
+                new TriarSolicitacaoUseCase.Input(
+                    solicitacao.getId(),
+                    PrioridadeSolicitacao.ALTA,
+                    List.of(operador.getId()),
+                    instrucao,
+                    gestor.getId())));
+    verificarQueNadaFoiGravado();
+  }
+
+  @Test
+  void shouldFailAndWriteNothingWhenSolicitacaoIsNotAFazer() {
+    // Arrange
+    final Usuario gestor = criarUsuario(PerfilUsuario.GESTOR);
+    final Usuario operador = criarUsuario(PerfilUsuario.OPERADOR);
+    final Solicitacao emValidacao =
+        umaSolicitacao().emValidacao().comInstrucao("Instrucao original").build();
+    prepararLeituras(gestor, operador, emValidacao);
+
+    // Act + Assert
+    assertThrows(
+        TransicaoStatusInvalidaException.class,
+        () ->
+            useCase.execute(
+                new TriarSolicitacaoUseCase.Input(
+                    emValidacao.getId(),
+                    PrioridadeSolicitacao.URGENTE,
+                    List.of(operador.getId()),
+                    "Outra instrucao",
+                    gestor.getId())));
+    verificarQueNadaFoiGravado();
+  }
+
+  @Test
+  void shouldSaveTrimmedInstrucaoAndRecordOnlyAtribuicaoAndStatusWhenTriaging() {
+    // Arrange
+    final Usuario gestor = criarUsuario(PerfilUsuario.GESTOR);
+    final Usuario operador = criarUsuario(PerfilUsuario.OPERADOR);
+    final Solicitacao solicitacao = criarSolicitacao();
+    prepararLeituras(gestor, operador, solicitacao);
     when(solicitacaoRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
     when(atribuicaoRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
     when(atividadeRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -286,14 +301,13 @@ class TriarSolicitacaoUseCaseTest {
             gestor.getId()));
 
     // Assert
-    final var captor = org.mockito.ArgumentCaptor.forClass(AtividadeSolicitacao.class);
-    verify(atividadeRepository, times(3)).save(captor.capture());
-    final var comentario =
-        captor.getAllValues().stream()
-            .filter(a -> a.getTipo() == TipoAtividadeSolicitacao.COMENTARIO)
-            .findFirst()
-            .orElseThrow();
-    assertEquals("Trocar o gabarito", comentario.getComentario());
-    assertEquals(gestor.getId(), comentario.getAutorUsuarioId());
+    final var salva = ArgumentCaptor.forClass(Solicitacao.class);
+    verify(solicitacaoRepository).save(salva.capture());
+    assertEquals("Trocar o gabarito", salva.getValue().getInstrucao());
+    final var atividades = ArgumentCaptor.forClass(AtividadeSolicitacao.class);
+    verify(atividadeRepository, times(2)).save(atividades.capture());
+    assertEquals(
+        List.of(TipoAtividadeSolicitacao.ATRIBUICAO, TipoAtividadeSolicitacao.MUDANCA_STATUS),
+        atividades.getAllValues().stream().map(AtividadeSolicitacao::getTipo).toList());
   }
 }

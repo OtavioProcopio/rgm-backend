@@ -71,23 +71,21 @@ class AnexarEvidenciaUseCaseTest {
         (status == StatusSolicitacao.CONCLUIDA || status == StatusSolicitacao.CANCELADA)
             ? "Comentario final"
             : null;
-    return new Solicitacao(
-        UUID.randomUUID(),
-        "T",
-        "D",
-        TipoSolicitacao.REPARO,
-        status,
-        status.exigePrioridade() ? PrioridadeSolicitacao.ALTA : null,
-        UUID.randomUUID(),
-        null /* modeloCodigo */,
-        null /* modeloMaquina */,
-        null /* modeloObservacoes */,
-        UUID.randomUUID(),
-        comentarioFinal,
-        agora,
-        agora,
-        status == StatusSolicitacao.CONCLUIDA ? agora : null,
-        status == StatusSolicitacao.CANCELADA ? agora : null);
+    return Solicitacao.builder()
+        .id(UUID.randomUUID())
+        .titulo("T")
+        .descricao("D")
+        .tipo(TipoSolicitacao.REPARO)
+        .status(status)
+        .prioridade(status.exigePrioridade() ? PrioridadeSolicitacao.ALTA : null)
+        .modeloId(UUID.randomUUID())
+        .abertaPorUsuarioId(UUID.randomUUID())
+        .comentarioFinal(comentarioFinal)
+        .criadaEm(agora)
+        .atualizadaEm(agora)
+        .concluidaEm(status == StatusSolicitacao.CONCLUIDA ? agora : null)
+        .canceladaEm(status == StatusSolicitacao.CANCELADA ? agora : null)
+        .build();
   }
 
   private Usuario criarUsuario(final UUID id, final PerfilUsuario perfil) {
@@ -473,23 +471,21 @@ class AnexarEvidenciaUseCaseTest {
 
   private Solicitacao solicitacaoAbertaPor(final UUID autorId, final StatusSolicitacao status) {
     final Instant agora = Instant.now();
-    return new Solicitacao(
-        UUID.randomUUID(),
-        "T",
-        "D",
-        TipoSolicitacao.REPARO,
-        status,
-        status.exigePrioridade() ? PrioridadeSolicitacao.ALTA : null,
-        UUID.randomUUID(),
-        null,
-        null,
-        null,
-        autorId,
-        status.isTerminal() ? "Comentario final" : null,
-        agora,
-        agora,
-        status == StatusSolicitacao.CONCLUIDA ? agora : null,
-        status == StatusSolicitacao.CANCELADA ? agora : null);
+    return Solicitacao.builder()
+        .id(UUID.randomUUID())
+        .titulo("T")
+        .descricao("D")
+        .tipo(TipoSolicitacao.REPARO)
+        .status(status)
+        .prioridade(status.exigePrioridade() ? PrioridadeSolicitacao.ALTA : null)
+        .modeloId(UUID.randomUUID())
+        .abertaPorUsuarioId(autorId)
+        .comentarioFinal(status.isTerminal() ? "Comentario final" : null)
+        .criadaEm(agora)
+        .atualizadaEm(agora)
+        .concluidaEm(status == StatusSolicitacao.CONCLUIDA ? agora : null)
+        .canceladaEm(status == StatusSolicitacao.CANCELADA ? agora : null)
+        .build();
   }
 
   private AnexarEvidenciaUseCase.Input entrada(

@@ -97,23 +97,17 @@ class ExcluirRegistroUseCaseTest {
     final Instant agora = Instant.now();
     final UUID solId = UUID.randomUUID();
     final Solicitacao sol =
-        new Solicitacao(
-            solId,
-            "T",
-            "D",
-            TipoSolicitacao.REPARO,
-            StatusSolicitacao.A_FAZER,
-            null,
-            UUID.randomUUID(),
-            null /* modeloCodigo */,
-            null /* modeloMaquina */,
-            null /* modeloObservacoes */,
-            UUID.randomUUID(),
-            null,
-            agora,
-            agora,
-            null,
-            null);
+        Solicitacao.builder()
+            .id(solId)
+            .titulo("T")
+            .descricao("D")
+            .tipo(TipoSolicitacao.REPARO)
+            .status(StatusSolicitacao.A_FAZER)
+            .modeloId(UUID.randomUUID())
+            .abertaPorUsuarioId(UUID.randomUUID())
+            .criadaEm(agora)
+            .atualizadaEm(agora)
+            .build();
 
     final UUID evidenciaId = UUID.randomUUID();
     final SolicitacaoEvidencia rel = new SolicitacaoEvidencia(solId, evidenciaId);
@@ -153,23 +147,20 @@ class ExcluirRegistroUseCaseTest {
     final Instant agora = Instant.now();
     final UUID solId = UUID.randomUUID();
     final Solicitacao sol =
-        new Solicitacao(
-            solId,
-            "T",
-            "D",
-            TipoSolicitacao.REPARO,
-            StatusSolicitacao.CONCLUIDA,
-            PrioridadeSolicitacao.MEDIA,
-            UUID.randomUUID(),
-            null /* modeloCodigo */,
-            null /* modeloMaquina */,
-            null /* modeloObservacoes */,
-            UUID.randomUUID(),
-            "Feito",
-            agora,
-            agora,
-            agora,
-            null);
+        Solicitacao.builder()
+            .id(solId)
+            .titulo("T")
+            .descricao("D")
+            .tipo(TipoSolicitacao.REPARO)
+            .status(StatusSolicitacao.CONCLUIDA)
+            .prioridade(PrioridadeSolicitacao.MEDIA)
+            .modeloId(UUID.randomUUID())
+            .abertaPorUsuarioId(UUID.randomUUID())
+            .comentarioFinal("Feito")
+            .criadaEm(agora)
+            .atualizadaEm(agora)
+            .concluidaEm(agora)
+            .build();
 
     when(usuarioRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
     when(solicitacaoRepository.findById(solId)).thenReturn(Optional.of(sol));

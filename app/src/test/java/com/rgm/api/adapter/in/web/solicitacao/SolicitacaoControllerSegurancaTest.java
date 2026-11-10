@@ -10,6 +10,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.head;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -23,6 +24,7 @@ import com.rgm.api.core.application.usecases.auth.AutenticarAcessoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.AbrirSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.CancelarSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.DevolverSolicitacaoUseCase;
+import com.rgm.api.core.application.usecases.solicitacao.EditarInstrucaoSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.EditarSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.EncerrarSolicitacaoUseCase;
 import com.rgm.api.core.application.usecases.solicitacao.EnviarParaValidacaoUseCase;
@@ -74,6 +76,7 @@ class SolicitacaoControllerSegurancaTest {
   @Autowired private MockMvc mockMvc;
   @MockitoBean private AbrirSolicitacaoUseCase abrirUseCase;
   @MockitoBean private TriarSolicitacaoUseCase triarUseCase;
+  @MockitoBean private EditarInstrucaoSolicitacaoUseCase editarInstrucaoUseCase;
   @MockitoBean private EnviarParaValidacaoUseCase enviarUseCase;
   @MockitoBean private DevolverSolicitacaoUseCase devolverUseCase;
   @MockitoBean private EncerrarSolicitacaoUseCase encerrarUseCase;
@@ -382,6 +385,22 @@ class SolicitacaoControllerSegurancaTest {
     // Assert
     resposta.andExpect(status().isUnauthorized());
     verifyNoInteractions(obterMetricasUseCase);
+  }
+
+  @Test
+  void shouldResponder401WhenAInstrucaoEEditadaSemCredencial() throws Exception {
+    // Arrange
+    final var requisicao =
+        patch("/api/solicitacoes/{id}/instrucao", java.util.UUID.randomUUID())
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("{\"instrucao\":\"Nova\"}");
+
+    // Act
+    final var resposta = mockMvc.perform(requisicao);
+
+    // Assert
+    resposta.andExpect(status().isUnauthorized());
+    verifyNoInteractions(editarInstrucaoUseCase);
   }
 
   @Test

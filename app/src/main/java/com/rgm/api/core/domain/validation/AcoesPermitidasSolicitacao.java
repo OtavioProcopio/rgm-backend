@@ -67,6 +67,9 @@ public final class AcoesPermitidasSolicitacao {
     if (perfil.podeTriar() && aberta && status != StatusSolicitacao.A_FAZER) {
       acoes.add(AcaoSolicitacao.ALTERAR_RESPONSAVEIS);
     }
+    if (perfil.podeTriar() && status == StatusSolicitacao.EM_ANDAMENTO) {
+      acoes.add(AcaoSolicitacao.EDITAR_INSTRUCAO);
+    }
     if (aberta
         && AcessoEvidenciaSolicitacao.podeListar(usuario, solicitacao, () -> estaAtribuido)) {
       acoes.add(AcaoSolicitacao.ANEXAR_EVIDENCIA);

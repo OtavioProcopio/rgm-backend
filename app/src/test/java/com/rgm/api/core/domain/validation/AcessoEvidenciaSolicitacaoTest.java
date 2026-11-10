@@ -42,23 +42,17 @@ class AcessoEvidenciaSolicitacaoTest {
   }
 
   private static Solicitacao solicitacaoAbertaPor(final UUID autorId) {
-    return new Solicitacao(
-        UUID.randomUUID(),
-        "Titulo",
-        "Descricao",
-        TipoSolicitacao.REPARO,
-        StatusSolicitacao.A_FAZER,
-        null,
-        UUID.randomUUID(),
-        null,
-        null,
-        null,
-        autorId,
-        null,
-        AGORA,
-        AGORA,
-        null,
-        null);
+    return Solicitacao.builder()
+        .id(UUID.randomUUID())
+        .titulo("Titulo")
+        .descricao("Descricao")
+        .tipo(TipoSolicitacao.REPARO)
+        .status(StatusSolicitacao.A_FAZER)
+        .modeloId(UUID.randomUUID())
+        .abertaPorUsuarioId(autorId)
+        .criadaEm(AGORA)
+        .atualizadaEm(AGORA)
+        .build();
   }
 
   @Test

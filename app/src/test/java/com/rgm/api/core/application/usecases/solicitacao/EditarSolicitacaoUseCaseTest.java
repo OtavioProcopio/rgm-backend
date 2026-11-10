@@ -1,5 +1,6 @@
 package com.rgm.api.core.application.usecases.solicitacao;
 
+import static com.rgm.api.support.SolicitacaoTestBuilder.umaSolicitacao;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -57,23 +58,17 @@ class EditarSolicitacaoUseCaseTest {
   }
 
   private Solicitacao criarSolicitacaoAFazer(final UUID abertaPorId) {
-    return new Solicitacao(
-        UUID.randomUUID(),
-        "Titulo",
-        "Descricao",
-        TipoSolicitacao.REPARO,
-        StatusSolicitacao.A_FAZER,
-        null,
-        UUID.randomUUID(),
-        null /* modeloCodigo */,
-        null /* modeloMaquina */,
-        null /* modeloObservacoes */,
-        abertaPorId,
-        null,
-        NOW,
-        NOW,
-        null,
-        null);
+    return Solicitacao.builder()
+        .id(UUID.randomUUID())
+        .titulo("Titulo")
+        .descricao("Descricao")
+        .tipo(TipoSolicitacao.REPARO)
+        .status(StatusSolicitacao.A_FAZER)
+        .modeloId(UUID.randomUUID())
+        .abertaPorUsuarioId(abertaPorId)
+        .criadaEm(NOW)
+        .atualizadaEm(NOW)
+        .build();
   }
 
   private EditarSolicitacaoUseCase.Input input(
@@ -175,25 +170,21 @@ class EditarSolicitacaoUseCaseTest {
   }
 
   private Solicitacao criarSolicitacaoEm(final UUID abertaPorId, final StatusSolicitacao status) {
-    return new Solicitacao(
-        UUID.randomUUID(),
-        "Titulo",
-        "Descricao",
-        TipoSolicitacao.REPARO,
-        status,
-        status == StatusSolicitacao.A_FAZER
-            ? null
-            : com.rgm.api.core.domain.model.enums.PrioridadeSolicitacao.ALTA,
-        UUID.randomUUID(),
-        null,
-        null,
-        null,
-        abertaPorId,
-        null,
-        NOW,
-        NOW,
-        null,
-        null);
+    return Solicitacao.builder()
+        .id(UUID.randomUUID())
+        .titulo("Titulo")
+        .descricao("Descricao")
+        .tipo(TipoSolicitacao.REPARO)
+        .status(status)
+        .prioridade(
+            status == StatusSolicitacao.A_FAZER
+                ? null
+                : com.rgm.api.core.domain.model.enums.PrioridadeSolicitacao.ALTA)
+        .modeloId(UUID.randomUUID())
+        .abertaPorUsuarioId(abertaPorId)
+        .criadaEm(NOW)
+        .atualizadaEm(NOW)
+        .build();
   }
 
   @Test
@@ -251,5 +242,24 @@ class EditarSolicitacaoUseCaseTest {
     // Assert
     assertEquals("Novo titulo", editada.getTitulo());
     verify(atividadeRepository, times(1)).save(any());
+  }
+
+  @Test
+  void shouldKeepTheInstrucaoWhenTituloAndDescricaoAreEdited() {
+    // Arrange
+    final Usuario gestor = criarGestor();
+    final Solicitacao sol =
+        umaSolicitacao().emAndamento().comInstrucao("Trocar o gabarito").build();
+    when(usuarioRepository.findById(gestor.getId())).thenReturn(Optional.of(gestor));
+    when(solicitacaoRepository.findById(sol.getId())).thenReturn(Optional.of(sol));
+    when(solicitacaoRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+    // Act
+    final Solicitacao result =
+        useCase.execute(input(sol.getId(), gestor.getId(), TipoSolicitacao.REPARO));
+
+    // Assert
+    assertEquals("Novo titulo", result.getTitulo());
+    assertEquals("Trocar o gabarito", result.getInstrucao());
   }
 }

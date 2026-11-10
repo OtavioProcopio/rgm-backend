@@ -6,6 +6,7 @@ import static com.rgm.api.core.domain.model.enums.AcaoSolicitacao.CANCELAR;
 import static com.rgm.api.core.domain.model.enums.AcaoSolicitacao.COMENTAR;
 import static com.rgm.api.core.domain.model.enums.AcaoSolicitacao.DEVOLVER;
 import static com.rgm.api.core.domain.model.enums.AcaoSolicitacao.EDITAR;
+import static com.rgm.api.core.domain.model.enums.AcaoSolicitacao.EDITAR_INSTRUCAO;
 import static com.rgm.api.core.domain.model.enums.AcaoSolicitacao.ENCERRAR;
 import static com.rgm.api.core.domain.model.enums.AcaoSolicitacao.ENVIAR_VALIDACAO;
 import static com.rgm.api.core.domain.model.enums.AcaoSolicitacao.TRIAR;
@@ -36,23 +37,21 @@ class AcoesPermitidasSolicitacaoTest {
   }
 
   private static Solicitacao solicitacao(final UUID autorId, final StatusSolicitacao status) {
-    return new Solicitacao(
-        UUID.randomUUID(),
-        "Titulo",
-        "Descricao",
-        TipoSolicitacao.REPARO,
-        status,
-        status.exigePrioridade() ? PrioridadeSolicitacao.ALTA : null,
-        UUID.randomUUID(),
-        null,
-        null,
-        null,
-        autorId,
-        status.isTerminal() ? "Comentario final" : null,
-        AGORA,
-        AGORA,
-        status == StatusSolicitacao.CONCLUIDA ? AGORA : null,
-        status == StatusSolicitacao.CANCELADA ? AGORA : null);
+    return Solicitacao.builder()
+        .id(UUID.randomUUID())
+        .titulo("Titulo")
+        .descricao("Descricao")
+        .tipo(TipoSolicitacao.REPARO)
+        .status(status)
+        .prioridade(status.exigePrioridade() ? PrioridadeSolicitacao.ALTA : null)
+        .modeloId(UUID.randomUUID())
+        .abertaPorUsuarioId(autorId)
+        .comentarioFinal(status.isTerminal() ? "Comentario final" : null)
+        .criadaEm(AGORA)
+        .atualizadaEm(AGORA)
+        .concluidaEm(status == StatusSolicitacao.CONCLUIDA ? AGORA : null)
+        .canceladaEm(status == StatusSolicitacao.CANCELADA ? AGORA : null)
+        .build();
   }
 
   @ParameterizedTest
@@ -85,7 +84,13 @@ class AcoesPermitidasSolicitacaoTest {
     // Assert
     assertEquals(
         EnumSet.of(
-            ENVIAR_VALIDACAO, CANCELAR, EDITAR, COMENTAR, ALTERAR_RESPONSAVEIS, ANEXAR_EVIDENCIA),
+            ENVIAR_VALIDACAO,
+            CANCELAR,
+            EDITAR,
+            COMENTAR,
+            ALTERAR_RESPONSAVEIS,
+            ANEXAR_EVIDENCIA,
+            EDITAR_INSTRUCAO),
         acoes);
   }
 
@@ -242,6 +247,57 @@ class AcoesPermitidasSolicitacaoTest {
     // Act
     final Set<AcaoSolicitacao> acoes =
         AcoesPermitidasSolicitacao.calcular(externo, sol, true, true);
+
+    // Assert
+    assertEquals(EnumSet.noneOf(AcaoSolicitacao.class), acoes);
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = PerfilUsuario.class,
+      names = {"GESTOR", "ADMINISTRADOR"})
+  void shouldOfferEditarInstrucaoOnlyWhileEmAndamentoToManagers(final PerfilUsuario perfil) {
+    // Arrange
+    final Usuario gestor = usuario(perfil, true);
+
+    for (final StatusSolicitacao status : StatusSolicitacao.values()) {
+      final Solicitacao sol = solicitacao(UUID.randomUUID(), status);
+
+      // Act
+      final Set<AcaoSolicitacao> acoes =
+          AcoesPermitidasSolicitacao.calcular(gestor, sol, false, true);
+
+      // Assert
+      assertEquals(
+          status == StatusSolicitacao.EM_ANDAMENTO,
+          acoes.contains(EDITAR_INSTRUCAO),
+          "status " + status);
+    }
+  }
+
+  @Test
+  void shouldNeverOfferEditarInstrucaoToTheOperatorWhoOpenedAndIsAssigned() {
+    // Arrange: o operador e o responsavel e quem abriu a solicitacao
+    final Usuario usuario = usuario(PerfilUsuario.OPERADOR, true);
+    final Solicitacao sol = solicitacao(usuario.getId(), StatusSolicitacao.EM_ANDAMENTO);
+
+    // Act
+    final Set<AcaoSolicitacao> acoes =
+        AcoesPermitidasSolicitacao.calcular(usuario, sol, true, true);
+
+    // Assert
+    assertEquals(false, acoes.contains(EDITAR_INSTRUCAO));
+  }
+
+  @Test
+  void shouldNotOfferEditarInstrucaoToInactiveManager() {
+    // Arrange
+    final Usuario inativo = usuario(PerfilUsuario.GESTOR, false);
+    final Solicitacao sol = solicitacao(UUID.randomUUID(), StatusSolicitacao.EM_ANDAMENTO);
+
+    // Act
+    final Set<AcaoSolicitacao> acoes =
+        AcoesPermitidasSolicitacao.calcular(inativo, sol, false, true);
 
     // Assert
     assertEquals(EnumSet.noneOf(AcaoSolicitacao.class), acoes);
