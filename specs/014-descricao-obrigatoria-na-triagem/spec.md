@@ -1,5 +1,7 @@
 # Especificação — Descrição do que fazer, obrigatória na triagem
 
+> **Substituída em parte pela spec 015 (2026-11-09):** a descrição passou a se chamar `instrucao`, é gravada na própria solicitação (não como comentário, RF-03 e RF-05 daqui) e pode ser corrigida em andamento. Vale a 015.
+
 > Descreve **o quê** e **por quê**. Não descreve como implementar: sem nome de biblioteca,
 > sem esquema de banco, sem assinatura de função.
 
