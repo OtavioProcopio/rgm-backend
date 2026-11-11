@@ -19,7 +19,10 @@ Consumidor: `rgm-frontend`, spec 019. Base: `develop` na `v1.7.0`.
    de igualdade.
 4. **Não há como saber quantos modelos cada botão traria.** Sem a contagem, o botão "Resina"
    pode levar a uma tela vazia.
-5. **A ordem é "mais recente primeiro".** Para achar um modelo no catálogo, o código em ordem é
+5. **Não há como saber em que posição um modelo está.** Um link direto para qualquer modelo
+   (spec 019) precisa abrir a lista no bloco certo e dizer "n de total"; sem a posição, só os
+   primeiros blocos seriam alcançáveis.
+6. **A ordem é "mais recente primeiro".** Para achar um modelo no catálogo, o código em ordem é
    previsível; hoje o "primeiro" do filtro depende da data de criação.
 
 **Custo de não resolver:** o catálogo teria de carregar todos os modelos no navegador para filtrar
@@ -30,6 +33,7 @@ e contar, ou mostrar botões que levam a resultado vazio.
 - A listagem aceita filtrar por tipo, por máquina exata e por uma busca única (código ou
   descrição, sem acento), e escolher a ordem.
 - Uma consulta devolve quantos modelos cada tipo e cada máquina trariam, dados os outros filtros.
+- Uma consulta devolve a posição de qualquer modelo dentro do filtro e da ordem, para o link direto.
 - Nada muda para quem não usa os parâmetros novos.
 
 ## Fora de escopo
@@ -61,6 +65,8 @@ e contar, ou mostrar botões que levam a resultado vazio.
 | RF-08 | Sem nenhum parâmetro novo, a listagem devolve exatamente o que devolve hoje (conteúdo, ordem, paginação e erros) | obrigatório |
 | RF-09 | A paginação continua valendo com os filtros novos: `total` de elementos e de páginas refletem o filtro | obrigatório |
 | RF-10 | As rotas novas e os parâmetros novos têm a mesma regra de acesso da listagem atual | obrigatório |
+| RF-11 | `GET /api/modelos/{id}/posicao` aceita os mesmos filtros e `ordem=CODIGO` e devolve `posicao` (começa em 1) e `total`: a posição do modelo na lista que a listagem devolveria com esses filtros; modelo que existe mas não atende aos filtros devolve `posicao` nula e o `total`; modelo inexistente responde 404; `ordem` diferente de `CODIGO` responde 400 | obrigatório |
+| RF-12 | A posição é coerente com a listagem: o modelo de posição *p* está na página `(p − 1) / size` (divisão inteira, páginas desde 0) da listagem com os mesmos filtros e `ordem=CODIGO`, na linha `(p − 1) % size` | obrigatório |
 
 ## Requisitos não funcionais
 
@@ -142,6 +148,30 @@ Funcionalidade: Catálogo de modelos — filtros e contagens
     E porMaquina conta por máquina sem aplicar o filtro de máquina, para cada botão de máquina saber o que traria
     E total é o número de modelos da FBOX
 
+  Cenário: Posição de um modelo no filtro
+    Dado 45 modelos RESINA em ordem de código
+    Quando se pede a posição do 33º com tipo=RESINA e ordem=CODIGO
+    Então posicao é 33 e total é 45
+    E a listagem com size=20 traz esse modelo na página 1, linha 12
+
+  Cenário: Posição com desempate
+    Dado dois modelos com o mesmo código e versões 2 e 1
+    Quando se pede a posição de cada um com ordem=CODIGO
+    Então a versão 2 vem antes da versão 1
+
+  Cenário: Modelo fora do filtro
+    Dado um modelo da máquina "LINHA 3"
+    Quando se pede a posição dele com maquina=FBOX e maquinaExata=true
+    Então a resposta é 200 com posicao nula e o total da FBOX
+
+  Cenário: Modelo inexistente
+    Quando se pede a posição de um id que não existe
+    Então a resposta é 404
+
+  Cenário: Posição sem ordem por código
+    Quando se pede a posição com ordem=CRIACAO
+    Então a resposta é 400
+
   Cenário: Contagem só traz valores com modelos
     Dado um tipo sem nenhum modelo no filtro atual
     Quando se pede as contagens
@@ -161,10 +191,12 @@ Funcionalidade: Catálogo de modelos — filtros e contagens
 | Pergunta | Resposta | Data |
 |---|---|---|
 | Quantos modelos o catálogo tem? | Centenas; carga por blocos de 20 | 2026-11-11 |
+| Link para qualquer modelo? | Sim: a posição do modelo no filtro diz a página a carregar; `posicao` só vale com `ordem=CODIGO`, porque a ordem por criação não tem desempate | 2026-11-11 |
 | A máquina "contém" muda? | Não: `maquinaExata` é opt-in; a administração segue igual | 2026-11-11 |
 | A ordem padrão muda? | Não: `CODIGO` é opt-in; o padrão continua "mais recente primeiro" | 2026-11-11 |
 
 ## Métricas de sucesso
 
 - O catálogo monta botões e contagens com 1 requisição de contagens, sem baixar a lista inteira.
+- Qualquer modelo é alcançável por link direto, no bloco certo, com 1 requisição de posição.
 - 0 mudança de resposta para chamadas que não usam os parâmetros novos.

@@ -17,6 +17,8 @@
 | Consulta | Uma consulta nativa parametrizada única para listagem e contagem, com todos os filtros opcionais (`(:x IS NULL OR …)`) | Uma consulta por combinação de filtros | Mantém um só lugar com a regra dos filtros; a contagem reusa a cláusula |
 | Contagens | `GET /api/modelos/contagens`: `total`, e `porTipo`/`porMaquina` calculados aplicando **todos os filtros menos o do próprio grupo** | Contar tudo com todos os filtros | RF-06: o botão mostra o que traria; é a contagem facetada padrão |
 | Zeros | Só valores com contagem > 0 | Devolver o catálogo de tipos com zeros | O front já conhece os tipos pelo catálogo público e completa com 0 |
+| Posição | `GET /api/modelos/{id}/posicao`: `posicao = 1 + COUNT(modelos do filtro que vêm antes)`, com "vem antes" = `codigo <` ou (`codigo =` e `versao >`) ou (`codigo =` e `versao =` e `id <`) | Percorrer a lista no servidor; calcular no cliente | Uma consulta agregada, sem carregar modelos; o desempate por `id` torna a ordem total |
+| Só `CODIGO` na posição | `ordem=CRIACAO` responde 400 | Suportar também `CRIACAO` | A ordem por criação de hoje não tem desempate (`criadoEm` sozinho): duas linhas com o mesmo instante podem trocar de página. Não vale prometer posição sobre ela |
 | Estrutura | `ListarModelosUseCase.Input` ganha `tipo`, `q`, `maquinaExata`, `ordem`; novo `ContarModelosUseCase`; porta `ModeloRepository` ganha `contarPor…` | Controller montando a consulta | Regra no caso de uso (P7) |
 
 ## Arquivos a criar ou alterar
@@ -28,6 +30,7 @@
 | web | `MAIN/adapter/in/web/dto/response/ContagensDeModelosResponse.java` | criar | `TEST/adapter/in/web/dto/response/ContagensDeModelosResponseTest.java` |
 | uc | `MAIN/core/application/usecases/modelo/ListarModelosUseCase.java` | alterar | `TEST/core/application/usecases/modelo/ListarModelosUseCaseTest.java` |
 | uc | `MAIN/core/application/usecases/modelo/ContarModelosUseCase.java` | criar | `TEST/core/application/usecases/modelo/ContarModelosUseCaseTest.java` |
+| uc | `MAIN/core/application/usecases/modelo/PosicaoDoModeloUseCase.java`, `web/dto/response/PosicaoDoModeloResponse.java` | criar | `PosicaoDoModeloUseCaseTest.java`, `PosicaoDoModeloResponseTest.java` |
 | ports | `MAIN/core/domain/ports/repositories/ModeloRepository.java`, `FiltrosDeModelos` (registro dos filtros) e `OrdemDeModelos` (enum) | alterar/criar | — |
 | per | `MAIN/adapter/out/persistence/repository/ModeloJpaRepository.java` (consulta nativa e contagens) | alterar | `TEST/adapter/out/persistence/repository/ModeloJpaRepositoryPostgresTest.java` |
 | per | `MAIN/adapter/out/persistence/ModeloRepositoryAdapter.java` | alterar | `TEST/adapter/out/persistence/ModeloRepositoryAdapterTest.java` |
@@ -38,6 +41,7 @@
 
 - **Entrada:** `tipo`, `q` (≥ 2), `maquina`, `maquinaExata`, `ativo`, `codigo`, `descricao`, `ordem`, `page`, `size`.
 - **Aplicação:** `ListarModelosUseCase` monta `FiltrosDeModelos` e `OrdemDeModelos`; `ContarModelosUseCase` pede os três agrupamentos.
+- **Posição:** `{ posicao: int|null, total: long }`; 404 se o modelo não existe.
 - **Saída da contagem:** `{ total, porTipo: [{ tipo, total }], porMaquina: [{ maquina, total }] }`.
 - **Compatibilidade:** aditivo; sem parâmetros novos, o caminho antigo (`findAll`/`findByFilters`) responde o mesmo.
 
@@ -56,6 +60,7 @@ Nenhum alvo ou variável novos. Sem migração.
 | Busca com `rgm_sem_acento` sem índice fica lenta | baixa (centenas de linhas) | RNF-01 mede o número de consultas; teste com 1000 modelos no Postgres real |
 | A consulta única muda a ordem ou a paginação antigas | média | RF-08 com teste de contrato comparando a resposta antiga e a nova sem parâmetros |
 | Contagem facetada confunde: "por que Resina mostra 3 e a lista 0?" | média | A spec define que cada grupo ignora o próprio filtro e o front mostra o que o botão traria (spec 019) |
+| Posição e listagem discordam (um modelo cai numa página diferente da calculada) | média | RF-12 com teste no Postgres real: para cada modelo de um conjunto, a posição bate com a página e a linha da listagem |
 | `ordem=CODIGO` ordena código como texto ("A-10" antes de "A-2") | média | Declarado: ordem alfabética do código; ordem natural fica fora de escopo |
 
 ## Conformidade com a constituição

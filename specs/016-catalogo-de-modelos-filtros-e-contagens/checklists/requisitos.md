@@ -8,9 +8,10 @@
 
 ## Completude
 
-- [ ] Todo requisito funcional (RF-01 a RF-10) tem ao menos um critério de aceite em DADO/QUANDO/ENTÃO [LACUNA: RF-10 (acesso) não tem cenário próprio; é coberto por teste do controller]
+- [ ] Todo requisito funcional (RF-01 a RF-12) tem ao menos um critério de aceite em DADO/QUANDO/ENTÃO [LACUNA: RF-10 (acesso) não tem cenário próprio; é coberto por teste do controller]
 - [ ] Todo requisito não funcional (RNF-01 a RNF-05) tem critério mensurável, com número e unidade
 - [ ] O que está fora de escopo está escrito (situação, pendência, índice, formato da resposta, administração)
+- [ ] A posição (RF-11) diz o que acontece com modelo que existe mas está fora do filtro (posição nula, 200) e com `ordem=CRIACAO` (400) [LACUNA: o filtro `ativo` omitido conta modelos inativos na posição; o front sempre manda `ativo`]
 - [ ] A forma de publicação com o front está dita (aditivo, backend primeiro)
 - [ ] O que acontece com `q` e `tipo` inexistentes está dito [LACUNA: `tipo` desconhecido devolve lista vazia, não 400; a spec não diz]
 

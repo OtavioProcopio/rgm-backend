@@ -25,10 +25,19 @@
 - [ ] T015 Rota `GET /api/modelos/contagens` no `ModeloController`
 - [ ] T016 Teste de desempenho de forma: com 1000 modelos, `contagens` faz no máximo 3 consultas (RNF-01) e a listagem 1 consulta de capas (RNF-02)
 
-## Fase 3 — Documentação e validação
+## Fase 3 — Posição do modelo (RF-11, RF-12)
 
-- [ ] T017 Atualizar `docs/casos-de-uso.md` e a tabela de `openspec/README.md` (linha de `modelos`)
-- [ ] T018 `make validate` e `make test TESTE='*PostgresTest,FlywayMigrationTest'` verdes, com a saída real no `Convergence`
+- [ ] T017 Testes de `ModeloJpaRepositoryPostgresTest` da posição: 33º de 45 com tipo; desempate por versão e por `id`; fora do filtro → nula; coerência com a listagem (a posição *p* cai na página `(p−1)/size`, linha `(p−1)%size`) para todos os modelos de um conjunto (RF-11, RF-12)
+- [ ] T018 Consulta de posição no `ModeloJpaRepository` e no adaptador
+- [ ] T019 Testes de `PosicaoDoModeloUseCaseTest` (404, nula, `CRIACAO` recusada) e de `PosicaoDoModeloResponseTest`
+- [ ] T020 `PosicaoDoModeloUseCase`, resposta e `UseCaseConfig`
+- [ ] T021 Testes do controller: `GET /{id}/posicao` 200, nula, 404, 400 por `ordem`, acesso (RF-10, RF-11)
+- [ ] T022 Rota `GET /api/modelos/{id}/posicao`
+
+## Fase 4 — Documentação e validação
+
+- [ ] T023 Atualizar `docs/casos-de-uso.md` e a tabela de `openspec/README.md` (linha de `modelos`)
+- [ ] T024 `make validate` e `make test TESTE='*PostgresTest,FlywayMigrationTest'` verdes, com a saída real no `Convergence`
 
 ## Rastreabilidade
 
@@ -39,10 +48,11 @@
 | RF-06, RF-07 | T010 a T015 |
 | RF-08 | T001, T006, T007 |
 | RF-09 | T004 |
+| RF-11, RF-12 | T017 a T022 |
 | RF-10 | T008, T014 |
 | RNF-01, RNF-02 | T016 |
-| RNF-03, RNF-05 | T018 |
-| RNF-04 | T018 (nenhum arquivo em `db/migration`) |
+| RNF-03, RNF-05 | T024 |
+| RNF-04 | T024 (nenhum arquivo em `db/migration`) |
 
 ## Convergence
 
