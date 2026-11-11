@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.rgm.api.core.domain.exceptions.ValidationException;
 import com.rgm.api.core.domain.model.enums.CriterioOrdenacaoSolicitacao;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
+import com.rgm.api.core.domain.ports.repositories.OrdemDeModelos;
 import com.rgm.api.core.domain.ports.repositories.OrdenacaoSolicitacao;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;
@@ -427,5 +428,30 @@ class ParametrosDeConsultaTest {
         "Parâmetro 'q' deve ter de 2 a 100 caracteres (recebido: 1)", curtaErro.getMessage());
     assertEquals(
         "Parâmetro 'busca' deve ter de 2 a 100 caracteres (recebido: 101)", longaErro.getMessage());
+  }
+
+  @Test
+  void shouldDefaultToCriacaoWhenTheModelOrderIsMissingOrBlank() {
+    assertEquals(OrdemDeModelos.CRIACAO, ParametrosDeConsulta.ordemDeModelos(null));
+    assertEquals(OrdemDeModelos.CRIACAO, ParametrosDeConsulta.ordemDeModelos("   "));
+  }
+
+  @Test
+  void shouldAcceptBothModelOrdersWithoutCaseOrSpaces() {
+    assertEquals(OrdemDeModelos.CODIGO, ParametrosDeConsulta.ordemDeModelos(" codigo "));
+    assertEquals(OrdemDeModelos.CRIACAO, ParametrosDeConsulta.ordemDeModelos("Criacao"));
+  }
+
+  @Test
+  void shouldRejectAnUnknownModelOrderEchoingOnlyAShortValue() {
+    // Act
+    final var erro =
+        assertThrows(
+            ValidationException.class, () -> ParametrosDeConsulta.ordemDeModelos("x".repeat(80)));
+
+    // Assert
+    assertEquals(
+        "Parâmetro 'ordem' deve ser CRIACAO ou CODIGO (recebido: " + "x".repeat(50) + "…)",
+        erro.getMessage());
   }
 }

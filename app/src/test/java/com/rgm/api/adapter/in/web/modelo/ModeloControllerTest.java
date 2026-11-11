@@ -29,11 +29,13 @@ import com.rgm.api.adapter.in.web.dto.request.EditarModeloRequest;
 import com.rgm.api.adapter.out.report.ContextoDoRelatorio;
 import com.rgm.api.adapter.out.report.ModeloPdfService;
 import com.rgm.api.adapter.out.security.JwtAuthenticationFilter;
+import com.rgm.api.core.application.usecases.modelo.ContarModelosUseCase;
 import com.rgm.api.core.application.usecases.modelo.GerenciarModelosUseCase;
 import com.rgm.api.core.application.usecases.modelo.ListarModelosUseCase;
 import com.rgm.api.core.application.usecases.modelo.ObterFichaDoModeloUseCase;
 import com.rgm.api.core.application.usecases.modelo.ObterResumoModelosUseCase;
 import com.rgm.api.core.application.usecases.modelo.ObterResumoSolicitacoesModeloUseCase;
+import com.rgm.api.core.application.usecases.modelo.PosicaoDoModeloUseCase;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
 import com.rgm.api.core.domain.model.aggregates.EventoModelo;
 import com.rgm.api.core.domain.model.aggregates.Modelo;
@@ -43,10 +45,14 @@ import com.rgm.api.core.domain.model.enums.PerfilUsuario;
 import com.rgm.api.core.domain.model.enums.StatusSolicitacao;
 import com.rgm.api.core.domain.model.enums.TipoEventoModelo;
 import com.rgm.api.core.domain.model.enums.TipoSolicitacao;
+import com.rgm.api.core.domain.ports.repositories.ContagensDeModelos;
 import com.rgm.api.core.domain.ports.repositories.EventoModeloRepository;
+import com.rgm.api.core.domain.ports.repositories.FiltrosDeModelos;
 import com.rgm.api.core.domain.ports.repositories.FotoGaleriaModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.ModeloRepository;
+import com.rgm.api.core.domain.ports.repositories.OrdemDeModelos;
 import com.rgm.api.core.domain.ports.repositories.PageResult;
+import com.rgm.api.core.domain.ports.repositories.PosicaoDoModelo;
 import com.rgm.api.core.domain.ports.repositories.QuantidadePorMaquina;
 import com.rgm.api.core.domain.ports.repositories.ResumoModelos;
 import com.rgm.api.core.domain.ports.repositories.ResumoSolicitacoesModelo;
@@ -85,6 +91,8 @@ class ModeloControllerTest {
   @Autowired private ObjectMapper objectMapper;
   @MockitoBean private GerenciarModelosUseCase gerenciarUseCase;
   @MockitoBean private ListarModelosUseCase listarUseCase;
+  @MockitoBean private ContarModelosUseCase contarUseCase;
+  @MockitoBean private PosicaoDoModeloUseCase posicaoUseCase;
   @MockitoBean private ObterResumoModelosUseCase resumoModelosUseCase;
   @MockitoBean private ObterResumoSolicitacoesModeloUseCase resumoSolicitacoesUseCase;
   @MockitoBean private ModeloRepository modeloRepository;
@@ -124,6 +132,155 @@ class ModeloControllerTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.content[0].codigo").value("MOD-001"))
         .andExpect(jsonPath("$.totalElements").value(1));
+  }
+
+  // ── catálogo: filtros novos, contagens e posição ────────────────────────
+
+  @Test
+  void shouldPassTipoQMaquinaExataAndOrdemToTheUseCaseWhenListing() throws Exception {
+    // Arrange
+    when(listarUseCase.execute(any())).thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
+
+    // Act
+    mockMvc
+        .perform(
+            get("/api/modelos")
+                .param("tipo", " RESINA ")
+                .param("q", " carcaca ")
+                .param("maquina", "FBOX")
+                .param("maquinaExata", "true")
+                .param("ordem", "codigo")
+                .param("ativo", "true"))
+        .andExpect(status().isOk());
+
+    // Assert
+    final var input = ArgumentCaptor.forClass(ListarModelosUseCase.Input.class);
+    verify(listarUseCase).execute(input.capture());
+    assertEquals(
+        new ListarModelosUseCase.Input(
+            true, null, "FBOX", null, "RESINA", "carcaca", true, OrdemDeModelos.CODIGO, 0, 20),
+        input.getValue());
+  }
+
+  @Test
+  void shouldKeepTheOldInputWhenListingWithoutAnyNewParameter() throws Exception {
+    // Arrange
+    when(listarUseCase.execute(any())).thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
+
+    // Act
+    mockMvc.perform(get("/api/modelos").param("ativo", "true")).andExpect(status().isOk());
+
+    // Assert
+    final var input = ArgumentCaptor.forClass(ListarModelosUseCase.Input.class);
+    verify(listarUseCase).execute(input.capture());
+    assertEquals(new ListarModelosUseCase.Input(true, null, null, null, 0, 20), input.getValue());
+  }
+
+  @Test
+  void shouldRespond400WhenTheSearchIsTooShortOrTheOrderIsInvalid() throws Exception {
+    mockMvc.perform(get("/api/modelos").param("q", "a")).andExpect(status().isBadRequest());
+    mockMvc.perform(get("/api/modelos").param("q", "  a ")).andExpect(status().isBadRequest());
+    mockMvc
+        .perform(get("/api/modelos").param("ordem", "ALEATORIA"))
+        .andExpect(status().isBadRequest());
+    verifyNoInteractions(listarUseCase);
+  }
+
+  @Test
+  void shouldGiveTheCountsOfTheTiposAndMaquinas() throws Exception {
+    // Arrange
+    when(contarUseCase.execute(any()))
+        .thenReturn(
+            new ContagensDeModelos(
+                5,
+                List.of(
+                    new ContagensDeModelos.Quantidade("RESINA", 3),
+                    new ContagensDeModelos.Quantidade("COQUILHA_ACO", 2)),
+                List.of(new ContagensDeModelos.Quantidade("FBOX", 5))));
+
+    // Act + Assert
+    mockMvc
+        .perform(
+            get("/api/modelos/contagens")
+                .param("maquina", "FBOX")
+                .param("maquinaExata", "true")
+                .param("q", "carcaca")
+                .param("ativo", "true"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.total").value(5))
+        .andExpect(jsonPath("$.porTipo[0].tipo").value("RESINA"))
+        .andExpect(jsonPath("$.porTipo[0].total").value(3))
+        .andExpect(jsonPath("$.porTipo[1].tipo").value("COQUILHA_ACO"))
+        .andExpect(jsonPath("$.porMaquina[0].maquina").value("FBOX"))
+        .andExpect(jsonPath("$.porMaquina[0].total").value(5));
+    final var filtros = ArgumentCaptor.forClass(FiltrosDeModelos.class);
+    verify(contarUseCase).execute(filtros.capture());
+    assertEquals(
+        new FiltrosDeModelos(true, null, "FBOX", true, null, null, "carcaca"), filtros.getValue());
+  }
+
+  @Test
+  void shouldRespond400WhenTheCountSearchIsTooShort() throws Exception {
+    mockMvc
+        .perform(get("/api/modelos/contagens").param("q", "a"))
+        .andExpect(status().isBadRequest());
+    verifyNoInteractions(contarUseCase);
+  }
+
+  @Test
+  void shouldGiveThePositionAndTheTotalOfAModel() throws Exception {
+    // Arrange
+    final UUID id = UUID.randomUUID();
+    when(posicaoUseCase.execute(eq(id), any())).thenReturn(new PosicaoDoModelo(33, 45));
+
+    // Act + Assert
+    mockMvc
+        .perform(
+            get("/api/modelos/{id}/posicao", id).param("tipo", "RESINA").param("ordem", "CODIGO"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.posicao").value(33))
+        .andExpect(jsonPath("$.total").value(45));
+    final var filtros = ArgumentCaptor.forClass(FiltrosDeModelos.class);
+    verify(posicaoUseCase).execute(eq(id), filtros.capture());
+    assertEquals(
+        new FiltrosDeModelos(null, null, null, false, null, "RESINA", null), filtros.getValue());
+  }
+
+  @Test
+  void shouldGiveANullPositionWhenTheModelIsOutsideTheFilter() throws Exception {
+    // Arrange
+    final UUID id = UUID.randomUUID();
+    when(posicaoUseCase.execute(eq(id), any())).thenReturn(new PosicaoDoModelo(null, 12));
+
+    // Act + Assert
+    mockMvc
+        .perform(get("/api/modelos/{id}/posicao", id))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.posicao").doesNotExist())
+        .andExpect(jsonPath("$.total").value(12));
+  }
+
+  @Test
+  void shouldRespond404WhenThePositionIsAskedOfAModelThatDoesNotExist() throws Exception {
+    // Arrange
+    when(posicaoUseCase.execute(any(), any()))
+        .thenThrow(new RecursoNaoEncontradoException("Modelo nao encontrado"));
+
+    // Act + Assert
+    mockMvc
+        .perform(get("/api/modelos/{id}/posicao", UUID.randomUUID()))
+        .andExpect(status().isNotFound());
+  }
+
+  @Test
+  void shouldRespond400WhenThePositionIsAskedByCriacaoOrWithAShortSearch() throws Exception {
+    mockMvc
+        .perform(get("/api/modelos/{id}/posicao", UUID.randomUUID()).param("ordem", "CRIACAO"))
+        .andExpect(status().isBadRequest());
+    mockMvc
+        .perform(get("/api/modelos/{id}/posicao", UUID.randomUUID()).param("q", "a"))
+        .andExpect(status().isBadRequest());
+    verifyNoInteractions(posicaoUseCase);
   }
 
   @Test

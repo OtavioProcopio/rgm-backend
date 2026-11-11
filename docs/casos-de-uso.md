@@ -178,6 +178,16 @@ Referência de todos os casos de uso implementados no sistema.
 - **Eventos**: `solicitacao` e `solicitacao_atividade`, ambos com tipo `instrucao_editada`
 - **Erros**: 400 (texto ausente, vazio ou acima de 2000), 401, 403, 404, 409 (fora de `EM_ANDAMENTO` ou correção concorrente)
 
+## UC-25 — Catálogo de modelos: filtros, busca, contagens e posição
+- **Atores**: qualquer usuário autenticado (mesma regra da listagem de modelos)
+- **Classes**: `ListarModelosUseCase`, `ContarModelosUseCase`, `PosicaoDoModeloUseCase`
+- **Endpoints**: `GET /api/modelos` (novos parâmetros), `GET /api/modelos/contagens`, `GET /api/modelos/{id}/posicao`
+- **Parâmetros novos da listagem** (todos opcionais e somados aos de sempre): `tipo` (igualdade, sem caixa); `q` (código **ou** descrição, sem caixa e sem acento, de 2 a 100 caracteres; `%` e `_` valem como texto); `maquinaExata=true` (a `maquina` passa de "contém" a igualdade, sem caixa e sem acento); `ordem` = `CRIACAO` (padrão, mais recente primeiro) ou `CODIGO` (código, versão maior primeiro, `id`). Sem nenhum deles a listagem é a de sempre
+- **Contagens**: `{ total, porTipo:[{tipo,total}], porMaquina:[{maquina,total}] }` com os mesmos filtros; `porTipo` ignora o filtro de tipo e `porMaquina` o de máquina (o botão mostra o que traria); só valores com contagem > 0, da maior para a menor e depois em ordem alfabética; no máximo 3 consultas agregadas
+- **Posição**: `{ posicao, total }` do modelo na lista do filtro em `ordem=CODIGO` (começa em 1; o modelo de posição *p* está na página `(p−1)/size`, linha `(p−1)%size`); `posicao` nula se o modelo existe mas está fora do filtro; 404 se não existe; 400 para outra `ordem`
+- **Erros**: 400 (`q` fora de 2 a 100, `ordem` inválida), 401, 404 (posição)
+- **Compatibilidade**: aditivo (spec 016); sem migração; a busca usa `rgm_sem_acento` (V11)
+
 ## Limites de texto
 
 Declarados em `LimitesTexto` (domínio) e aplicados nos requests; texto acima do limite responde 400 com o campo e o limite.
