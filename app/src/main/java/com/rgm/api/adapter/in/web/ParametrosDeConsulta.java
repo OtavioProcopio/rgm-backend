@@ -2,6 +2,7 @@ package com.rgm.api.adapter.in.web;
 
 import com.rgm.api.core.domain.exceptions.ValidationException;
 import com.rgm.api.core.domain.model.enums.CriterioOrdenacaoSolicitacao;
+import com.rgm.api.core.domain.ports.repositories.OrdemDeModelos;
 import com.rgm.api.core.domain.ports.repositories.OrdenacaoSolicitacao;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
@@ -81,6 +82,21 @@ public final class ParametrosDeConsulta {
               + ")");
     }
     return termo;
+  }
+
+  /**
+   * Ordem da listagem de modelos: {@code CRIACAO} (padrao) ou {@code CODIGO}; outro valor e 400.
+   */
+  public static OrdemDeModelos ordemDeModelos(final String valor) {
+    if (valor == null || valor.isBlank()) {
+      return OrdemDeModelos.CRIACAO;
+    }
+    try {
+      return OrdemDeModelos.valueOf(valor.trim().toUpperCase(java.util.Locale.ROOT));
+    } catch (final IllegalArgumentException e) {
+      throw new ValidationException(
+          "Parâmetro 'ordem' deve ser CRIACAO ou CODIGO (recebido: " + recebido(valor) + ")");
+    }
   }
 
   /** {@code dias} do historico de metricas: de 1 ao maximo de 365. */

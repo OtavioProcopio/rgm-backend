@@ -9,11 +9,13 @@ import com.rgm.api.adapter.config.SecurityConfig;
 import com.rgm.api.adapter.out.report.ModeloPdfService;
 import com.rgm.api.adapter.out.security.JwtAuthenticationFilter;
 import com.rgm.api.core.application.usecases.auth.AutenticarAcessoUseCase;
+import com.rgm.api.core.application.usecases.modelo.ContarModelosUseCase;
 import com.rgm.api.core.application.usecases.modelo.GerenciarModelosUseCase;
 import com.rgm.api.core.application.usecases.modelo.ListarModelosUseCase;
 import com.rgm.api.core.application.usecases.modelo.ObterFichaDoModeloUseCase;
 import com.rgm.api.core.application.usecases.modelo.ObterResumoModelosUseCase;
 import com.rgm.api.core.application.usecases.modelo.ObterResumoSolicitacoesModeloUseCase;
+import com.rgm.api.core.application.usecases.modelo.PosicaoDoModeloUseCase;
 import com.rgm.api.core.domain.ports.repositories.EventoModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.FotoGaleriaModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.ModeloRepository;
@@ -36,6 +38,8 @@ class ModeloControllerSegurancaTest {
   @Autowired private MockMvc mockMvc;
   @MockitoBean private GerenciarModelosUseCase gerenciarUseCase;
   @MockitoBean private ListarModelosUseCase listarUseCase;
+  @MockitoBean private ContarModelosUseCase contarUseCase;
+  @MockitoBean private PosicaoDoModeloUseCase posicaoUseCase;
   @MockitoBean private ObterResumoModelosUseCase resumoModelosUseCase;
   @MockitoBean private ObterResumoSolicitacoesModeloUseCase resumoSolicitacoesUseCase;
   @MockitoBean private ModeloRepository modeloRepository;
@@ -70,5 +74,31 @@ class ModeloControllerSegurancaTest {
     // Assert
     resposta.andExpect(status().isUnauthorized());
     verifyNoInteractions(resumoSolicitacoesUseCase);
+  }
+
+  @Test
+  void shouldRecusarOAcessoWhenConsultaAsContagensDoCatalogoSemAutenticacao() throws Exception {
+    // Arrange
+    final var requisicao = get("/api/modelos/contagens");
+
+    // Act
+    final var resposta = mockMvc.perform(requisicao);
+
+    // Assert
+    resposta.andExpect(status().isUnauthorized());
+    verifyNoInteractions(contarUseCase);
+  }
+
+  @Test
+  void shouldRecusarOAcessoWhenConsultaAPosicaoDeUmModeloSemAutenticacao() throws Exception {
+    // Arrange
+    final var requisicao = get("/api/modelos/{id}/posicao", UUID.randomUUID());
+
+    // Act
+    final var resposta = mockMvc.perform(requisicao);
+
+    // Assert
+    resposta.andExpect(status().isUnauthorized());
+    verifyNoInteractions(posicaoUseCase);
   }
 }

@@ -33,6 +33,16 @@ public interface ModeloRepository {
   PageResult<Modelo> findByFilters(
       Boolean ativo, String codigo, String maquina, String descricao, int page, int size);
 
+  /** Catalogo: todos os filtros somados e a ordem pedida. Nao e usado sem filtro novo. */
+  PageResult<Modelo> buscarCatalogo(
+      FiltrosDeModelos filtros, OrdemDeModelos ordem, int page, int size);
+
+  /** Contagens por tipo e por maquina para os botoes do catalogo, agregadas no banco. */
+  ContagensDeModelos contar(FiltrosDeModelos filtros);
+
+  /** Posicao do modelo, em ordem de codigo, na lista que o filtro devolve. */
+  PosicaoDoModelo posicaoDe(UUID id, FiltrosDeModelos filtros);
+
   long count();
 
   /** Contagens do cadastro, agregadas no banco - nunca carrega a lista de modelos. */

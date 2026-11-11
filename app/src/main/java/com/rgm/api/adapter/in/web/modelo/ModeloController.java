@@ -3,23 +3,30 @@ package com.rgm.api.adapter.in.web.modelo;
 import com.rgm.api.adapter.in.web.ParametrosDeConsulta;
 import com.rgm.api.adapter.in.web.dto.request.CriarModeloRequest;
 import com.rgm.api.adapter.in.web.dto.request.EditarModeloRequest;
+import com.rgm.api.adapter.in.web.dto.response.ContagensDeModelosResponse;
 import com.rgm.api.adapter.in.web.dto.response.EventoModeloResponse;
 import com.rgm.api.adapter.in.web.dto.response.ModeloResponse;
 import com.rgm.api.adapter.in.web.dto.response.PageResponse;
+import com.rgm.api.adapter.in.web.dto.response.PosicaoDoModeloResponse;
 import com.rgm.api.adapter.in.web.dto.response.ResumoModelosResponse;
 import com.rgm.api.adapter.in.web.dto.response.ResumoSolicitacoesModeloResponse;
 import com.rgm.api.adapter.out.report.ContextoDoRelatorio;
 import com.rgm.api.adapter.out.report.ModeloPdfService;
+import com.rgm.api.core.application.usecases.modelo.ContarModelosUseCase;
 import com.rgm.api.core.application.usecases.modelo.GerenciarModelosUseCase;
 import com.rgm.api.core.application.usecases.modelo.ListarModelosUseCase;
 import com.rgm.api.core.application.usecases.modelo.ObterFichaDoModeloUseCase;
 import com.rgm.api.core.application.usecases.modelo.ObterResumoModelosUseCase;
 import com.rgm.api.core.application.usecases.modelo.ObterResumoSolicitacoesModeloUseCase;
+import com.rgm.api.core.application.usecases.modelo.PosicaoDoModeloUseCase;
 import com.rgm.api.core.domain.exceptions.RecursoNaoEncontradoException;
+import com.rgm.api.core.domain.exceptions.ValidationException;
 import com.rgm.api.core.domain.model.aggregates.Modelo;
 import com.rgm.api.core.domain.ports.repositories.EventoModeloRepository;
+import com.rgm.api.core.domain.ports.repositories.FiltrosDeModelos;
 import com.rgm.api.core.domain.ports.repositories.FotoGaleriaModeloRepository;
 import com.rgm.api.core.domain.ports.repositories.ModeloRepository;
+import com.rgm.api.core.domain.ports.repositories.OrdemDeModelos;
 import com.rgm.api.core.domain.ports.repositories.UsuarioRepository;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -50,6 +57,8 @@ public class ModeloController {
 
   private final GerenciarModelosUseCase gerenciarUseCase;
   private final ListarModelosUseCase listarUseCase;
+  private final ContarModelosUseCase contarUseCase;
+  private final PosicaoDoModeloUseCase posicaoUseCase;
   private final ModeloRepository modeloRepository;
   private final EventoModeloRepository eventoModeloRepository;
   private final ObterFichaDoModeloUseCase obterFichaUseCase;
@@ -62,6 +71,8 @@ public class ModeloController {
   public ModeloController(
       final GerenciarModelosUseCase gerenciarUseCase,
       final ListarModelosUseCase listarUseCase,
+      final ContarModelosUseCase contarUseCase,
+      final PosicaoDoModeloUseCase posicaoUseCase,
       final ModeloRepository modeloRepository,
       final EventoModeloRepository eventoModeloRepository,
       final ObterFichaDoModeloUseCase obterFichaUseCase,
@@ -72,6 +83,8 @@ public class ModeloController {
       final ObterResumoSolicitacoesModeloUseCase resumoSolicitacoesUseCase) {
     this.gerenciarUseCase = gerenciarUseCase;
     this.listarUseCase = listarUseCase;
+    this.contarUseCase = contarUseCase;
+    this.posicaoUseCase = posicaoUseCase;
     this.modeloRepository = modeloRepository;
     this.eventoModeloRepository = eventoModeloRepository;
     this.obterFichaUseCase = obterFichaUseCase;
@@ -89,16 +102,85 @@ public class ModeloController {
       @RequestParam(required = false) final Boolean ativo,
       @RequestParam(required = false) final String codigo,
       @RequestParam(required = false) final String maquina,
-      @RequestParam(required = false) final String descricao) {
+      @RequestParam(required = false) final String descricao,
+      @RequestParam(required = false) final String tipo,
+      @RequestParam(required = false) final String q,
+      @RequestParam(defaultValue = "false") final boolean maquinaExata,
+      @RequestParam(required = false) final String ordem) {
     ParametrosDeConsulta.pagina(page, size);
     final var result =
         listarUseCase.execute(
-            new ListarModelosUseCase.Input(ativo, codigo, maquina, descricao, page, size));
+            new ListarModelosUseCase.Input(
+                ativo,
+                codigo,
+                maquina,
+                descricao,
+                textoOuNulo(tipo),
+                ParametrosDeConsulta.busca("q", q),
+                maquinaExata,
+                ParametrosDeConsulta.ordemDeModelos(ordem),
+                page,
+                size));
     final Map<UUID, String> fotosCapa =
         fotoGaleriaModeloRepository.findPrincipalUrlsByModeloIds(
             result.content().stream().map(Modelo::getId).toList());
     return ResponseEntity.ok(
         PageResponse.from(result, m -> ModeloResponse.from(m, fotosCapa.get(m.getId()))));
+  }
+
+  /** Quantos modelos cada botao de tipo e de maquina do catalogo traria com os outros filtros. */
+  @GetMapping("/contagens")
+  public ResponseEntity<ContagensDeModelosResponse> contar(
+      @RequestParam(required = false) final Boolean ativo,
+      @RequestParam(required = false) final String codigo,
+      @RequestParam(required = false) final String maquina,
+      @RequestParam(defaultValue = "false") final boolean maquinaExata,
+      @RequestParam(required = false) final String descricao,
+      @RequestParam(required = false) final String tipo,
+      @RequestParam(required = false) final String q) {
+    final var filtros =
+        new FiltrosDeModelos(
+            ativo,
+            codigo,
+            maquina,
+            maquinaExata,
+            descricao,
+            textoOuNulo(tipo),
+            ParametrosDeConsulta.busca("q", q));
+    return ResponseEntity.ok(ContagensDeModelosResponse.from(contarUseCase.execute(filtros)));
+  }
+
+  /** Posicao do modelo na lista do filtro, em ordem de codigo: base do link direto. */
+  @GetMapping("/{id}/posicao")
+  public ResponseEntity<PosicaoDoModeloResponse> posicao(
+      @PathVariable final UUID id,
+      @RequestParam(required = false) final Boolean ativo,
+      @RequestParam(required = false) final String codigo,
+      @RequestParam(required = false) final String maquina,
+      @RequestParam(defaultValue = "false") final boolean maquinaExata,
+      @RequestParam(required = false) final String descricao,
+      @RequestParam(required = false) final String tipo,
+      @RequestParam(required = false) final String q,
+      @RequestParam(required = false) final String ordem) {
+    if (ordem != null
+        && !ordem.isBlank()
+        && ParametrosDeConsulta.ordemDeModelos(ordem) != OrdemDeModelos.CODIGO) {
+      throw new ValidationException("Parâmetro 'ordem' da posição deve ser CODIGO");
+    }
+    final var filtros =
+        new FiltrosDeModelos(
+            ativo,
+            codigo,
+            maquina,
+            maquinaExata,
+            descricao,
+            textoOuNulo(tipo),
+            ParametrosDeConsulta.busca("q", q));
+    return ResponseEntity.ok(PosicaoDoModeloResponse.from(posicaoUseCase.execute(id, filtros)));
+  }
+
+  private static String textoOuNulo(final String valor) {
+    return valor == null || valor.isBlank() ? null : valor.trim();
   }
 
   @GetMapping("/resumo")

@@ -15,6 +15,7 @@ import com.rgm.api.core.application.usecases.evidencia.ExcluirEvidenciaUseCase;
 import com.rgm.api.core.application.usecases.evidencia.VisualizarEvidenciaUseCase;
 import com.rgm.api.core.application.usecases.maquina.ListarMaquinasUseCase;
 import com.rgm.api.core.application.usecases.modelo.AdicionarFotoGaleriaUseCase;
+import com.rgm.api.core.application.usecases.modelo.ContarModelosUseCase;
 import com.rgm.api.core.application.usecases.modelo.EditarFotoGaleriaUseCase;
 import com.rgm.api.core.application.usecases.modelo.GerenciarModelosUseCase;
 import com.rgm.api.core.application.usecases.modelo.ListarGaleriaModeloUseCase;
@@ -22,6 +23,7 @@ import com.rgm.api.core.application.usecases.modelo.ListarModelosUseCase;
 import com.rgm.api.core.application.usecases.modelo.ObterFichaDoModeloUseCase;
 import com.rgm.api.core.application.usecases.modelo.ObterResumoModelosUseCase;
 import com.rgm.api.core.application.usecases.modelo.ObterResumoSolicitacoesModeloUseCase;
+import com.rgm.api.core.application.usecases.modelo.PosicaoDoModeloUseCase;
 import com.rgm.api.core.application.usecases.modelo.RecalcularPendenciaUseCase;
 import com.rgm.api.core.application.usecases.modelo.RemoverFotoGaleriaUseCase;
 import com.rgm.api.core.application.usecases.modelo.SolicitacaoFinalizadaListener;
@@ -415,6 +417,16 @@ public class UseCaseConfig {
   @Bean
   public ListarModelosUseCase listarModelosUseCase(final ModeloRepository modeloRepository) {
     return new ListarModelosUseCase(modeloRepository);
+  }
+
+  @Bean
+  public ContarModelosUseCase contarModelosUseCase(final ModeloRepository modeloRepository) {
+    return new ContarModelosUseCase(modeloRepository);
+  }
+
+  @Bean
+  public PosicaoDoModeloUseCase posicaoDoModeloUseCase(final ModeloRepository modeloRepository) {
+    return new PosicaoDoModeloUseCase(modeloRepository);
   }
 
   @Bean
