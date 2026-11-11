@@ -3,8 +3,12 @@ package com.rgm.api.adapter.out.persistence;
 import com.rgm.api.adapter.out.persistence.mapper.ModeloMapper;
 import com.rgm.api.adapter.out.persistence.repository.ModeloJpaRepository;
 import com.rgm.api.core.domain.model.aggregates.Modelo;
+import com.rgm.api.core.domain.ports.repositories.ContagensDeModelos;
+import com.rgm.api.core.domain.ports.repositories.FiltrosDeModelos;
 import com.rgm.api.core.domain.ports.repositories.ModeloRepository;
+import com.rgm.api.core.domain.ports.repositories.OrdemDeModelos;
 import com.rgm.api.core.domain.ports.repositories.PageResult;
+import com.rgm.api.core.domain.ports.repositories.PosicaoDoModelo;
 import com.rgm.api.core.domain.ports.repositories.QuantidadePorMaquina;
 import com.rgm.api.core.domain.ports.repositories.ResumoModelos;
 import java.util.Collection;
@@ -93,6 +97,107 @@ public class ModeloRepositoryAdapter implements ModeloRepository {
         result.getSize(),
         result.getTotalElements(),
         result.getTotalPages());
+  }
+
+  @Override
+  public PageResult<Modelo> buscarCatalogo(
+      final FiltrosDeModelos f, final OrdemDeModelos ordem, final int page, final int size) {
+    final var pageable = PageRequest.of(page, size);
+    final String q = termoDeBusca(f);
+    final var result =
+        ordem == OrdemDeModelos.CODIGO
+            ? jpa.catalogoPorCodigo(
+                f.ativo(),
+                f.codigo(),
+                f.maquina(),
+                f.maquinaExata(),
+                f.descricao(),
+                f.tipo(),
+                q,
+                pageable)
+            : jpa.catalogoPorCriacao(
+                f.ativo(),
+                f.codigo(),
+                f.maquina(),
+                f.maquinaExata(),
+                f.descricao(),
+                f.tipo(),
+                q,
+                pageable);
+    return new PageResult<>(
+        result.getContent().stream().map(ModeloMapper::toDomain).toList(),
+        result.getNumber(),
+        result.getSize(),
+        result.getTotalElements(),
+        result.getTotalPages());
+  }
+
+  @Override
+  public ContagensDeModelos contar(final FiltrosDeModelos f) {
+    final String q = termoDeBusca(f);
+    final long total =
+        jpa.contarNoCatalogo(
+            f.ativo(), f.codigo(), f.maquina(), f.maquinaExata(), f.descricao(), f.tipo(), q);
+    // Cada grupo ignora o proprio filtro: o botao mostra o que traria.
+    final var semTipo = f.semTipo();
+    final var semMaquina = f.semMaquina();
+    return new ContagensDeModelos(
+        total,
+        quantidades(
+            jpa.contarNoCatalogoPorTipo(
+                semTipo.ativo(),
+                semTipo.codigo(),
+                semTipo.maquina(),
+                semTipo.maquinaExata(),
+                semTipo.descricao(),
+                semTipo.tipo(),
+                q)),
+        quantidades(
+            jpa.contarNoCatalogoPorMaquina(
+                semMaquina.ativo(),
+                semMaquina.codigo(),
+                semMaquina.maquina(),
+                semMaquina.maquinaExata(),
+                semMaquina.descricao(),
+                semMaquina.tipo(),
+                q)));
+  }
+
+  @Override
+  public PosicaoDoModelo posicaoDe(final UUID id, final FiltrosDeModelos f) {
+    final String q = termoDeBusca(f);
+    final long total =
+        jpa.contarNoCatalogo(
+            f.ativo(), f.codigo(), f.maquina(), f.maquinaExata(), f.descricao(), f.tipo(), q);
+    if (jpa.contarModelo(
+            f.ativo(), f.codigo(), f.maquina(), f.maquinaExata(), f.descricao(), f.tipo(), q, id)
+        == 0) {
+      return new PosicaoDoModelo(null, total);
+    }
+    final var alvo = jpa.findById(id).orElseThrow();
+    final long antes =
+        jpa.contarAntesDe(
+            f.ativo(),
+            f.codigo(),
+            f.maquina(),
+            f.maquinaExata(),
+            f.descricao(),
+            f.tipo(),
+            q,
+            alvo.getCodigo(),
+            alvo.getVersao(),
+            id);
+    return new PosicaoDoModelo((int) antes + 1, total);
+  }
+
+  private static String termoDeBusca(final FiltrosDeModelos f) {
+    return f.q() == null ? null : TextoDeBusca.escaparCuringas(f.q());
+  }
+
+  private static List<ContagensDeModelos.Quantidade> quantidades(final List<Object[]> linhas) {
+    return linhas.stream()
+        .map(l -> new ContagensDeModelos.Quantidade((String) l[0], ((Number) l[1]).longValue()))
+        .toList();
   }
 
   @Override
