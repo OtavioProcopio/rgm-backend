@@ -1,4 +1,4 @@
 {
-  "active": "specs/015-instrucao-como-campo-da-solicitacao",
-  "title": "Instrução da triagem como campo da solicitação e refatoração da construção do agregado (spec 015), base develop; corpo de /triar renomeado"
+  "active": "specs/016-catalogo-de-modelos-filtros-e-contagens",
+  "title": "Catálogo de modelos: filtros por tipo e máquina, busca única, ordem e contagens (spec 016), base develop, aditivo"
 }
